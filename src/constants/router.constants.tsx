@@ -7,6 +7,8 @@ import { LuMonitorCog, LuSettings, LuUsers } from "react-icons/lu";
 import { RiShieldUserLine } from "react-icons/ri";
 import Settings from "../app/Settings/Settings";
 import ClientManagement from "../app/ClientManagement";
+import CaseManagement from "../app/CaseManagement";
+import CaseDetailsView from "../app/CaseManagement/CaseDetailsView";
 
 export const dashboardItems: DashboardItem[] = [
   {
@@ -62,6 +64,17 @@ export const dashboardItems: DashboardItem[] = [
     icon: LuUsers,
     role: [ROLE.ADMIN],
     element: <ClientManagement />,
+  },
+  {
+    name: "Case Management",
+    path: "case-management",
+    icon: LuUsers,
+    role: [ROLE.ADMIN],
+    element: <CaseManagement />,
+  },
+  {
+    path: "case-management/:caseId",
+    element: <CaseDetailsView />,
   },
   // {
   //   name: "Requests",
