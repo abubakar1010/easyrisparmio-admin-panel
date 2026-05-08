@@ -52,7 +52,7 @@ export function HomeTopBar() {
       </div>
 
       <Modal
-        title="New Contract"
+        title={<span className="text-xl font-bold text-slate-800">New Contract</span>}
         open={activeModal === "contract"}
         onCancel={() => setActiveModal(null)}
         footer={null}
@@ -115,7 +115,7 @@ export function HomeTopBar() {
       </Modal>
 
       <Modal
-        title="Upload Bill (OCR)"
+        title={<span className="text-xl font-bold text-slate-800">Upload Bill (OCR)</span>}
         open={activeModal === "upload"}
         onCancel={() => setActiveModal(null)}
         footer={null}
@@ -160,7 +160,7 @@ export function HomeTopBar() {
       </Modal>
 
       <Modal
-        title="New Lead"
+        title={<span className="text-xl font-bold text-slate-800">New Lead</span>}
         open={activeModal === "lead"}
         onCancel={() => setActiveModal(null)}
         footer={null}

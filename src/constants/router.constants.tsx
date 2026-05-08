@@ -9,6 +9,10 @@ import Settings from "../app/Settings/Settings";
 import ClientManagement from "../app/ClientManagement";
 import CaseManagement from "../app/CaseManagement";
 import CaseDetailsView from "../app/CaseManagement/CaseDetailsView";
+import { CgFileDocument } from "react-icons/cg";
+import MeterReading from "../app/MetterReading";
+import MeterDetails from "../app/MetterReading/MeterDetails";
+import Comparator from "../app/Comparators";
 
 export const dashboardItems: DashboardItem[] = [
   {
@@ -68,13 +72,45 @@ export const dashboardItems: DashboardItem[] = [
   {
     name: "Case Management",
     path: "case-management",
-    icon: LuUsers,
+    icon: CgFileDocument,
     role: [ROLE.ADMIN],
     element: <CaseManagement />,
   },
   {
     path: "case-management/:caseId",
     element: <CaseDetailsView />,
+  },
+  {
+    name: "Meter Reading",
+    path: "meter-reading",
+    icon: CgFileDocument,
+    role: [ROLE.ADMIN],
+    element: <MeterReading />,
+  },
+  {
+    path: "meter-reading/:meterId",
+    element: <MeterDetails />,
+  },
+  {
+    name: "Comparators",
+    path: "comparators",
+    icon: CgFileDocument,
+    role: [ROLE.ADMIN],
+    element: <Comparator />,
+  },
+  {
+    name: "OCR",
+    path: "ocr",
+    icon: CgFileDocument,
+    role: [ROLE.ADMIN],
+    element: <Comparator />,
+  },
+  {
+    name: "Suppliers",
+    path: "suppliers",
+    icon: CgFileDocument,
+    role: [ROLE.ADMIN],
+    element: <div>df</div>,
   },
   // {
   //   name: "Requests",

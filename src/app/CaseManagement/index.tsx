@@ -1,7 +1,6 @@
 import { Avatar, Button, Input, Table, Tag, Tooltip } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { FiEye, FiFilter, FiSearch, FiUser } from "react-icons/fi";
-import { HiOutlinePlus } from "react-icons/hi2";
 import { IoDownloadOutline } from "react-icons/io5";
 import { LuClock3 } from "react-icons/lu";
 import { useNavigate } from "react-router";
@@ -152,21 +151,14 @@ const CaseManagement = () => {
         </div>
         <div className="flex items-center gap-2">
           <Button icon={<IoDownloadOutline className="h-4 w-4" />}>Export</Button>
-          <Button type="primary" icon={<HiOutlinePlus className="h-4 w-4" />}>
-            Add User
-          </Button>
         </div>
       </section>
 
       <section className="space-y-3">
-        <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h3 className="text-2xl font-semibold text-brand">Case Management</h3>
-            <p className="text-sm text-owngray">Complete case workflow management</p>
-          </div>
-          <Button icon={<FiFilter className="h-4 w-4" />}>Kanban View</Button>
+        <div>
+          <h3 className="text-2xl font-semibold text-brand">Case Management</h3>
+          <p className="text-sm text-owngray">Complete case workflow management</p>
         </div>
-
         <div className="rounded-2xl border border-cborder/60 bg-white p-3 shadow-sm">
           <div className="mb-3 flex items-center gap-2">
             <Input
