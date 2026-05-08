@@ -2,30 +2,43 @@ import { useEffect, useState } from "react";
 import { Button, Form, Input, Modal, Select } from "antd";
 import type { ClientRow, CustomerType } from "../types";
 
-type ClientEditModalProps = {
+type ClientFormModalProps = {
   open: boolean;
   onClose: () => void;
-  client: ClientRow | null;
+  mode: "add" | "edit";
+  client?: ClientRow | null;
 };
 
-export function ClientEditModal({ open, onClose, client }: ClientEditModalProps) {
+export function ClientFormModal({ open, onClose, mode, client = null }: ClientFormModalProps) {
   const [customerType, setCustomerType] = useState<CustomerType>("Private");
   const [form] = Form.useForm();
+  const isEdit = mode === "edit";
 
   useEffect(() => {
-    if (!client) return;
-    setCustomerType(client.type);
-    form.setFieldsValue({
-      fullName: client.name,
-      email: client.email,
-      phone: client.phone,
-      fiscalCode: "FRRLRA85M50H501Y",
-      streetAddress: "Corso Italia 78",
-      city: "Torino",
-      postalCode: "10121",
-      operator: client.operator,
-    });
-  }, [client, form]);
+    if (!open) {
+      form.resetFields();
+      setCustomerType("Private");
+      return;
+    }
+
+    if (isEdit && client) {
+      setCustomerType(client.type);
+      form.setFieldsValue({
+        fullName: client.name,
+        email: client.email,
+        phone: client.phone,
+        fiscalCode: "FRRLRA85M50H501Y",
+        streetAddress: "Corso Italia 78",
+        city: "Torino",
+        postalCode: "10121",
+        operator: client.operator,
+      });
+      return;
+    }
+
+    form.resetFields();
+    setCustomerType("Private");
+  }, [client, form, isEdit, open]);
 
   return (
     <Modal
@@ -35,7 +48,7 @@ export function ClientEditModal({ open, onClose, client }: ClientEditModalProps)
       width={780}
       centered
       destroyOnClose
-      title="Edit customer"
+      title={isEdit ? "Edit customer" : "Add new customer"}
     >
       <Form form={form} layout="vertical" onFinish={onClose} className="pt-2">
         <div className="mb-4">
@@ -133,7 +146,7 @@ export function ClientEditModal({ open, onClose, client }: ClientEditModalProps)
         <div className="flex justify-end gap-2">
           <Button onClick={onClose}>Cancel</Button>
           <Button type="primary" htmlType="submit">
-            Save Changes
+            {isEdit ? "Save Changes" : "Create Customer"}
           </Button>
         </div>
       </Form>

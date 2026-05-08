@@ -44,7 +44,7 @@ export const mainTheme: ThemeConfig = {
     //     labelColor: "rgb(255, 255, 255)",
     //   },
     Input: {
-      // controlHeightLG: 52,
+      controlHeightLG: 44,
       borderRadiusLG: 30,
       // colorBorder: "#16B989",
       // activeBorderColor: "rgb(22,185,137)",

@@ -3,9 +3,8 @@ import { Avatar, Button, Input, Segmented, Select, Space, Table, Tag, Tooltip } 
 import type { ColumnsType } from "antd/es/table";
 import { HiOutlineUserPlus } from "react-icons/hi2";
 import { FiSearch, FiEye, FiEdit3, FiZap } from "react-icons/fi";
-import { AddClientModal } from "./components/AddClientModal";
 import { ClientDetailsModal } from "./components/ClientDetailsModal";
-import { ClientEditModal } from "./components/ClientEditModal";
+import { ClientFormModal } from "./components/ClientFormModal";
 import type { ClientRow, CustomerStatus, CustomerType } from "./types";
 import { statusClass } from "./types";
 
@@ -150,9 +149,9 @@ const ClientManagement = () => {
         <p className="mt-3 px-4 text-xs text-gray-500">Showing {filtered.length} of {clients.length} customers</p>
       </div>
 
-      <AddClientModal open={addOpen} onClose={() => setAddOpen(false)} />
+      <ClientFormModal open={addOpen} onClose={() => setAddOpen(false)} mode="add" />
       <ClientDetailsModal open={detailsOpen} onClose={() => setDetailsOpen(false)} client={selectedClient} />
-      <ClientEditModal open={editOpen} onClose={() => setEditOpen(false)} client={selectedClient} />
+      <ClientFormModal open={editOpen} onClose={() => setEditOpen(false)} mode="edit" client={selectedClient} />
     </div>
   );
 };

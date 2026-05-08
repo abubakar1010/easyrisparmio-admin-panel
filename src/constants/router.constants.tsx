@@ -3,7 +3,7 @@ import Home from "../app/Home";
 import Notification from "../app/Notification";
 import type { DashboardItem } from "../types/sidebar.type";
 import { ROLE } from "../types/common.type";
-import { LuMonitorCog, LuSettings, LuUsers } from "react-icons/lu";
+import { LuMonitorCog, LuSettings, LuUsers, LuZap } from "react-icons/lu";
 import { RiShieldUserLine } from "react-icons/ri";
 import Settings from "../app/Settings/Settings";
 import ClientManagement from "../app/ClientManagement";
@@ -13,6 +13,15 @@ import { CgFileDocument } from "react-icons/cg";
 import MeterReading from "../app/MetterReading";
 import MeterDetails from "../app/MetterReading/MeterDetails";
 import Comparator from "../app/Comparators";
+import OCRBills from "../app/OCR";
+import Suppliers from "../app/Suppliers";
+import OffersMarket from "../app/OffersMarket";
+import Agreements from "../app/Agreements";
+import CSVReconciliation from "../app/CSVReconciliation";
+import Referrals from "../app/Referrals";
+import Payments from "../app/Payments";
+import SupportTicket from "../app/SupportTicket";
+import Commission from "../app/Commission";
 
 export const dashboardItems: DashboardItem[] = [
   {
@@ -103,14 +112,63 @@ export const dashboardItems: DashboardItem[] = [
     path: "ocr",
     icon: CgFileDocument,
     role: [ROLE.ADMIN],
-    element: <Comparator />,
+    element: <OCRBills />,
   },
   {
     name: "Suppliers",
     path: "suppliers",
     icon: CgFileDocument,
     role: [ROLE.ADMIN],
-    element: <div>df</div>,
+    element: <Suppliers />,
+  },
+  {
+    name: "Offers & Market",
+    path: "offers-market",
+    icon: LuZap,
+    role: [ROLE.ADMIN],
+    element: <OffersMarket />,
+  },
+  {
+    name: "Agreements",
+    path: "agreements",
+    icon: CgFileDocument,
+    role: [ROLE.ADMIN],
+    element: <Agreements />,
+  },
+  {
+    name: "CSV Reconciliation",
+    path: "csv-reconciliation",
+    icon: CgFileDocument,
+    role: [ROLE.ADMIN],
+    element: <CSVReconciliation />,
+  },
+  {
+    name: "Referrals",
+    path: "referrals",
+    icon: CgFileDocument,
+    role: [ROLE.ADMIN],
+    element: <Referrals />,
+  },
+  {
+    name: "Payments",
+    path: "payments",
+    icon: CgFileDocument,
+    role: [ROLE.ADMIN],
+    element: <Payments />,
+  },
+  {
+    name: "Support Ticket",
+    path: "support-ticket",
+    icon: CgFileDocument,
+    role: [ROLE.ADMIN],
+    element: <SupportTicket />,
+  },
+  {
+    name: "Commission",
+    path: "commission",
+    icon: CgFileDocument,
+    role: [ROLE.ADMIN],
+    element: <Commission />,
   },
   // {
   //   name: "Requests",
