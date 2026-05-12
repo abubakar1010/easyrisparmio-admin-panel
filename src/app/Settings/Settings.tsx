@@ -1,39 +1,34 @@
-import { Button, Form, Input, Popover, Upload } from "antd";
+import { Button, Card, Form, Input, Upload, Avatar, Typography } from "antd";
 import type { UploadFile, UploadProps } from "antd";
-
 import { useState } from "react";
-import { IoCloudUploadOutline } from "react-icons/io5";
-import { LuPencil } from "react-icons/lu";
-import { PiDotsThreeOutlineVerticalBold } from "react-icons/pi";
+import { FiUser, FiLock, FiSave } from "react-icons/fi";
 import { useAppSelector } from "../../redux/hooks";
 import { getRoleLabel } from "../../lib/helpers/getRoleLabel";
 import type { TUserRole } from "../../types/common.type";
-import ChangePassword from "../../components/ChangePassword";
-import { cn } from "../../utils/cn";
+
+const { Title, Text } = Typography;
 
 const profileData = {
-  name: "Enrique Khan",
-  email: "enrique@gmail.com",
-  phone: "+880 150597212",
+  name: "Admin User",
+  email: "admin@example.com",
+  phone: "+1 234 567 8900",
 };
 
 const Settings = () => {
-  const [form] = Form.useForm();
-  const [editAble, setEditAble] = useState(false);
-  const [openPopover, setOpenPopover] = useState(false);
+  const [profileForm] = Form.useForm();
+  const [passwordForm] = Form.useForm();
   const [fileList, setFileList] = useState<UploadFile[]>([]);
-  const [imageUrl, setImageUrl] = useState<string>();
-  const [passModalOpen, setPassModalOpen] = useState(false);
+  const [imageUrl, setImageUrl] = useState<string>("/statics/profile.jpg");
   const { user } = useAppSelector((state) => state.auth);
 
-  const props: UploadProps = {
+  const uploadProps: UploadProps = {
     onRemove: (file) => {
       const index = fileList.indexOf(file);
       const newFileList = fileList.slice();
       newFileList.splice(index, 1);
       setFileList(newFileList);
     },
-    accept: "image/png,image/jpeg",
+    accept: "image/png,image/jpeg,image/gif",
     beforeUpload: (file) => {
       setFileList([file]);
       const url = URL.createObjectURL(file);
@@ -43,144 +38,179 @@ const Settings = () => {
     showUploadList: false,
   };
 
-  const content = (
-    <div className="flex flex-col gap-2 py-1">
-      <Button
-        type="default"
-        onClick={() => {
-          setEditAble(true);
-          setOpenPopover(false);
-        }}
-      >
-        Edit Info
-      </Button>
-      <Button
-        type="default"
-        onClick={() => {
-          setPassModalOpen(true);
-          setOpenPopover(false);
-        }}
-      >
-        Change Password
-      </Button>
-    </div>
-  );
   return (
-    <div className="min-h-[80vh] h-full w-full flex flex-col justify-center items-center ">
-      <div className="w-fit bg-white min-h-[600px] xl:min-w-2xl flex flex-col justify-center items-center gap-8 rounded-lg px-6 py-10 drop-shadow-sm relative">
-        <div className="absolute top-6 right-4">
-          <Popover
-            content={content}
-            // title="Title"
-            trigger="click"
-            placement="bottomRight"
-            onOpenChange={setOpenPopover}
-            open={openPopover}
-          >
-            <button className="active:bg-slate-200 p-1.5 rounded-lg">
-              <PiDotsThreeOutlineVerticalBold size={18} />
-            </button>
-          </Popover>
-        </div>
-        <Form
-          form={form}
-          name="basic"
-          layout="vertical"
-          className="w-full max-w-lg mx-auto"
-          // onFinish={onFinish}
-          autoComplete="off"
-          initialValues={{
-            name: profileData.name,
-            email: profileData.email,
-          }}
-        >
-          <div className="flex flex-col items-center justify-center mb-2">
-            <div
-              className={cn(
-                "h-48 w-48 overflow-hidden rounded-full outline-2 outline-offset-1 outline-gray-300",
-                {
-                  "rounded-none": editAble,
-                }
-              )}
-            >
-              <img
-                src={imageUrl || "/statics/demo.png"}
-                alt=""
-                className="w-full h-full object-center"
-              />
-            </div>
-            {editAble && (
-              <Upload {...props}>
-                <Button
-                  size="small"
-                  type="link"
-                  icon={<IoCloudUploadOutline />}
-                  style={{ marginTop: 10 }}
+    <div className="max-w-[1200px] mx-auto p-4 sm:p-6 space-y-8 animate-in fade-in duration-500">
+      {/* Page Header */}
+      <div className="mb-8">
+        <Title level={2} className="mb-1! text-[24px]! font-semibold text-slate-800">
+          Profile & Admin Settings
+        </Title>
+        <Text className="text-slate-500 text-[15px]">
+          Manage your profile and system settings
+        </Text>
+      </div>
+
+      {/* Admin Profile Card */}
+      <Card
+        className="rounded-xl border-slate-200 shadow-sm overflow-hidden"
+        title={
+          <div className="flex items-center gap-2 py-1">
+            <FiUser className="text-[#8b85f6] text-lg" />
+            <span className="text-[16px] font-semibold text-slate-700">Admin Profile</span>
+          </div>
+        }
+        styles={{ header: { borderBottom: '1px solid #f1f5f9', padding: '16px 24px' }, body: { padding: '24px' } }}
+      >
+        <div className="flex flex-col gap-8">
+          {/* Profile Photo Section */}
+          <div className="flex items-center gap-6">
+            <Avatar
+              size={80}
+              src={imageUrl}
+              className="border-2 border-slate-100 shadow-sm shrink-0"
+            />
+            <div className="flex flex-col gap-2">
+              <Upload {...uploadProps}>
+                <Button 
+                  className="bg-[#8b85f6] hover:bg-[#7a74e5]! border-none text-white font-medium rounded-lg px-6 h-10"
                 >
-                  Select Image
+                  Change Photo
                 </Button>
               </Upload>
-            )}
-            <h4 className="text-2xl text-[#222222] mt-2">
-              {getRoleLabel(user?.role as TUserRole)}
-            </h4>
+              <Text className="text-[13px] text-slate-400">
+                JPG, GIF or PNG. Max size of 2MB
+              </Text>
+            </div>
           </div>
 
-          <Form.Item
-            name="name"
-            className="text-lg text-[#1F8D84] font-medium"
-            label={"Name"}
+          {/* Profile Form */}
+          <Form
+            form={profileForm}
+            layout="vertical"
+            initialValues={{
+              name: user?.name || profileData.name,
+              email: user?.email || profileData.email,
+              phone: profileData.phone,
+              role: getRoleLabel(user?.role as TUserRole) || "Administrator",
+            }}
+            className="w-full"
           >
-            <Input
-              readOnly={!editAble}
-              size="large"
-              suffix={editAble ? <LuPencil size={15} /> : null}
-            />
-          </Form.Item>
-          <Form.Item
-            className="text-lg text-[#1F8D84] font-medium"
-            label={"Email"}
-            name="email"
-          >
-            <Input readOnly size="large" />
-          </Form.Item>
-          {!!editAble && (
-            <div className="flex justify-center gap-3 px-3 pt-5 max-w-sm mx-auto">
-              <Button
-                onClick={() => {
-                  setEditAble(false);
-                  form.resetFields();
-                }}
-                className="w-full"
-                style={{ height: 40 }}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
+              <Form.Item
+                name="name"
+                label={<span className="text-[14px] font-medium text-slate-600">Full Name</span>}
+                rules={[{ required: true, message: "Please enter your full name" }]}
               >
-                Cancel
-              </Button>
-              <Button className="w-full" type="primary" style={{ height: 40 }}>
-                Update
-              </Button>
+                <Input placeholder="Admin User" className="h-11 rounded-lg border-slate-200" />
+              </Form.Item>
+
+              <Form.Item
+                name="email"
+                label={<span className="text-[14px] font-medium text-slate-600">Email Address</span>}
+                rules={[
+                  { required: true, message: "Please enter your email" },
+                  { type: "email", message: "Please enter a valid email" }
+                ]}
+              >
+                <Input placeholder="admin@example.com" className="h-11 rounded-lg border-slate-200" />
+              </Form.Item>
+
+              <Form.Item
+                name="phone"
+                label={<span className="text-[14px] font-medium text-slate-600">Phone Number</span>}
+              >
+                <Input placeholder="+1 234 567 8900" className="h-11 rounded-lg border-slate-200" />
+              </Form.Item>
+
+              <Form.Item
+                name="role"
+                label={<span className="text-[14px] font-medium text-slate-600">Role</span>}
+              >
+                <Input placeholder="Administrator" className="h-11 rounded-lg border-slate-200" />
+              </Form.Item>
             </div>
-          )}
-        </Form>
-        {/* <div className="w-full max-w-lg mx-auto pt-2 border-t">
-        {settingsItem.map((setting, index) => (
-          <div
-            key={index}
-            className="h-[64px] font-medium hover:bg-[#0804e528] py-4 mb-2 px-6 rounded-lg flex items-center justify-between cursor-pointer transition-all"
-            onClick={() => navigate(setting.path)}
-          >
-            <h2 className="capitalize">{setting.title}</h2>
-            <FaAngleRight size={16} />
+
+            <Form.Item className="mb-0 mt-2">
+              <Button
+                type="primary"
+                icon={<FiSave className="text-lg" />}
+                className="bg-[#8b85f6] hover:bg-[#7a74e5]! border-none h-11 px-6 rounded-lg font-semibold flex items-center gap-2"
+              >
+                Save Changes
+              </Button>
+            </Form.Item>
+          </Form>
+        </div>
+      </Card>
+
+      {/* Change Password Card */}
+      <Card
+        className="rounded-xl border-slate-200 shadow-sm overflow-hidden"
+        title={
+          <div className="flex items-center gap-2 py-1">
+            <FiLock className="text-[#8b85f6] text-lg" />
+            <span className="text-[16px] font-semibold text-slate-700">Change Password</span>
           </div>
-        ))}
-      </div> */}
-      </div>
-      <ChangePassword
-        isModalOpen={passModalOpen}
-        setIsModalOpen={setPassModalOpen}
-      />
+        }
+        styles={{ header: { borderBottom: '1px solid #f1f5f9', padding: '16px 24px' }, body: { padding: '24px' } }}
+      >
+        <Form
+          form={passwordForm}
+          layout="vertical"
+          className="max-w-[440px] space-y-2"
+        >
+          <Form.Item
+            name="currentPassword"
+            label={<span className="text-[14px] font-medium text-slate-600">Current Password</span>}
+            rules={[{ required: true, message: "Please enter your current password" }]}
+          >
+            <Input.Password className="h-11 rounded-lg border-slate-200" />
+          </Form.Item>
+
+          <Form.Item
+            name="newPassword"
+            label={<span className="text-[14px] font-medium text-slate-600">New Password</span>}
+            rules={[
+              { required: true, message: "Please enter your new password" },
+              { min: 8, message: "Password must be at least 8 characters" },
+            ]}
+          >
+            <Input.Password className="h-11 rounded-lg border-slate-200" />
+          </Form.Item>
+
+          <Form.Item
+            name="confirmPassword"
+            label={<span className="text-[14px] font-medium text-slate-600">Confirm New Password</span>}
+            dependencies={["newPassword"]}
+            rules={[
+              { required: true, message: "Please confirm your new password" },
+              ({ getFieldValue }) => ({
+                validator(_, value) {
+                  if (!value || getFieldValue("newPassword") === value) {
+                    return Promise.resolve();
+                  }
+                  return Promise.reject(new Error("The two passwords do not match!"));
+                },
+              }),
+            ]}
+          >
+            <Input.Password className="h-11 rounded-lg border-slate-200" />
+          </Form.Item>
+
+          <Form.Item className="mb-0 mt-4">
+            <Button
+              type="primary"
+              className="bg-[#8b85f6] hover:bg-[#7a74e5]! border-none h-11 px-8 rounded-lg font-semibold"
+            >
+              Update Password
+            </Button>
+          </Form.Item>
+        </Form>
+      </Card>
     </div>
   );
 };
 
 export default Settings;
+
+

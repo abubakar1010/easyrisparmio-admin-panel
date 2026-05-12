@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { TUniObject } from "../types/common.type";
+import type {  TUniObject } from "../types/common.type";
 
 const debouncedSetter = debounce(
   (

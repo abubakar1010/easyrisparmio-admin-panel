@@ -4,7 +4,6 @@ import Notification from "../app/Notification";
 import type { DashboardItem } from "../types/sidebar.type";
 import { ROLE } from "../types/common.type";
 import { LuMonitorCog, LuSettings, LuUsers, LuZap } from "react-icons/lu";
-import { RiShieldUserLine } from "react-icons/ri";
 import Settings from "../app/Settings/Settings";
 import ClientManagement from "../app/ClientManagement";
 import CaseManagement from "../app/CaseManagement";
@@ -210,36 +209,6 @@ export const dashboardItems: DashboardItem[] = [
     path: "settings",
     icon: LuSettings,
     role: Object.values(ROLE),
-    children: [
-      {
-        name: "Profile",
-        path: "settings/prifile",
-        icon: RiShieldUserLine,
-        role: Object.values(ROLE),
-        element: <Settings />,
-      },
-      // {
-      //   name: "Terms & Services",
-      //   icon: FaServicestack,
-      //   path: "settings/terms-conditions",
-      //   role: Object.values(ROLE),
-      //   element: <TermsConditions />,
-      // },
-
-      // {
-      //   name: "Privacy Policy",
-      //   icon: MdOutlineSecurityUpdateWarning,
-      //   path: "settings/privacy-policy",
-      //   role: Object.values(ROLE),
-      //   element: <PrivacyPolicy />,
-      // },
-      // {
-      //   name: "About Us",
-      //   icon: BiMessageSquareDetail,
-      //   path: "settings/about-us",
-      //   role: Object.values(ROLE),
-      //   element: <AboutUs />,
-      // },
-    ],
+    element: <Settings />,
   },
 ];
