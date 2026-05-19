@@ -49,16 +49,16 @@ const MeterReading = () => {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-cborder/45 pb-4">
         <div>
-          <h1 className="text-2xl font-bold text-brand tracking-tight">Meter Management</h1>
-          <p className="text-sm text-slate-500 mt-1">Track and manage all active utility meters and services</p>
+          <h1 className="text-xl font-semibold text-brand tracking-tight">Meter</h1>
+          <p className="text-sm text-slate-500 mt-1">Manage all active utilities and services</p>
         </div>
-        <Button 
-          type="primary" 
-          icon={<FiPlus />} 
+        <Button
+          type="primary"
+          icon={<FiPlus />}
           onClick={() => setIsModalOpen(true)}
-          className="bg-brand hover:bg-brand/90 rounded-full h-10 px-6 font-medium border-0 shadow-md transition-transform hover:scale-105"
+          className="bg-[#6366f1] hover:bg-[#4f46e5] rounded-lg h-10 px-5 font-semibold border-0 shadow-sm"
         >
           Add Meter
         </Button>

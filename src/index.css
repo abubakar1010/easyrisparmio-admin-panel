@@ -41,6 +41,44 @@
   }
 }
 
+/* Auth screens: pill-shaped inputs matching Figma */
+.auth-pill-input.ant-input-affix-wrapper,
+.auth-pill-input.ant-input,
+.auth-pill-input .ant-input-affix-wrapper {
+  border-radius: 9999px !important;
+  height: 3.25rem;
+  padding-inline: 1.25rem;
+  border-color: #e5e7eb;
+}
+
+.auth-pill-input.ant-input-affix-wrapper > input.ant-input,
+.auth-pill-input .ant-input-affix-wrapper > input.ant-input {
+  border-radius: 0 !important;
+  font-size: 0.95rem;
+}
+
+.auth-pill-input .ant-input-prefix {
+  margin-inline-end: 0.625rem;
+  color: #9ca3af;
+}
+
+.auth-pill-input .ant-input-suffix {
+  color: #9ca3af;
+}
+
+.auth-pill-button.ant-btn {
+  height: 3.25rem !important;
+  border-radius: 9999px !important;
+  background: #6366f1;
+  box-shadow: 0 12px 24px -10px rgba(99, 102, 241, 0.55);
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.auth-pill-button.ant-btn:hover {
+  background: #4f46e5 !important;
+}
+
 /* Verify email OTP: equal width × height cells, aligned with h-12 inputs */
 .auth-otp-square-cells .ant-otp.ant-otp-lg {
   column-gap: 0.625rem;

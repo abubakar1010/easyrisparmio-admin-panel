@@ -1,7 +1,7 @@
 import { Button, Form, Input, Modal } from "antd";
 import { Link, useNavigate } from "react-router";
-import { FiLock, FiChevronLeft, FiCheckCircle } from "react-icons/fi";
-import { BrandLightningMark } from "../../components/ui/BrandLightningMark";
+import { FiLock, FiChevronLeft } from "react-icons/fi";
+import { MdVerified } from "react-icons/md";
 import { useState } from "react";
 
 const ResetPassword = () => {
@@ -12,8 +12,6 @@ const ResetPassword = () => {
   const onFinish = (values: any) => {
     setLoading(true);
     console.log("Received new password: ", values);
-
-    // Simulate API call
     setTimeout(() => {
       setLoading(false);
       setIsModalVisible(true);
@@ -22,63 +20,74 @@ const ResetPassword = () => {
 
   const handleModalClose = () => {
     setIsModalVisible(false);
-    navigate("/auth/sign-in");
+    navigate("/");
   };
 
   return (
     <>
       <div className="max-w-md w-full mx-auto md:mx-0">
-        <div className="text-center md:text-left mb-6 sm:mb-8">
-          <Link to="/auth/verify-email" className="inline-flex items-center text-gray-500 hover:text-gray-800 transition-colors mb-4 font-medium text-sm sm:text-base">
-            <FiChevronLeft className="mr-2 text-xs" /> Back
-          </Link>
-          <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 sm:gap-3 mb-2">
-            <BrandLightningMark size="md" decorative className="scale-90 sm:scale-100" />
-            <h2 className="text-2xl sm:text-3xl font-bold text-gray-800">Reset Password</h2>
-          </div>
-          <p className="text-gray-500">Please enter your new password and confirm it.</p>
-        </div>
+        <Link
+          to="/auth/verify-email"
+          className="inline-flex items-center gap-2 text-3xl sm:text-4xl font-bold text-gray-900 mb-8 hover:text-gray-700 transition-colors"
+        >
+          <FiChevronLeft className="text-2xl sm:text-3xl" />
+          <span>Reset Password</span>
+        </Link>
 
         <Form
           name="reset_password_form"
           layout="vertical"
           onFinish={onFinish}
           size="large"
+          requiredMark={false}
         >
           <Form.Item
-            label={<span className="font-medium text-gray-700">New Password</span>}
             name="password"
             rules={[
               { required: true, message: "Please input your new password!" },
-              { min: 6, message: "Password must be at least 6 characters long!" }
+              { min: 6, message: "Password must be at least 6 characters long!" },
             ]}
-            className="mb-6"
+            className="mb-5"
           >
-            <Input.Password prefix={<FiLock className="text-gray-400 mr-2" />} placeholder="Enter new password" className="rounded-lg h-12" />
+            <Input.Password
+              prefix={<FiLock />}
+              placeholder="Set Your Password"
+              className="auth-pill-input"
+            />
           </Form.Item>
 
           <Form.Item
-            label={<span className="font-medium text-gray-700">Confirm Password</span>}
             name="confirmPassword"
-            dependencies={['password']}
+            dependencies={["password"]}
             rules={[
               { required: true, message: "Please confirm your password!" },
               ({ getFieldValue }) => ({
                 validator(_, value) {
-                  if (!value || getFieldValue('password') === value) {
+                  if (!value || getFieldValue("password") === value) {
                     return Promise.resolve();
                   }
-                  return Promise.reject(new Error('The new password that you entered do not match!'));
+                  return Promise.reject(
+                    new Error("The new password that you entered do not match!")
+                  );
                 },
               }),
             ]}
-            className="mb-8"
+            className="mb-10"
           >
-            <Input.Password prefix={<FiLock className="text-gray-400 mr-2" />} placeholder="Confirm new password" className="rounded-lg h-12" />
+            <Input.Password
+              prefix={<FiLock />}
+              placeholder="Re - Enter your  New Password"
+              className="auth-pill-input"
+            />
           </Form.Item>
 
           <Form.Item className="mb-0">
-            <Button type="primary" htmlType="submit" loading={loading} shape="round" className="w-full bg-[#6366f1] hover:bg-[#4f46e5] h-12 text-base font-semibold shadow-md border-none">
+            <Button
+              type="primary"
+              htmlType="submit"
+              loading={loading}
+              className="auth-pill-button w-full border-none"
+            >
               Reset Password
             </Button>
           </Form.Item>
@@ -91,31 +100,38 @@ const ResetPassword = () => {
         footer={null}
         closable={false}
         centered
-        width={400}
+        width={360}
         styles={{
-          mask: {
-            backdropFilter: 'blur(4px)',
-          },
-          content: {
-            borderRadius: '16px',
-            padding: '32px 24px',
-          }
+          mask: { background: "rgba(0,0,0,0.35)" },
+          content: { borderRadius: "16px", padding: "28px 24px" },
         }}
       >
         <div className="flex flex-col items-center text-center">
-          <div className="w-20 h-20 rounded-full bg-indigo-50 flex items-center justify-center mb-6">
-            <FiCheckCircle className="text-5xl text-[#6366f1]" />
+          <h3 className="text-2xl font-bold text-gray-900 mb-2">
+            password Updated
+          </h3>
+          <p className="text-gray-500 mb-6">Your password already changed</p>
+
+          <div className="relative my-2 mb-8 w-24 h-24 flex items-center justify-center">
+            <span className="absolute top-2 -left-1 w-2 h-2 rounded-full bg-indigo-200" />
+            <span className="absolute top-3 -right-2 w-2.5 h-2.5 rounded-full bg-indigo-300" />
+            <span className="absolute -bottom-1 left-0 w-1.5 h-1.5 rounded-full bg-indigo-200" />
+            <span className="absolute -bottom-2 right-2 w-2 h-2 rounded-full bg-indigo-200" />
+            <MdVerified className="text-[#6366f1]" size={96} />
           </div>
-          <h3 className="text-2xl font-bold text-gray-800 mb-2">Password Updated</h3>
-          <p className="text-gray-500 mb-8">Your password has been changed successfully. You can now login with your new password.</p>
+
           <Button
             type="primary"
             size="large"
-            shape="round"
-            className="w-full bg-[#6366f1] hover:bg-[#4f46e5] h-12 text-base font-semibold border-none"
             onClick={handleModalClose}
+            className="w-full border-none font-semibold"
+            style={{
+              height: 48,
+              borderRadius: 10,
+              background: "#6366f1",
+            }}
           >
-            Sign In
+            Back To Dashboard
           </Button>
         </div>
       </Modal>

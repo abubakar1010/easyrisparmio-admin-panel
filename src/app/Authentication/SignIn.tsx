@@ -1,7 +1,6 @@
-import { Button, Checkbox, Input, Form } from "antd";
+import { Button, Input, Form } from "antd";
 import { Link, useNavigate } from "react-router";
 import { FiMail, FiLock } from "react-icons/fi";
-import { BrandLightningMark } from "../../components/ui/BrandLightningMark";
 
 const SignIn = () => {
   const navigate = useNavigate();
@@ -13,54 +12,58 @@ const SignIn = () => {
 
   return (
     <div className="max-w-md w-full mx-auto md:mx-0">
-      <div className="text-center md:text-left mb-6 sm:mb-8">
-        <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 sm:gap-3 mb-2">
-          <BrandLightningMark size="md" decorative className="scale-90 sm:scale-100" />
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-800">Login</h2>
-        </div>
-        <p className="text-gray-500">Please enter your email and password to continue!</p>
-      </div>
+      <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-8">Login</h2>
 
       <Form
         name="login_form"
         layout="vertical"
-        initialValues={{ remember: true }}
         onFinish={onFinish}
         size="large"
+        requiredMark={false}
       >
         <Form.Item
-          label={<span className="font-medium text-gray-700">Email</span>}
           name="email"
           rules={[
             { required: true, message: "Please input your Email!" },
-            { type: "email", message: "Please enter a valid email!" }
+            { type: "email", message: "Please enter a valid email!" },
           ]}
+          className="mb-5"
         >
-          <Input prefix={<FiMail className="text-gray-400 mr-2" />} placeholder="Enter your email" className="rounded-lg h-12" />
+          <Input
+            prefix={<FiMail />}
+            placeholder="Email"
+            className="auth-pill-input"
+          />
         </Form.Item>
 
         <Form.Item
-          label={<span className="font-medium text-gray-700">Password</span>}
           name="password"
           rules={[{ required: true, message: "Please input your Password!" }]}
-          className="mb-4"
+          className="mb-3"
         >
-          <Input.Password prefix={<FiLock className="text-gray-400 mr-2" />} placeholder="Enter your password" className="rounded-lg h-12" />
+          <Input.Password
+            prefix={<FiLock />}
+            placeholder="Password"
+            className="auth-pill-input"
+          />
         </Form.Item>
 
-        <div className="flex items-center justify-between mb-8">
-          <Form.Item name="remember" valuePropName="checked" noStyle>
-            <Checkbox className="text-gray-600">Remember me</Checkbox>
-          </Form.Item>
-
-          <Link to="/auth/forgot-password" className="text-[#6366f1] hover:text-[#4f46e5] font-medium text-sm transition-colors">
-            Forgot password?
+        <div className="mb-10">
+          <Link
+            to="/auth/forgot-password"
+            className="text-[#4f46e5] hover:text-[#4338ca] font-medium text-sm transition-colors"
+          >
+            Forget password?
           </Link>
         </div>
 
         <Form.Item className="mb-0">
-          <Button type="primary" htmlType="submit" shape="round" className="w-full bg-[#6366f1] hover:bg-[#4f46e5] h-12 text-base font-semibold shadow-md border-none">
-            Log In
+          <Button
+            type="primary"
+            htmlType="submit"
+            className="auth-pill-button w-full border-none"
+          >
+            Log in
           </Button>
         </Form.Item>
       </Form>

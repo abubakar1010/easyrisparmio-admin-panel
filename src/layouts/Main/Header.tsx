@@ -55,11 +55,8 @@ const Header = ({ onMobileMenuClick }: HeaderProps) => {
           ) : null}
           <BrandLightningMark size="sm" decorative className="mt-0.5 shrink-0 lg:hidden" />
           <div className="min-w-0">
-            <p className="text-sm sm:text-[15px] font-medium text-light-brand tracking-[-0.02em] leading-snug line-clamp-2 sm:line-clamp-none">
-              Welcome to admin portal
-            </p>
-            <p className="text-xs text-owngray mt-0.5 hidden sm:block">
-              Here’s what’s happening today
+            <p className="text-base sm:text-lg font-medium text-brand tracking-[-0.01em]">
+              Welcome,{user?.name ? ` ${user.name}` : "Admin"}
             </p>
           </div>
         </div>
@@ -71,34 +68,22 @@ const Header = ({ onMobileMenuClick }: HeaderProps) => {
             aria-expanded={notificationPopup}
             aria-haspopup="true"
           >
-            <Badge
-              style={{ backgroundColor: " #FFD700", color: "black" }}
-              count={0}
-              showZero
-              offset={[-5, 5]}
-            >
-              <IoNotificationsOutline
-                className="cursor-pointer text-primary w-10 h-10 sm:w-11 sm:h-11 rounded-2xl p-2 sm:p-2.5 bg-playground/60 border border-cborder/40 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all duration-300 ease-[cubic-bezier(0.3,0,0,1)] hover:bg-primary/10 hover:border-primary/20 hover:shadow-[0_8px_24px_-12px_rgba(37,99,235,0.25)] active:scale-[0.97]"
-              />
+            <Badge dot color="#ef4444" offset={[-2, 4]}>
+              <IoNotificationsOutline className="cursor-pointer text-[#6366f1] w-7 h-7 sm:w-8 sm:h-8 transition-colors hover:text-[#4f46e5]" />
             </Badge>
           </button>
-          <div className="flex items-center gap-2 sm:gap-3 pl-2 sm:pl-4 border-l border-cborder/50">
+          <div className="flex items-center gap-2 sm:gap-3 pl-3 sm:pl-4 border-l border-cborder/50">
             <Avatar
-              size={44}
-              className="ring-2 sm:ring-[3px] ring-white shadow-md shrink-0"
-              icon={
-                <img
-                  src={"/statics/profile.jpg"}
-                  alt=""
-                  className="w-full h-full object-cover"
-                />
-              }
-            />
+              size={40}
+              className="shrink-0 bg-[#e0eaff] text-[#3a4a7a] font-semibold"
+            >
+              AD
+            </Avatar>
             <div className="min-w-0 text-left hidden min-[380px]:block">
-              <h4 className="text-sm font-semibold text-brand truncate max-w-[120px] sm:max-w-[200px]">
-                {user?.name}
+              <h4 className="text-sm font-semibold text-brand truncate max-w-[120px] sm:max-w-[200px] leading-tight">
+                {user?.name || "Admin User"}
               </h4>
-              <span className="text-xs text-owngray hidden sm:inline">Administrator</span>
+              <span className="text-xs text-owngray">Superadmin</span>
             </div>
           </div>
         </div>

@@ -3,12 +3,27 @@ import Home from "../app/Home";
 import Notification from "../app/Notification";
 import type { DashboardItem } from "../types/sidebar.type";
 import { ROLE } from "../types/common.type";
-import { LuMonitorCog, LuSettings, LuUsers, LuZap } from "react-icons/lu";
+import {
+  LuLayoutDashboard,
+  LuSettings,
+  LuUsers,
+  LuZap,
+  LuFileText,
+  LuScanLine,
+  LuTag,
+  LuClipboardCheck,
+  LuGift,
+  LuCreditCard,
+  LuMessageCircle,
+  LuPercent,
+  LuBuilding2,
+  LuFileSpreadsheet,
+  LuGitCompareArrows,
+} from "react-icons/lu";
 import Settings from "../app/Settings/Settings";
 import ClientManagement from "../app/ClientManagement";
 import CaseManagement from "../app/CaseManagement";
 import CaseDetailsView from "../app/CaseManagement/CaseDetailsView";
-import { CgFileDocument } from "react-icons/cg";
 import MeterReading from "../app/MetterReading";
 import MeterDetails from "../app/MetterReading/MeterDetails";
 import Comparator from "../app/Comparators";
@@ -26,7 +41,7 @@ export const dashboardItems: DashboardItem[] = [
   {
     name: "Dashboard",
     path: "/",
-    icon: LuMonitorCog,
+    icon: LuLayoutDashboard,
     element: <Home />,
     role: [ROLE.ADMIN],
   },
@@ -80,7 +95,7 @@ export const dashboardItems: DashboardItem[] = [
   {
     name: "Case Management",
     path: "case-management",
-    icon: CgFileDocument,
+    icon: LuFileText,
     role: [ROLE.ADMIN],
     element: <CaseManagement />,
   },
@@ -89,9 +104,9 @@ export const dashboardItems: DashboardItem[] = [
     element: <CaseDetailsView />,
   },
   {
-    name: "Meter Reading",
+    name: "Utilities / Services",
     path: "meter-reading",
-    icon: CgFileDocument,
+    icon: LuZap,
     role: [ROLE.ADMIN],
     element: <MeterReading />,
   },
@@ -100,72 +115,72 @@ export const dashboardItems: DashboardItem[] = [
     element: <MeterDetails />,
   },
   {
-    name: "Comparators",
+    name: "Comparator",
     path: "comparators",
-    icon: CgFileDocument,
+    icon: LuGitCompareArrows,
     role: [ROLE.ADMIN],
     element: <Comparator />,
   },
   {
     name: "OCR",
     path: "ocr",
-    icon: CgFileDocument,
+    icon: LuScanLine,
     role: [ROLE.ADMIN],
     element: <OCRBills />,
   },
   {
     name: "Suppliers",
     path: "suppliers",
-    icon: CgFileDocument,
+    icon: LuBuilding2,
     role: [ROLE.ADMIN],
     element: <Suppliers />,
   },
   {
-    name: "Offers & Market",
+    name: "Offers / Market",
     path: "offers-market",
-    icon: LuZap,
+    icon: LuTag,
     role: [ROLE.ADMIN],
     element: <OffersMarket />,
   },
   {
-    name: "Agreements",
+    name: "Agreement Section",
     path: "agreements",
-    icon: CgFileDocument,
+    icon: LuClipboardCheck,
     role: [ROLE.ADMIN],
     element: <Agreements />,
   },
   {
     name: "CSV Reconciliation",
     path: "csv-reconciliation",
-    icon: CgFileDocument,
+    icon: LuFileSpreadsheet,
     role: [ROLE.ADMIN],
     element: <CSVReconciliation />,
   },
   {
     name: "Referrals",
     path: "referrals",
-    icon: CgFileDocument,
+    icon: LuGift,
     role: [ROLE.ADMIN],
     element: <Referrals />,
   },
   {
     name: "Payments",
     path: "payments",
-    icon: CgFileDocument,
+    icon: LuCreditCard,
     role: [ROLE.ADMIN],
     element: <Payments />,
   },
   {
-    name: "Support Ticket",
+    name: "Support",
     path: "support-ticket",
-    icon: CgFileDocument,
+    icon: LuMessageCircle,
     role: [ROLE.ADMIN],
     element: <SupportTicket />,
   },
   {
     name: "Commission",
     path: "commission",
-    icon: CgFileDocument,
+    icon: LuPercent,
     role: [ROLE.ADMIN],
     element: <Commission />,
   },

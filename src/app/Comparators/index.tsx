@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button, Input, Tag } from "antd";
-import { FiTrendingDown } from "react-icons/fi";
+import { FiTrendingDown, FiPlus } from "react-icons/fi";
 import { LuZap, LuCalculator } from "react-icons/lu";
 
 const Comparator = () => {
@@ -8,9 +8,24 @@ const Comparator = () => {
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
-      {/* Header */}
+      {/* Section header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between border-b border-cborder/45 pb-4">
+        <div>
+          <h1 className="text-xl font-semibold text-brand">Utilities &amp; Services</h1>
+          <p className="text-sm text-owngray">Manage all active utilities and services</p>
+        </div>
+        <Button
+          type="primary"
+          icon={<FiPlus />}
+          className="bg-[#6366f1] hover:bg-[#4f46e5] rounded-lg h-10 px-5 font-semibold border-0"
+        >
+          Add Utility
+        </Button>
+      </div>
+
+      {/* Sub-header */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-800">Comparator</h1>
+        <h2 className="text-2xl font-bold text-slate-800">Comparator</h2>
         <p className="text-sm text-slate-500 mt-1">Automatic top 3 + manual operator selection</p>
       </div>
 

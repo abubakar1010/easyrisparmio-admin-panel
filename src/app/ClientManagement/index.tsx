@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Avatar, Button, Input, Segmented, Select, Space, Table, Tag, Tooltip } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { HiOutlineUserPlus } from "react-icons/hi2";
-import { FiSearch, FiEye, FiEdit3, FiZap } from "react-icons/fi";
+import { FiSearch, FiEye, FiEdit3, FiZap, FiLock, FiKey } from "react-icons/fi";
 import { ClientDetailsModal } from "./components/ClientDetailsModal";
 import { ClientFormModal } from "./components/ClientFormModal";
 import type { ClientRow, CustomerStatus, CustomerType } from "./types";
@@ -105,12 +105,18 @@ const ClientManagement = () => {
       key: "actions",
       width: 120,
       render: (_, record) => (
-        <Space size={4}>
+        <Space size={2}>
           <Tooltip title="View user">
             <Button type="text" size="small" icon={<FiEye className="h-4 w-4" />} onClick={() => openDetails(record)} />
           </Tooltip>
           <Tooltip title="Quick edit">
             <Button type="text" size="small" icon={<FiEdit3 className="h-4 w-4" />} onClick={() => openEdit(record)} />
+          </Tooltip>
+          <Tooltip title="Block / unblock">
+            <Button type="text" size="small" icon={<FiLock className="h-4 w-4" />} />
+          </Tooltip>
+          <Tooltip title="Reset password">
+            <Button type="text" size="small" icon={<FiKey className="h-4 w-4" />} />
           </Tooltip>
         </Space>
       ),
