@@ -1,7 +1,6 @@
 import { Avatar, Button, Input, Table, Tag, Tooltip } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { FiEye, FiFilter, FiSearch, FiUser } from "react-icons/fi";
-import { IoDownloadOutline } from "react-icons/io5";
 import { LuClock3 } from "react-icons/lu";
 import { useNavigate } from "react-router";
 
@@ -144,16 +143,6 @@ const CaseManagement = () => {
 
   return (
     <div className="space-y-6">
-      <section className="flex flex-col gap-3 border-b border-cborder/45 pb-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <h2 className="text-xl font-semibold text-brand">Users Management</h2>
-          <p className="text-sm text-owngray">Manage all private and business users</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button icon={<IoDownloadOutline className="h-4 w-4" />}>Export</Button>
-        </div>
-      </section>
-
       <section className="space-y-3">
         <div>
           <h3 className="text-2xl font-semibold text-brand">Case Management</h3>

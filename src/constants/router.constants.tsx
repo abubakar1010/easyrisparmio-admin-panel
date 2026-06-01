@@ -13,7 +13,6 @@ import {
   LuTag,
   LuClipboardCheck,
   LuGift,
-  LuCreditCard,
   LuMessageCircle,
   LuPercent,
   LuBuilding2,
@@ -29,11 +28,11 @@ import MeterDetails from "../app/MetterReading/MeterDetails";
 import Comparator from "../app/Comparators";
 import OCRBills from "../app/OCR";
 import Suppliers from "../app/Suppliers";
+import SupplierDetails from "../app/Suppliers/SupplierDetails";
 import OffersMarket from "../app/OffersMarket";
 import Agreements from "../app/Agreements";
 import CSVReconciliation from "../app/CSVReconciliation";
 import Referrals from "../app/Referrals";
-import Payments from "../app/Payments";
 import SupportTicket from "../app/SupportTicket";
 import Commission from "../app/Commission";
 
@@ -136,6 +135,10 @@ export const dashboardItems: DashboardItem[] = [
     element: <Suppliers />,
   },
   {
+    path: "suppliers/:supplierId",
+    element: <SupplierDetails />,
+  },
+  {
     name: "Offers / Market",
     path: "offers-market",
     icon: LuTag,
@@ -162,13 +165,6 @@ export const dashboardItems: DashboardItem[] = [
     icon: LuGift,
     role: [ROLE.ADMIN],
     element: <Referrals />,
-  },
-  {
-    name: "Payments",
-    path: "payments",
-    icon: LuCreditCard,
-    role: [ROLE.ADMIN],
-    element: <Payments />,
   },
   {
     name: "Support",
