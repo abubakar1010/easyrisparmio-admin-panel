@@ -63,8 +63,11 @@ export function HomeTopBar() {
       >
         <Form layout="vertical" className="pt-2">
           <div className="grid gap-3 sm:grid-cols-2">
-            <Form.Item label="Customer Name" className="mb-2">
-              <Input placeholder="Enter customer name" />
+            <Form.Item label="First Name" className="mb-2">
+              <Input placeholder="Enter first name" />
+            </Form.Item>
+            <Form.Item label="Last Name" className="mb-2">
+              <Input placeholder="Enter last name" />
             </Form.Item>
             <Form.Item label="Tax ID" className="mb-2">
               <Input placeholder="Enter tax ID" />
