@@ -2,40 +2,45 @@ import { LuFileStack, LuUsers } from "react-icons/lu";
 import { FiCheckCircle } from "react-icons/fi";
 import { LuClock } from "react-icons/lu";
 import { MiniSparkline } from "./MiniSparkline";
+import type { AdminDashboardData } from "../../redux/features/Dashboard/dashboardApi";
 
 const iconWrap = "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg";
 
-export function KpiStatCards() {
+type Props = { data?: AdminDashboardData["kpiStats"] };
+
+export function KpiStatCards({ data }: Props) {
+  const s = data;
+
   const items = [
     {
       label: "Total Switches",
-      value: "342",
-      delta: "+12.5% vs last month",
-      deltaPositive: true,
+      value: s ? s.totalSwitches.value.toLocaleString() : "—",
+      delta: s ? formatDelta(s.totalSwitches.delta, "vs last month") : "",
+      deltaPositive: (s?.totalSwitches.delta ?? 0) >= 0,
       icon: <LuFileStack className="h-5 w-5 text-white" />,
       iconBg: "bg-[#8B5CF6]",
     },
     {
       label: "Active Customers",
-      value: "1,247",
-      delta: "+8.2% growth",
-      deltaPositive: true,
+      value: s ? s.activeCustomers.value.toLocaleString() : "—",
+      delta: s ? formatDelta(s.activeCustomers.delta, "growth") : "",
+      deltaPositive: (s?.activeCustomers.delta ?? 0) >= 0,
       icon: <LuUsers className="h-5 w-5 text-white" />,
       iconBg: "bg-[#3B82F6]",
     },
     {
       label: "Conversion Rate",
-      value: "32.4%",
-      delta: "+3.1% improvement",
-      deltaPositive: true,
+      value: s ? `${s.conversionRate.value}%` : "—",
+      delta: s ? formatDelta(s.conversionRate.delta, "improvement") : "",
+      deltaPositive: (s?.conversionRate.delta ?? 0) >= 0,
       icon: <FiCheckCircle className="h-5 w-5 text-white" />,
       iconBg: "bg-[#22C55E]",
     },
     {
       label: "Avg. Processing Time",
-      value: "18 days",
-      delta: "+2 days delay",
-      deltaPositive: false,
+      value: s ? `${s.avgProcessingTime.value} days` : "—",
+      delta: s ? formatTimeDelta(s.avgProcessingTime.delta) : "",
+      deltaPositive: (s?.avgProcessingTime.delta ?? 0) <= 0,
       icon: <LuClock className="h-5 w-5 text-white" />,
       iconBg: "bg-[#F97316]",
     },
@@ -63,4 +68,15 @@ export function KpiStatCards() {
       ))}
     </div>
   );
+}
+
+function formatDelta(delta: number, suffix: string): string {
+  const sign = delta >= 0 ? "+" : "";
+  return `${sign}${delta}% ${suffix}`;
+}
+
+function formatTimeDelta(delta: number): string {
+  if (delta === 0) return "No change";
+  const abs = Math.abs(delta);
+  return delta > 0 ? `+${abs} days delay` : `-${abs} days faster`;
 }

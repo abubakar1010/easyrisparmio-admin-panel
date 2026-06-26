@@ -1,43 +1,48 @@
 import { DashboardCard } from "./DashboardCard";
 import { FiChevronRight } from "react-icons/fi";
 import { LuFileWarning, LuCalendarClock, LuClipboardCheck, LuPhone } from "react-icons/lu";
+import type { AdminDashboardData } from "../../redux/features/Dashboard/dashboardApi";
 
-const rows = [
-  {
-    title: "Missing Documents",
-    desc: "23 contracts waiting",
-    count: "23",
-    bg: "bg-red-50",
-    border: "border-red-100",
-    icon: <LuFileWarning className="h-5 w-5 text-red-600" />,
-  },
-  {
-    title: "Expiring Contracts",
-    desc: "Within 30 days",
-    count: "12",
-    bg: "bg-orange-50",
-    border: "border-orange-100",
-    icon: <LuCalendarClock className="h-5 w-5 text-orange-600" />,
-  },
-  {
-    title: "Pending Validation",
-    desc: "Awaiting approval",
-    count: "12",
-    bg: "bg-amber-50",
-    border: "border-amber-100",
-    icon: <LuClipboardCheck className="h-5 w-5 text-amber-700" />,
-  },
-  {
-    title: "Follow-up Required",
-    desc: "Customer contact needed",
-    count: "12",
-    bg: "bg-sky-50",
-    border: "border-sky-100",
-    icon: <LuPhone className="h-5 w-5 text-sky-600" />,
-  },
-];
+type Props = { data?: AdminDashboardData["priorityTasks"] };
 
-export function PriorityTasksCard() {
+export function PriorityTasksCard({ data }: Props) {
+  const d = data;
+
+  const rows = [
+    {
+      title: "Missing Documents",
+      desc: `${d?.missingDocuments ?? 0} contracts waiting`,
+      count: String(d?.missingDocuments ?? 0),
+      bg: "bg-red-50",
+      border: "border-red-100",
+      icon: <LuFileWarning className="h-5 w-5 text-red-600" />,
+    },
+    {
+      title: "Expiring Contracts",
+      desc: "Within 30 days",
+      count: String(d?.expiringContracts ?? 0),
+      bg: "bg-orange-50",
+      border: "border-orange-100",
+      icon: <LuCalendarClock className="h-5 w-5 text-orange-600" />,
+    },
+    {
+      title: "Pending Validation",
+      desc: "Awaiting approval",
+      count: String(d?.pendingValidation ?? 0),
+      bg: "bg-amber-50",
+      border: "border-amber-100",
+      icon: <LuClipboardCheck className="h-5 w-5 text-amber-700" />,
+    },
+    {
+      title: "Follow-up Required",
+      desc: "Customer contact needed",
+      count: String(d?.followUpRequired ?? 0),
+      bg: "bg-sky-50",
+      border: "border-sky-100",
+      icon: <LuPhone className="h-5 w-5 text-sky-600" />,
+    },
+  ];
+
   return (
     <DashboardCard title="Priority Tasks">
       <ul className="space-y-2">

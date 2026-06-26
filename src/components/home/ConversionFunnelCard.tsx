@@ -1,16 +1,21 @@
 import { DashboardCard } from "./DashboardCard";
+import type { AdminDashboardData } from "../../redux/features/Dashboard/dashboardApi";
 
-const stages = [
-  { label: "Request Received", value: 342, barClass: "bg-[#3B82F6]" },
-  { label: "Documentation", value: 298, barClass: "bg-[#3B82F6]" },
-  { label: "Validation", value: 267, barClass: "bg-[#3B82F6]" },
-  { label: "Activation", value: 234, barClass: "bg-[#22C55E]" },
-  { label: "Rejected (KD)", value: 44, barClass: "bg-red-500" },
-];
+type Props = { data?: AdminDashboardData["conversionFunnel"] };
 
-const max = Math.max(...stages.map((s) => s.value));
+export function ConversionFunnelCard({ data }: Props) {
+  const d = data;
 
-export function ConversionFunnelCard() {
+  const stages = [
+    { label: "Request Received", value: d?.requestReceived ?? 0, barClass: "bg-[#3B82F6]" },
+    { label: "Documentation", value: d?.documentation ?? 0, barClass: "bg-[#3B82F6]" },
+    { label: "Validation", value: d?.validation ?? 0, barClass: "bg-[#3B82F6]" },
+    { label: "Activation", value: d?.activation ?? 0, barClass: "bg-[#22C55E]" },
+    { label: "Rejected (KO)", value: d?.rejected ?? 0, barClass: "bg-red-500" },
+  ];
+
+  const max = Math.max(...stages.map((s) => s.value), 1);
+
   return (
     <DashboardCard title="Conversion Funnel">
       <div className="space-y-4">
@@ -30,7 +35,7 @@ export function ConversionFunnelCard() {
         ))}
       </div>
       <p className="mt-5 border-t border-gray-100 pt-4 text-center text-xs text-gray-500">
-        Conversion Rate: <span className="font-semibold text-brand">68.4%</span>
+        Conversion Rate: <span className="font-semibold text-brand">{d?.conversionRate ?? 0}%</span>
       </p>
     </DashboardCard>
   );
