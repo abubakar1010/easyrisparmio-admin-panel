@@ -1,21 +1,29 @@
 import { useEffect } from "react";
 import { Modal, Form, Input, InputNumber, Select, DatePicker, Button, message } from "antd";
 import { FiX } from "react-icons/fi";
+import dayjs from "dayjs";
+import {
+  useCreateSupplierMutation,
+  useUpdateSupplierMutation,
+} from "../../redux/features/Suppliers/supplierApi";
 
 interface AddSupplierModalProps {
   isOpen: boolean;
   onClose: () => void;
   mode?: "add" | "edit";
+  supplierId?: string;
   initialValues?: Record<string, unknown>;
-  onSaved?: (values: Record<string, unknown>) => void;
 }
 
 const { Option } = Select;
 const { TextArea } = Input;
 
-const AddSupplierModal = ({ isOpen, onClose, mode = "add", initialValues, onSaved }: AddSupplierModalProps) => {
+const AddSupplierModal = ({ isOpen, onClose, mode = "add", supplierId, initialValues }: AddSupplierModalProps) => {
   const [form] = Form.useForm();
   const isEdit = mode === "edit";
+
+  const [createSupplier, { isLoading: isCreating }] = useCreateSupplierMutation();
+  const [updateSupplier, { isLoading: isUpdating }] = useUpdateSupplierMutation();
 
   useEffect(() => {
     if (!isOpen) return;
@@ -26,11 +34,44 @@ const AddSupplierModal = ({ isOpen, onClose, mode = "add", initialValues, onSave
     }
   }, [isOpen, isEdit, initialValues, form]);
 
-  const handleFinish = (values: any) => {
-    onSaved?.(values);
-    message.success(isEdit ? `Supplier "${values.brandName}" updated` : `Supplier "${values.brandName}" added`);
-    onClose();
-    if (!isEdit) form.resetFields();
+  const handleFinish = async (values: Record<string, any>) => {
+    const payload: Record<string, any> = {
+      name: values.brandName,
+      legalName: values.legalName || undefined,
+      taxId: values.taxId || undefined,
+      commodity: values.commodity || undefined,
+      status: values.status || undefined,
+      website: values.website || undefined,
+      contactName: values.contactName || undefined,
+      contactEmail: values.email || undefined,
+      contactPhone: values.phoneNumber || undefined,
+      streetAddress: values.streetAddress || undefined,
+      city: values.city || undefined,
+      zipCode: values.zipCode || undefined,
+      country: values.country || undefined,
+      iban: values.iban || undefined,
+      commissionElectricity: values.commElectricity ?? undefined,
+      commissionGas: values.commGas ?? undefined,
+      contractStartDate: values.startDate ? dayjs(values.startDate).format("YYYY-MM-DD") : undefined,
+      notes: values.notes || undefined,
+    };
+
+    // Remove undefined keys
+    Object.keys(payload).forEach((k) => payload[k] === undefined && delete payload[k]);
+
+    try {
+      if (isEdit && supplierId) {
+        await updateSupplier({ id: supplierId, data: payload }).unwrap();
+        message.success(`Supplier "${values.brandName}" updated`);
+      } else {
+        await createSupplier(payload as any).unwrap();
+        message.success(`Supplier "${values.brandName}" added`);
+      }
+      onClose();
+      if (!isEdit) form.resetFields();
+    } catch (err: any) {
+      message.error(err?.data?.message?.[0] || err?.data?.message || "Something went wrong");
+    }
   };
 
   return (
@@ -71,9 +112,9 @@ const AddSupplierModal = ({ isOpen, onClose, mode = "add", initialValues, onSave
             </Form.Item>
             <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Commodity</span>} name="commodity" rules={[{ required: true, message: "Select a commodity" }]}>
               <Select placeholder="Select commodity" className="rounded-lg h-10 border-slate-200" popupClassName="rounded-xl">
-                <Option value="Electricity">Electricity</Option>
-                <Option value="Gas">Gas</Option>
-                <Option value="Dual">Dual</Option>
+                <Option value="electricity">Electricity</Option>
+                <Option value="gas">Gas</Option>
+                <Option value="dual">Dual</Option>
               </Select>
             </Form.Item>
             <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Status</span>} name="status" rules={[{ required: true, message: "Select a status" }]}>
@@ -148,9 +189,9 @@ const AddSupplierModal = ({ isOpen, onClose, mode = "add", initialValues, onSave
           <h3 className="text-[15px] font-bold text-slate-800 mb-4 px-1">Notes</h3>
           <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-100">
             <Form.Item name="notes" className="mb-0">
-              <TextArea 
-                placeholder="Write Some Notes....." 
-                rows={4} 
+              <TextArea
+                placeholder="Write Some Notes....."
+                rows={4}
                 className="rounded-lg border-slate-200 p-3"
               />
             </Form.Item>
@@ -158,10 +199,11 @@ const AddSupplierModal = ({ isOpen, onClose, mode = "add", initialValues, onSave
         </section>
 
         <div className="pt-4">
-          <Button 
-            type="primary" 
-            htmlType="submit" 
-            block 
+          <Button
+            type="primary"
+            htmlType="submit"
+            block
+            loading={isCreating || isUpdating}
             className="bg-[#8b85f6] hover:bg-[#7a74e5] h-12 rounded-xl text-base font-bold border-0 shadow-lg shadow-indigo-100"
           >
             {isEdit ? "Save Changes" : "Add Supplier"}
