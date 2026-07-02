@@ -7,6 +7,8 @@ export type TCommonProps = {
 };
 export const ROLE = {
   ADMIN: "admin",
+  PERSONAL: "personal",
+  BUSINESS: "business",
 } as const;
 
 export type TUserRole = (typeof ROLE)[keyof typeof ROLE];

@@ -1,105 +1,120 @@
-import { Button, Form, Input, Modal, Select, Card, Table, Tag } from "antd";
+import { Button, Card, Form, Input, Modal, Select, Spin, Empty, Table, Tag, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { FiClock, FiEye, FiFolder, FiPlus, FiSearch, FiUser } from "react-icons/fi";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import CategoryFAQModal from "./components/CategoryFAQModal";
 import AddEditFAQModal from "./components/AddEditFAQModal";
+import {
+  useGetTicketsQuery,
+  useGetFaqsQuery,
+  useUpdateTicketMutation,
+  useCreateFaqMutation,
+  useUpdateFaqMutation,
+  useDeleteFaqMutation,
+  type ISupportTicket,
+  type IFaq,
+} from "../../redux/features/Support/supportApi";
+import { debounce } from "../../utils/debounce";
 
-type TicketStatus = "Open" | "In Progress" | "Resolved";
+type TicketStatus = "open" | "in_progress" | "resolved" | "closed";
 
-export type SupportTicketRow = {
-  key: string;
-  id: string;
-  customer: string;
-  category: string;
-  status: TicketStatus;
-  lastUpdate: string;
+const statusStyles: Record<string, string> = {
+  open: "bg-blue-500 text-white",
+  in_progress: "bg-amber-500 text-white",
+  resolved: "bg-emerald-500 text-white",
+  closed: "bg-slate-500 text-white",
 };
 
-export type FAQCategoryRow = {
+const statusLabel: Record<string, string> = {
+  open: "Open",
+  in_progress: "In Progress",
+  resolved: "Resolved",
+  closed: "Closed",
+};
+
+const categoryLabel: Record<string, string> = {
+  technical_support: "Technical Support",
+  billing_payments: "Billing & Payments",
+  switching: "Switching",
+  general: "General",
+};
+
+export interface FAQCategoryGroup {
   key: string;
-  order: number;
   categoryName: string;
-  faqCount: string;
+  faqCount: number;
+  faqs: IFaq[];
   lastUpdated: string;
-  updatedBy: string;
-};
-
-const faqCategories: FAQCategoryRow[] = [
-  {
-    key: "1",
-    order: 1,
-    categoryName: "How to Get Started",
-    faqCount: "8 FAQs",
-    lastUpdated: "2026-04-20",
-    updatedBy: "by Maria Ferrari",
-  },
-  {
-    key: "2",
-    order: 2,
-    categoryName: "Configuration Utilities",
-    faqCount: "12 FAQs",
-    lastUpdated: "2026-04-18",
-    updatedBy: "by Giuseppe Verdi",
-  },
-  {
-    key: "3",
-    order: 3,
-    categoryName: "Bills",
-    faqCount: "6 FAQs",
-    lastUpdated: "2026-04-15",
-    updatedBy: "by Maria Ferrari",
-  },
-];
-
-const ticketRows: SupportTicketRow[] = [
-  {
-    key: "1",
-    id: "#T001",
-    customer: "Mario Rossi",
-    category: "Bill Problem",
-    status: "Open",
-    lastUpdate: "2026-04-14 10:30",
-  },
-  {
-    key: "2",
-    id: "#T002",
-    customer: "Giulia Bianchi",
-    category: "Complaint",
-    status: "In Progress",
-    lastUpdate: "2026-04-14 09:15",
-  },
-  {
-    key: "3",
-    id: "#T003",
-    customer: "Luca Ferrari",
-    category: "Info Request",
-    status: "Resolved",
-    lastUpdate: "2026-04-13 16:30",
-  },
-  {
-    key: "4",
-    id: "#T004",
-    customer: "Anna Verde",
-    category: "Technical Issue",
-    status: "In Progress",
-    lastUpdate: "2026-04-15 08:45",
-  },
-];
-
-const statusStyles: Record<TicketStatus, string> = {
-  Open: "bg-blue-500 text-white",
-  "In Progress": "bg-amber-500 text-white",
-  Resolved: "bg-emerald-500 text-white",
-};
+}
 
 const SupportTicket = () => {
   const [newTicketOpen, setNewTicketOpen] = useState(false);
   const [categoryModalVisible, setCategoryModalVisible] = useState(false);
   const [addEditModalVisible, setAddEditModalVisible] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<FAQCategoryRow | null>(null);
-  const [selectedFAQ, setSelectedFAQ] = useState<any>(null);
+  const [selectedCategory, setSelectedCategory] = useState<FAQCategoryGroup | null>(null);
+  const [selectedFAQ, setSelectedFAQ] = useState<IFaq | null>(null);
   const [ticketForm] = Form.useForm();
+
+  // Ticket state
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string | undefined>();
+  const [categoryFilter, setCategoryFilter] = useState<string | undefined>();
+
+  // API queries
+  const { data: ticketsData, isLoading: ticketsLoading } = useGetTicketsQuery({
+    page,
+    limit: 20,
+    search: search || undefined,
+    status: statusFilter,
+    category: categoryFilter,
+  });
+  const { data: faqsData, isLoading: faqsLoading } = useGetFaqsQuery();
+
+  // Mutations
+  const [updateTicket] = useUpdateTicketMutation();
+  const [createFaq, { isLoading: isCreatingFaq }] = useCreateFaqMutation();
+  const [updateFaq, { isLoading: isUpdatingFaq }] = useUpdateFaqMutation();
+  const [deleteFaq] = useDeleteFaqMutation();
+
+  const tickets = ticketsData?.data || [];
+  const meta = ticketsData?.meta;
+  const faqs = faqsData || [];
+
+  // Compute KPI stats from tickets data
+  const kpiStats = useMemo(() => {
+    const all = tickets;
+    return [
+      { label: "Open", value: all.filter((t) => t.status === "open").length, dot: "bg-blue-500" },
+      { label: "In Progress", value: all.filter((t) => t.status === "in_progress").length, dot: "bg-amber-500" },
+      { label: "Resolved", value: all.filter((t) => t.status === "resolved").length, dot: "bg-emerald-500" },
+      { label: "Closed", value: all.filter((t) => t.status === "closed").length, dot: "bg-slate-500" },
+    ];
+  }, [tickets]);
+
+  // Group FAQs by category
+  const faqCategoryGroups: FAQCategoryGroup[] = useMemo(() => {
+    const groups: Record<string, IFaq[]> = {};
+    for (const faq of faqs) {
+      if (!groups[faq.category]) groups[faq.category] = [];
+      groups[faq.category].push(faq);
+    }
+    return Object.entries(groups).map(([cat, items], idx) => {
+      const sorted = [...items].sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime());
+      return {
+        key: String(idx + 1),
+        categoryName: cat,
+        faqCount: items.length,
+        faqs: items,
+        lastUpdated: sorted[0]?.updatedAt || sorted[0]?.createdAt || "",
+      };
+    });
+  }, [faqs]);
+
+  const handleSearch = debounce((value: string) => {
+    setSearch(value);
+    setPage(1);
+  }, 400);
 
   const closeTicketModal = () => {
     setNewTicketOpen(false);
@@ -110,53 +125,88 @@ const SupportTicket = () => {
     closeTicketModal();
   };
 
-  const handleViewCategory = (category: FAQCategoryRow) => {
+  const handleViewCategory = (category: FAQCategoryGroup) => {
     setSelectedCategory(category);
     setCategoryModalVisible(true);
   };
 
-  const handleAddFAQ = () => {
+  const handleAddFAQ = (category?: string) => {
     setSelectedFAQ(null);
     setAddEditModalVisible(true);
+    if (category) {
+      setSelectedCategory((prev) => prev ? { ...prev, categoryName: category } : { key: "0", categoryName: category, faqCount: 0, faqs: [], lastUpdated: "" });
+    }
   };
 
-  const handleEditFAQ = (faq: any) => {
+  const handleEditFAQ = (faq: IFaq) => {
     setSelectedFAQ(faq);
     setAddEditModalVisible(true);
   };
 
-  const handleSaveFAQ = (values: any) => {
-    console.log("Saving FAQ:", values);
-    setAddEditModalVisible(false);
+  const handleSaveFAQ = async (values: { question: string; answer: string }) => {
+    try {
+      if (selectedFAQ) {
+        await updateFaq({ id: selectedFAQ.id, data: { question: values.question, answer: values.answer } }).unwrap();
+        message.success("FAQ updated successfully");
+      } else {
+        await createFaq({
+          category: selectedCategory?.categoryName || "general",
+          question: values.question,
+          answer: values.answer,
+        }).unwrap();
+        message.success("FAQ created successfully");
+      }
+      setAddEditModalVisible(false);
+    } catch (err: any) {
+      message.error(err?.data?.message?.[0] || "Failed to save FAQ");
+    }
   };
 
-  const faqColumns: ColumnsType<FAQCategoryRow> = [
+  const handleDeleteFAQ = async (faqId: string) => {
+    try {
+      await deleteFaq(faqId).unwrap();
+      message.success("FAQ deleted");
+    } catch {
+      message.error("Failed to delete FAQ");
+    }
+  };
+
+  const handleUpdateTicketStatus = async (id: string, status: TicketStatus) => {
+    try {
+      await updateTicket({ id, data: { status } }).unwrap();
+      message.success("Ticket status updated");
+    } catch {
+      message.error("Failed to update ticket status");
+    }
+  };
+
+  const faqColumns: ColumnsType<FAQCategoryGroup> = [
     {
       title: "ORDER",
-      dataIndex: "order",
       key: "order",
       width: 100,
-      render: (value: number) => <span className="text-slate-500">{value}</span>,
+      render: (_: any, __: FAQCategoryGroup, index: number) => <span className="text-slate-500">{index + 1}</span>,
     },
     {
       title: "CATEGORY NAME",
       dataIndex: "categoryName",
       key: "categoryName",
-      render: (value: string) => <span className="font-semibold text-slate-700">{value}</span>,
+      render: (value: string) => <span className="font-semibold text-slate-700 capitalize">{value}</span>,
     },
     {
       title: "FAQ COUNT",
       dataIndex: "faqCount",
       key: "faqCount",
-      render: (value: string) => <span className="text-slate-500">{value}</span>,
+      render: (value: number) => <span className="text-slate-500">{value} FAQs</span>,
     },
     {
       title: "LAST UPDATED",
       key: "lastUpdated",
-      render: (_: any, record: FAQCategoryRow) => (
+      render: (_: any, record: FAQCategoryGroup) => (
         <div className="text-sm">
-          <p className="font-medium text-slate-700">{record.lastUpdated}</p>
-          <p className="text-[11px] text-slate-400">{record.updatedBy}</p>
+          <p className="font-medium text-slate-700">
+            {record.lastUpdated ? new Date(record.lastUpdated).toLocaleDateString("it-IT") : "—"}
+          </p>
         </div>
       ),
     },
@@ -164,7 +214,7 @@ const SupportTicket = () => {
       title: "ACTIONS",
       key: "actions",
       width: 120,
-      render: (_: any, record: FAQCategoryRow) => (
+      render: (_: any, record: FAQCategoryGroup) => (
         <div className="flex items-center gap-3">
           <Button
             type="text"
@@ -177,7 +227,7 @@ const SupportTicket = () => {
             size="small"
             className="flex items-center justify-center bg-[#8b85f6] hover:bg-[#7a74e5]! border-none h-8 w-8 rounded-full"
             icon={<FiPlus className="text-white h-4 w-4" />}
-            onClick={handleAddFAQ}
+            onClick={() => handleAddFAQ(record.categoryName)}
           />
         </div>
       ),
@@ -185,25 +235,36 @@ const SupportTicket = () => {
     },
   ];
 
-  const ticketColumns: ColumnsType<SupportTicketRow> = [
+  const ticketColumns: ColumnsType<ISupportTicket> = [
     {
       title: "ID",
       dataIndex: "id",
       key: "id",
       width: 90,
-      render: (value: string) => <span className="font-bold text-slate-700">{value}</span>,
+      render: (value: string) => <span className="font-bold text-slate-700">#{value.slice(0, 6)}</span>,
     },
     {
       title: "CUSTOMER",
-      dataIndex: "customer",
       key: "customer",
       width: 200,
-      render: (value: string) => (
-        <span className="inline-flex items-center gap-2 text-slate-700">
-          <FiUser className="h-4 w-4 text-slate-400" />
-          {value}
-        </span>
-      ),
+      render: (_: any, record: ISupportTicket) => {
+        const name = record.user
+          ? `${record.user.firstName} ${record.user.lastName}`
+          : "Unknown";
+        return (
+          <span className="inline-flex items-center gap-2 text-slate-700">
+            <FiUser className="h-4 w-4 text-slate-400" />
+            {name}
+          </span>
+        );
+      },
+    },
+    {
+      title: "SUBJECT",
+      dataIndex: "subject",
+      key: "subject",
+      width: 200,
+      render: (value: string) => <span className="text-slate-600 truncate block max-w-[200px]">{value}</span>,
     },
     {
       title: "CATEGORY",
@@ -211,7 +272,9 @@ const SupportTicket = () => {
       key: "category",
       width: 160,
       render: (value: string) => (
-        <Tag className="rounded border-0 bg-slate-50 px-2 py-0.5 text-xs text-slate-500">{value}</Tag>
+        <Tag className="rounded border-0 bg-slate-50 px-2 py-0.5 text-xs text-slate-500">
+          {categoryLabel[value] || value}
+        </Tag>
       ),
     },
     {
@@ -219,22 +282,42 @@ const SupportTicket = () => {
       dataIndex: "status",
       key: "status",
       width: 140,
-      render: (value: TicketStatus) => (
-        <Tag className={`rounded-full! border-0 px-3 pb-0.5! text-[10px] font-bold ${statusStyles[value]}`}>
-          {value}
-        </Tag>
+      render: (value: string, record: ISupportTicket) => (
+        <Select
+          value={value}
+          size="small"
+          onChange={(newStatus) => handleUpdateTicketStatus(record.id, newStatus as TicketStatus)}
+          className="w-[130px] [&_.ant-select-selector]:rounded-full! [&_.ant-select-selector]:border-0! [&_.ant-select-selector]:h-6!"
+          popupClassName="rounded-lg"
+          options={[
+            { value: "open", label: "Open" },
+            { value: "in_progress", label: "In Progress" },
+            { value: "resolved", label: "Resolved" },
+            { value: "closed", label: "Closed" },
+          ]}
+          optionRender={(option) => (
+            <Tag className={`rounded-full! border-0 px-3 pb-0.5! text-[10px] font-bold ${statusStyles[option.value as string] || ""}`}>
+              {option.label}
+            </Tag>
+          )}
+          labelRender={(props) => (
+            <Tag className={`rounded-full! border-0 px-3 pb-0.5! text-[10px] font-bold ${statusStyles[props.value as string] || ""}`}>
+              {statusLabel[props.value as string] || props.label}
+            </Tag>
+          )}
+        />
       ),
       align: "center",
     },
     {
       title: "LAST UPDATE",
-      dataIndex: "lastUpdate",
-      key: "lastUpdate",
+      dataIndex: "updatedAt",
+      key: "updatedAt",
       width: 180,
       render: (value: string) => (
         <span className="inline-flex items-center gap-1.5 text-xs text-slate-400">
           <FiClock className="h-3.5 w-3.5" />
-          {value}
+          {value ? new Date(value).toLocaleString("it-IT", { dateStyle: "short", timeStyle: "short" }) : "—"}
         </span>
       ),
     },
@@ -242,8 +325,12 @@ const SupportTicket = () => {
       title: "ACTIONS",
       key: "actions",
       width: 100,
-      render: () => (
-        <button type="button" className="inline-flex items-center gap-1.5 text-emerald-500 hover:text-emerald-600 font-medium text-sm">
+      render: (_: any, record: ISupportTicket) => (
+        <button
+          type="button"
+          className="inline-flex items-center gap-1.5 text-emerald-500 hover:text-emerald-600 font-medium text-sm"
+          onClick={() => handleUpdateTicketStatus(record.id, "resolved")}
+        >
           <FiFolder className="h-4 w-4" />
           Open
         </button>
@@ -269,20 +356,16 @@ const SupportTicket = () => {
       </div>
 
       {/* Stats Section */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-        {[
-          { label: "Open", value: "12", dot: "bg-blue-500" },
-          { label: "In Progress", value: "8", dot: "bg-amber-500" },
-          { label: "Awaiting Customer", value: "5", dot: "bg-violet-500" },
-          { label: "Resolved", value: "34", dot: "bg-emerald-500" },
-          { label: "Closed", value: "156", dot: "bg-slate-500" },
-        ].map((item) => (
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {kpiStats.map((item) => (
           <Card key={item.label} className="rounded-2xl border-slate-100 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.05)] [&_.ant-card-body]:p-5">
             <p className="inline-flex items-center gap-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
               <span className={`h-2 w-2 rounded-full ${item.dot}`} />
               {item.label}
             </p>
-            <p className="mt-2 text-3xl font-bold text-slate-700">{item.value}</p>
+            <p className="mt-2 text-3xl font-bold text-slate-700">
+              {ticketsLoading ? <Spin size="small" /> : item.value}
+            </p>
           </Card>
         ))}
       </div>
@@ -293,35 +376,89 @@ const SupportTicket = () => {
         title={<span className="text-lg font-bold text-slate-700">FAQ Categories Overview</span>}
         styles={{ header: { borderBottom: '1px solid #f1f5f9', padding: '16px 20px' }, body: { padding: '0' } }}
       >
-        <Table<FAQCategoryRow>
-          rowKey="key"
-          columns={faqColumns}
-          dataSource={faqCategories}
-          pagination={false}
-          scroll={{ x: 800 }}
-          className="[&_.ant-table-thead_th]:bg-slate-50/50 [&_.ant-table-thead_th]:text-[11px] [&_.ant-table-thead_th]:font-bold [&_.ant-table-thead_th]:text-slate-400 [&_.ant-table-thead_th]:tracking-widest [&_.ant-table-cell]:px-5 [&_.ant-table-cell]:py-4"
-        />
+        {faqsLoading ? (
+          <div className="flex items-center justify-center py-24">
+            <Spin size="large" />
+          </div>
+        ) : faqCategoryGroups.length === 0 ? (
+          <div className="py-24">
+            <Empty description="No FAQ categories found" />
+          </div>
+        ) : (
+          <Table<FAQCategoryGroup>
+            rowKey="key"
+            columns={faqColumns}
+            dataSource={faqCategoryGroups}
+            pagination={false}
+            scroll={{ x: 800 }}
+            className="[&_.ant-table-thead_th]:bg-slate-50/50 [&_.ant-table-thead_th]:text-[11px] [&_.ant-table-thead_th]:font-bold [&_.ant-table-thead_th]:text-slate-400 [&_.ant-table-thead_th]:tracking-widest [&_.ant-table-cell]:px-5 [&_.ant-table-cell]:py-4"
+          />
+        )}
       </Card>
 
-      {/* Search Bar Section */}
+      {/* Search & Filter Bar Section */}
       <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.05)]">
-        <Input
-          className="h-11 rounded-xl border-slate-100 bg-slate-50/30 text-[15px]"
-          prefix={<FiSearch className="mr-2 text-slate-300 h-5 w-5" />}
-          placeholder="Search tickets by ID, customer, subject..."
-        />
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex-1 min-w-[240px]">
+            <Input
+              className="h-11 rounded-xl border-slate-100 bg-slate-50/30 text-[15px]"
+              prefix={<FiSearch className="mr-2 text-slate-300 h-5 w-5" />}
+              placeholder="Search tickets by ID, customer, subject..."
+              onChange={(e) => handleSearch(e.target.value)}
+            />
+          </div>
+          <Select
+            allowClear
+            placeholder="Status"
+            onChange={(v) => { setStatusFilter(v); setPage(1); }}
+            className="w-40 [&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-xl"
+          >
+            <Select.Option value="open">Open</Select.Option>
+            <Select.Option value="in_progress">In Progress</Select.Option>
+            <Select.Option value="resolved">Resolved</Select.Option>
+            <Select.Option value="closed">Closed</Select.Option>
+          </Select>
+          <Select
+            allowClear
+            placeholder="Category"
+            onChange={(v) => { setCategoryFilter(v); setPage(1); }}
+            className="w-48 [&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-xl"
+          >
+            <Select.Option value="technical_support">Technical Support</Select.Option>
+            <Select.Option value="billing_payments">Billing & Payments</Select.Option>
+            <Select.Option value="switching">Switching</Select.Option>
+            <Select.Option value="general">General</Select.Option>
+          </Select>
+        </div>
       </div>
 
       {/* Tickets Table Section */}
       <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-[0_2px_12px_-4px_rgba(0,0,0,0.05)]">
-        <Table<SupportTicketRow>
-          rowKey="key"
-          columns={ticketColumns}
-          dataSource={ticketRows}
-          pagination={false}
-          scroll={{ x: 1000 }}
-          className="[&_.ant-table-thead_th]:bg-slate-50/50 [&_.ant-table-thead_th]:text-[11px] [&_.ant-table-thead_th]:font-bold [&_.ant-table-thead_th]:text-slate-400 [&_.ant-table-thead_th]:tracking-widest [&_.ant-table-cell]:px-5 [&_.ant-table-cell]:py-5"
-        />
+        {ticketsLoading ? (
+          <div className="flex items-center justify-center py-24">
+            <Spin size="large" />
+          </div>
+        ) : tickets.length === 0 ? (
+          <div className="py-24">
+            <Empty description="No tickets found" />
+          </div>
+        ) : (
+          <Table<ISupportTicket>
+            rowKey="id"
+            columns={ticketColumns}
+            dataSource={tickets}
+            scroll={{ x: 1000 }}
+            pagination={{
+              current: page,
+              pageSize: meta?.limit || 20,
+              total: meta?.total || 0,
+              onChange: setPage,
+              showSizeChanger: false,
+              className: "p-4 mt-0 border-t border-slate-100",
+            }}
+            className="[&_.ant-table-thead_th]:bg-slate-50/50 [&_.ant-table-thead_th]:text-[11px] [&_.ant-table-thead_th]:font-bold [&_.ant-table-thead_th]:text-slate-400 [&_.ant-table-thead_th]:tracking-widest [&_.ant-table-cell]:px-5 [&_.ant-table-cell]:py-5"
+          />
+        )}
       </div>
 
       <Modal
@@ -353,10 +490,10 @@ const SupportTicket = () => {
               className="[&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-lg [&_.ant-select-selector]:border-slate-300 [&_.ant-select-selection-item]:leading-[42px] [&_.ant-select-selection-placeholder]:leading-[42px]"
               placeholder="Select category"
               options={[
-                { value: "Bill Problem", label: "Bill Problem" },
-                { value: "Complaint", label: "Complaint" },
-                { value: "Info Request", label: "Info Request" },
-                { value: "Technical Issue", label: "Technical Issue" },
+                { value: "technical_support", label: "Technical Support" },
+                { value: "billing_payments", label: "Billing & Payments" },
+                { value: "switching", label: "Switching" },
+                { value: "general", label: "General" },
               ]}
             />
           </Form.Item>
@@ -383,17 +520,18 @@ const SupportTicket = () => {
         onCancel={() => setAddEditModalVisible(false)}
         onSave={handleSaveFAQ}
         initialValues={selectedFAQ}
+        isLoading={isCreatingFaq || isUpdatingFaq}
       />
       <CategoryFAQModal
         visible={categoryModalVisible}
         onCancel={() => setCategoryModalVisible(false)}
         category={selectedCategory}
-        onAddFAQ={handleAddFAQ}
+        onAddFAQ={() => handleAddFAQ(selectedCategory?.categoryName)}
         onEditFAQ={handleEditFAQ}
+        onDeleteFAQ={handleDeleteFAQ}
       />
     </div>
   );
 };
 
 export default SupportTicket;
-

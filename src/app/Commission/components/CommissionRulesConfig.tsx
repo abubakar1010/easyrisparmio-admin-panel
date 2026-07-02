@@ -1,52 +1,47 @@
 import { useState } from "react";
-import { Button, Empty, message, Modal } from "antd";
+import { Button, Empty, Spin, message, Modal } from "antd";
 import { FiPlus } from "react-icons/fi";
 import { CommissionRuleCard } from "./CommissionRuleCard";
 import { CreateCommissionRuleModal } from "./CreateCommissionRuleModal";
-import { initialRules, type CommissionRule } from "../types";
+import {
+  useGetCommissionRulesQuery,
+  useUpdateCommissionRuleMutation,
+  type ICommissionRule,
+} from "../../../redux/features/Commissions/commissionApi";
 
 export const CommissionRulesConfig = () => {
-  const [rules, setRules] = useState<CommissionRule[]>(initialRules);
+  const { data: rules = [], isLoading, isError } = useGetCommissionRulesQuery();
+  const [updateRule] = useUpdateCommissionRuleMutation();
+
   const [modalOpen, setModalOpen] = useState(false);
-  const [editingRule, setEditingRule] = useState<CommissionRule | null>(null);
+  const [editingRule, setEditingRule] = useState<ICommissionRule | null>(null);
 
   const openCreate = () => {
     setEditingRule(null);
     setModalOpen(true);
   };
 
-  const openEdit = (rule: CommissionRule) => {
+  const openEdit = (rule: ICommissionRule) => {
     setEditingRule(rule);
     setModalOpen(true);
   };
 
-  const handleSubmit = (rule: CommissionRule) => {
-    setRules((prev) => {
-      const exists = prev.some((r) => r.id === rule.id);
-      return exists ? prev.map((r) => (r.id === rule.id ? rule : r)) : [rule, ...prev];
-    });
-    message.success(editingRule ? "Commission rule updated" : "Commission rule created");
-    setModalOpen(false);
-    setEditingRule(null);
-  };
-
-  const handleDuplicate = (rule: CommissionRule) => {
-    const copy: CommissionRule = { ...rule, id: `rule-${Date.now()}`, name: `${rule.name} (Copy)` };
-    setRules((prev) => [copy, ...prev]);
-    message.success("Commission rule duplicated");
-  };
-
-  const handleDelete = (rule: CommissionRule) => {
+  const handleToggleActive = async (rule: ICommissionRule) => {
+    const newActive = !rule.isActive;
     Modal.confirm({
-      title: "Delete commission rule?",
-      content: `"${rule.name}" will be permanently removed.`,
-      okText: "Delete",
-      okButtonProps: { danger: true },
+      title: newActive ? "Activate commission rule?" : "Deactivate commission rule?",
+      content: `This rule for ${rule.supplier?.name || "this supplier"} will be ${newActive ? "activated" : "deactivated"}.`,
+      okText: newActive ? "Activate" : "Deactivate",
+      okButtonProps: newActive ? {} : { danger: true },
       cancelText: "Cancel",
       centered: true,
-      onOk: () => {
-        setRules((prev) => prev.filter((r) => r.id !== rule.id));
-        message.success("Commission rule deleted");
+      onOk: async () => {
+        try {
+          await updateRule({ id: rule.id, data: { isActive: newActive } }).unwrap();
+          message.success(`Commission rule ${newActive ? "activated" : "deactivated"}`);
+        } catch {
+          message.error("Failed to update commission rule");
+        }
       },
     });
   };
@@ -68,7 +63,15 @@ export const CommissionRulesConfig = () => {
         </Button>
       </div>
 
-      {rules.length === 0 ? (
+      {isLoading ? (
+        <div className="flex items-center justify-center py-24">
+          <Spin size="large" />
+        </div>
+      ) : isError ? (
+        <div className="rounded-2xl border border-slate-200/70 bg-white py-16">
+          <Empty description="Failed to load commission rules" />
+        </div>
+      ) : rules.length === 0 ? (
         <div className="rounded-2xl border border-slate-200/70 bg-white py-16">
           <Empty description="No commission rules yet" />
         </div>
@@ -79,8 +82,7 @@ export const CommissionRulesConfig = () => {
               key={rule.id}
               rule={rule}
               onEdit={openEdit}
-              onDuplicate={handleDuplicate}
-              onDelete={handleDelete}
+              onToggleActive={handleToggleActive}
             />
           ))}
         </div>
@@ -92,7 +94,6 @@ export const CommissionRulesConfig = () => {
           setModalOpen(false);
           setEditingRule(null);
         }}
-        onSubmit={handleSubmit}
         editingRule={editingRule}
       />
     </div>

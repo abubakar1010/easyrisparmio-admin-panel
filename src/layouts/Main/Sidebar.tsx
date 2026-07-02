@@ -5,7 +5,8 @@ import { FiLogOut, FiX } from "react-icons/fi";
 import { MdOutlineArrowRight } from "react-icons/md";
 import { LuLayoutDashboard } from "react-icons/lu";
 import { routeLinkGenerators } from "../../lib/helpers/generateLink";
-import { useAppSelector } from "../../redux/hooks";
+import { useAppSelector, useAppDispatch } from "../../redux/hooks";
+import { logout } from "../../redux/features/Auth/authSlice";
 import type { TUserRole } from "../../types/common.type";
 import { cn } from "../../utils/cn";
 import { dashboardItems } from "../../constants/router.constants";
@@ -16,7 +17,7 @@ type SidebarProps = {
 
 const Sidebar = ({ mobileOpen = false, onMobileClose }: SidebarProps) => {
   const location = useLocation();
-  // const dispatch = useDispatch();
+  const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { user } = useAppSelector((state) => state.auth);
   const [openNome, setOpenNome] = useState<{ name: string | null }>({
@@ -33,16 +34,12 @@ const Sidebar = ({ mobileOpen = false, onMobileClose }: SidebarProps) => {
       reverseButtons: true,
     }).then((res) => {
       if (res.isConfirmed) {
-        //   dispatch(logout());
-        //   localStorage.clear();
-        navigate("/auth");
+        dispatch(logout());
+        navigate("/auth/sign-in");
       }
     });
   };
-  // useEffect(() => {
 
-  // }, [location.pathname]);
-  // console.log(routeLinkGenerators(dashboardItems, "admin"));
   return (
     <aside
       className={cn(

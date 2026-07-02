@@ -1,4 +1,7 @@
-import { Button, DatePicker, Form, Input, InputNumber, Modal, Select } from "antd";
+import { Button, DatePicker, Form, Input, InputNumber, Modal, Select, message } from "antd";
+import dayjs from "dayjs";
+import { useCreateOfferMutation } from "../../../redux/features/Offers/offerApi";
+import { useGetSuppliersQuery } from "../../../redux/features/Suppliers/supplierApi";
 
 type CreateOfferModalProps = {
   open: boolean;
@@ -7,10 +10,31 @@ type CreateOfferModalProps = {
 
 export const CreateOfferModal = ({ open, onClose }: CreateOfferModalProps) => {
   const [form] = Form.useForm();
+  const [createOffer, { isLoading }] = useCreateOfferMutation();
+  const { data: suppliersData } = useGetSuppliersQuery({ limit: 100 });
+  const suppliers = suppliersData?.data || [];
 
-  const handleSubmit = () => {
-    form.resetFields();
-    onClose();
+  const handleSubmit = async (values: Record<string, any>) => {
+    try {
+      await createOffer({
+        name: values.offerName,
+        offerCode: values.offerCode || undefined,
+        supplierId: values.supplier,
+        energyType: values.commodity?.toLowerCase(),
+        marketType: values.priceType?.toLowerCase(),
+        offerStatus: values.status?.toLowerCase() || "draft",
+        activationCost: values.commission,
+        contractDurationMonths: values.durationMonths || 12,
+        validFrom: dayjs().format("YYYY-MM-DD"),
+        validUntil: values.validity ? dayjs(values.validity).format("YYYY-MM-DD") : undefined,
+        description: values.notes || undefined,
+      }).unwrap();
+      message.success("Offer created successfully");
+      form.resetFields();
+      onClose();
+    } catch (err: any) {
+      message.error(err?.data?.message?.[0] || err?.data?.message || "Failed to create offer");
+    }
   };
 
   const handleCancel = () => {
@@ -44,11 +68,7 @@ export const CreateOfferModal = ({ open, onClose }: CreateOfferModalProps) => {
             <Input placeholder="e.g. Trend Home Electricity" className="h-11 rounded-lg" />
           </Form.Item>
 
-          <Form.Item
-            name="offerCode"
-            label="Offer Code"
-            rules={[{ required: true, message: "Please enter offer code" }]}
-          >
+          <Form.Item name="offerCode" label="Offer Code">
             <Input placeholder="e.g. OFF-007" className="h-11 rounded-lg" />
           </Form.Item>
         </div>
@@ -62,13 +82,10 @@ export const CreateOfferModal = ({ open, onClose }: CreateOfferModalProps) => {
             <Select
               size="large"
               placeholder="Select supplier"
-              className="[&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-lg [&_.ant-select-selection-item]:leading-[42px] [&_.ant-select-selection-placeholder]:leading-[42px]"
-              options={[
-                { value: "Enel Energia", label: "Enel Energia" },
-                { value: "A2A Energy", label: "A2A Energy" },
-                { value: "Edison", label: "Edison" },
-                { value: "Sorgenia", label: "Sorgenia" },
-              ]}
+              showSearch
+              optionFilterProp="label"
+              className="[&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-lg"
+              options={suppliers?.map((s) => ({ value: s.id, label: s.name })) || []}
             />
           </Form.Item>
 
@@ -80,10 +97,11 @@ export const CreateOfferModal = ({ open, onClose }: CreateOfferModalProps) => {
             <Select
               size="large"
               placeholder="Select commodity"
-              className="[&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-lg [&_.ant-select-selection-item]:leading-[42px] [&_.ant-select-selection-placeholder]:leading-[42px]"
+              className="[&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-lg"
               options={[
-                { value: "ELECTRICITY", label: "Electricity" },
-                { value: "GAS", label: "Gas" },
+                { value: "electricity", label: "Electricity" },
+                { value: "gas", label: "Gas" },
+                { value: "dual", label: "Dual" },
               ]}
             />
           </Form.Item>
@@ -98,27 +116,24 @@ export const CreateOfferModal = ({ open, onClose }: CreateOfferModalProps) => {
             <Select
               size="large"
               placeholder="Select price type"
-              className="[&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-lg [&_.ant-select-selection-item]:leading-[42px] [&_.ant-select-selection-placeholder]:leading-[42px]"
+              className="[&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-lg"
               options={[
-                { value: "Fixed", label: "Fixed" },
-                { value: "Variable", label: "Variable" },
+                { value: "fixed", label: "Fixed" },
+                { value: "variable", label: "Variable" },
+                { value: "indexed", label: "Indexed" },
               ]}
             />
           </Form.Item>
 
-          <Form.Item
-            name="status"
-            label="Status"
-            rules={[{ required: true, message: "Please select status" }]}
-          >
+          <Form.Item name="status" label="Status" initialValue="draft">
             <Select
               size="large"
               placeholder="Select status"
-              className="[&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-lg [&_.ant-select-selection-item]:leading-[42px] [&_.ant-select-selection-placeholder]:leading-[42px]"
+              className="[&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-lg"
               options={[
-                { value: "Active", label: "Active" },
-                { value: "Expiring", label: "Expiring" },
-                { value: "Draft", label: "Draft" },
+                { value: "active", label: "Active" },
+                { value: "expiring", label: "Expiring" },
+                { value: "draft", label: "Draft" },
               ]}
             />
           </Form.Item>
@@ -127,8 +142,8 @@ export const CreateOfferModal = ({ open, onClose }: CreateOfferModalProps) => {
         <div className="grid grid-cols-1 gap-x-3 gap-y-1 sm:grid-cols-2">
           <Form.Item
             name="commission"
-            label="Commission (EUR)"
-            rules={[{ required: true, message: "Please enter commission" }]}
+            label="Activation Cost (EUR)"
+            rules={[{ required: true, message: "Please enter activation cost" }]}
           >
             <InputNumber
               min={0}
@@ -138,19 +153,15 @@ export const CreateOfferModal = ({ open, onClose }: CreateOfferModalProps) => {
             />
           </Form.Item>
 
-          <Form.Item
-            name="validity"
-            label="Validity Date"
-            rules={[{ required: true, message: "Please select validity date" }]}
-          >
+          <Form.Item name="validity" label="Valid Until">
             <DatePicker className="h-11! w-full rounded-lg" format="DD/MM/YYYY" />
           </Form.Item>
         </div>
 
-        <Form.Item name="notes" label="Notes">
+        <Form.Item name="notes" label="Description">
           <Input.TextArea
             rows={4}
-            placeholder="Optional notes about this offer..."
+            placeholder="Optional description about this offer..."
             className="rounded-lg"
           />
         </Form.Item>
@@ -162,6 +173,7 @@ export const CreateOfferModal = ({ open, onClose }: CreateOfferModalProps) => {
           <Button
             type="primary"
             htmlType="submit"
+            loading={isLoading}
             className="h-10 rounded-lg bg-[#8b85f6] px-5 font-semibold hover:bg-[#7a74e5] sm:min-w-[136px]"
           >
             Create Offer

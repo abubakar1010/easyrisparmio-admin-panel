@@ -1,13 +1,71 @@
 import { Button, Input, Form } from "antd";
 import { Link, useNavigate } from "react-router";
 import { FiMail, FiLock } from "react-icons/fi";
+import { usePostLoginMutation } from "../../redux/features/Auth/authApi";
+import { useAppDispatch } from "../../redux/hooks";
+import { setLogin } from "../../redux/features/Auth/authSlice";
+import { errorAlert } from "../../lib/helpers/alert";
 
 const SignIn = () => {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const [login, { isLoading }] = usePostLoginMutation();
 
-  const onFinish = (values: any) => {
-    console.log("Received values of form: ", values);
-    navigate("/");
+  const onFinish = async (values: { email: string; password: string }) => {
+    try {
+      const result = await login({
+        email: values.email,
+        password: values.password,
+      }).unwrap();
+
+      if (result.user.role !== "admin") {
+        errorAlert({
+          error: {
+            data: { message: "This dashboard is for administrators only." },
+          },
+        });
+        return;
+      }
+
+      dispatch(
+        setLogin({
+          user: result.user,
+          token: result.accessToken,
+          refreshToken: result.refreshToken,
+        })
+      );
+      navigate("/");
+    } catch (err: unknown) {
+      const error = err as {
+        status?: number;
+        data?: {
+          message?: string | string[];
+          data?: { verificationToken?: string };
+        };
+      };
+
+      if (error?.status === 403 && error?.data?.data?.verificationToken) {
+        navigate("/auth/verify-email", {
+          state: {
+            email: values.email,
+            verificationToken: error.data.data.verificationToken,
+            type: "email_verification",
+          },
+        });
+        return;
+      }
+
+      errorAlert({
+        error: {
+          data: {
+            message:
+              error?.status === 401
+                ? "Invalid email or password"
+                : error?.data?.message,
+          },
+        },
+      });
+    }
   };
 
   return (
@@ -61,6 +119,7 @@ const SignIn = () => {
           <Button
             type="primary"
             htmlType="submit"
+            loading={isLoading}
             className="auth-pill-button w-full border-none"
           >
             Log in

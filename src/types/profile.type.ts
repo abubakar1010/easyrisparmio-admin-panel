@@ -1,12 +1,19 @@
 import type { TUserRole } from "./common.type";
 
 export type TProfile = {
-  _id?: string;
-  name?: string;
+  id: string;
   email: string;
-  phone?: string;
+  firstName: string;
+  lastName: string;
+  phone: string | null;
+  codiceFiscale?: string | null;
+  avatar: string | null;
   role: TUserRole;
-  image?: string;
-  address?: string;
-  bio?: string;
+  status: string;
+  authProvider: string;
+  emailVerified: boolean;
+  phoneVerified?: boolean;
+  lastLoginAt: string | null;
+  createdAt?: string;
+  updatedAt?: string;
 };

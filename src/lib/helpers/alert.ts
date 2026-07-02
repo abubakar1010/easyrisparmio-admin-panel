@@ -6,7 +6,7 @@ export type TSuccessAlertProps = {
 };
 
 export type TResponseError = {
-  data?: { message?: string };
+  data?: { message?: string | string[] };
   message?: string;
   error?: string;
 };
@@ -24,36 +24,14 @@ export const successAlert = ({ message, timer }: TSuccessAlertProps): void => {
 };
 
 export const errorAlert = ({ error }: TErrorAlertProps): void => {
+  const msg = error?.data?.message;
+  const text = Array.isArray(msg)
+    ? msg.join(". ")
+    : msg || error?.message || error?.error?.slice(10) || "Something went wrong. Please try again later.";
+
   Swal.fire({
     icon: "error",
     title: "Failed!!",
-    text:
-      error?.data?.message ||
-      error?.message ||
-      error?.error?.slice(10) ||
-      "Something went wrong. Please try again later.",
+    text,
   });
 };
-
-// Swal.fire({
-//     html: `
-//         <div class="text-center pt-4 pb-2">
-//           <p class="leading-7">
-//             An invitation has sent to that persons E-mail. After accepting the invitation he/she will be on board.
-//           </p>
-//         </div>
-//       `,
-//     width: "600px",
-//     showCancelButton: false,
-//     confirmButtonText: "Okay",
-//     showConfirmButton: true,
-//     reverseButtons: true,
-//     customClass: {
-//       confirmButton: "text-white py-2 px-4 rounded-full w-40",
-//       cancelButton: "py-2 px-4 rounded-full w-40",
-//     },
-//   }).then((res) => {
-//     if (res.isConfirmed) {
-//       console.log(values);
-//     }
-//   });

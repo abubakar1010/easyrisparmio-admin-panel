@@ -1,25 +1,28 @@
-import { Button, Card, Form, Input, Upload, Avatar, Typography } from "antd";
+import { Button, Card, Form, Input, Upload, Avatar, Typography, message } from "antd";
 import type { UploadFile, UploadProps } from "antd";
 import { useState } from "react";
 import { FiUser, FiLock, FiSave } from "react-icons/fi";
-import { useAppSelector } from "../../redux/hooks";
+import { useNavigate } from "react-router";
+import { useAppSelector, useAppDispatch } from "../../redux/hooks";
 import { getRoleLabel } from "../../lib/helpers/getRoleLabel";
 import type { TUserRole } from "../../types/common.type";
+import { useUpdateProfileMutation } from "../../redux/features/Auth/authApi";
+import { setUser } from "../../redux/features/Auth/authSlice";
 
 const { Title, Text } = Typography;
 
-const profileData = {
-  name: "Admin User",
-  email: "admin@example.com",
-  phone: "+1 234 567 8900",
-};
-
 const Settings = () => {
+  const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const [profileForm] = Form.useForm();
-  const [passwordForm] = Form.useForm();
+  const [updateProfile, { isLoading: isSaving }] = useUpdateProfileMutation();
   const [fileList, setFileList] = useState<UploadFile[]>([]);
   const [imageUrl, setImageUrl] = useState<string>("/statics/profile.jpg");
   const { user } = useAppSelector((state) => state.auth);
+
+  const initials = user?.firstName
+    ? `${user.firstName[0]}${user.lastName?.[0] || ""}`
+    : "AD";
 
   const uploadProps: UploadProps = {
     onRemove: (file) => {
@@ -66,12 +69,14 @@ const Settings = () => {
           <div className="flex items-center gap-6">
             <Avatar
               size={80}
-              src={imageUrl}
+              src={user?.avatar || imageUrl}
               className="border-2 border-slate-100 shadow-sm shrink-0"
-            />
+            >
+              {initials}
+            </Avatar>
             <div className="flex flex-col gap-2">
               <Upload {...uploadProps}>
-                <Button 
+                <Button
                   className="bg-[#8b85f6] hover:bg-[#7a74e5]! border-none text-white font-medium rounded-lg px-6 h-10"
                 >
                   Change Photo
@@ -88,20 +93,42 @@ const Settings = () => {
             form={profileForm}
             layout="vertical"
             initialValues={{
-              name: user?.name || profileData.name,
-              email: user?.email || profileData.email,
-              phone: profileData.phone,
+              firstName: user?.firstName || "",
+              lastName: user?.lastName || "",
+              email: user?.email || "",
+              phone: user?.phone || "",
               role: getRoleLabel(user?.role as TUserRole) || "Administrator",
+            }}
+            onFinish={async (values) => {
+              try {
+                const updated = await updateProfile({
+                  firstName: values.firstName,
+                  lastName: values.lastName,
+                  phone: values.phone || undefined,
+                }).unwrap();
+                dispatch(setUser({ user: updated }));
+                message.success("Profile updated");
+              } catch {
+                message.error("Failed to update profile");
+              }
             }}
             className="w-full"
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
               <Form.Item
-                name="name"
-                label={<span className="text-[14px] font-medium text-slate-600">Full Name</span>}
-                rules={[{ required: true, message: "Please enter your full name" }]}
+                name="firstName"
+                label={<span className="text-[14px] font-medium text-slate-600">First Name</span>}
+                rules={[{ required: true, message: "Please enter your first name" }]}
               >
-                <Input placeholder="Admin User" className="h-11 rounded-lg border-slate-200" />
+                <Input placeholder="First Name" className="h-11 rounded-lg border-slate-200" />
+              </Form.Item>
+
+              <Form.Item
+                name="lastName"
+                label={<span className="text-[14px] font-medium text-slate-600">Last Name</span>}
+                rules={[{ required: true, message: "Please enter your last name" }]}
+              >
+                <Input placeholder="Last Name" className="h-11 rounded-lg border-slate-200" />
               </Form.Item>
 
               <Form.Item
@@ -112,7 +139,7 @@ const Settings = () => {
                   { type: "email", message: "Please enter a valid email" }
                 ]}
               >
-                <Input placeholder="admin@example.com" className="h-11 rounded-lg border-slate-200" />
+                <Input placeholder="admin@example.com" className="h-11 rounded-lg border-slate-200" disabled />
               </Form.Item>
 
               <Form.Item
@@ -126,13 +153,15 @@ const Settings = () => {
                 name="role"
                 label={<span className="text-[14px] font-medium text-slate-600">Role</span>}
               >
-                <Input placeholder="Administrator" className="h-11 rounded-lg border-slate-200" />
+                <Input placeholder="Administrator" className="h-11 rounded-lg border-slate-200" disabled />
               </Form.Item>
             </div>
 
             <Form.Item className="mb-0 mt-2">
               <Button
                 type="primary"
+                htmlType="submit"
+                loading={isSaving}
                 icon={<FiSave className="text-lg" />}
                 className="bg-[#8b85f6] hover:bg-[#7a74e5]! border-none h-11 px-6 rounded-lg font-semibold flex items-center gap-2"
               >
@@ -154,63 +183,21 @@ const Settings = () => {
         }
         styles={{ header: { borderBottom: '1px solid #f1f5f9', padding: '16px 24px' }, body: { padding: '24px' } }}
       >
-        <Form
-          form={passwordForm}
-          layout="vertical"
-          className="max-w-[440px] space-y-2"
-        >
-          <Form.Item
-            name="currentPassword"
-            label={<span className="text-[14px] font-medium text-slate-600">Current Password</span>}
-            rules={[{ required: true, message: "Please enter your current password" }]}
+        <div className="max-w-[440px]">
+          <p className="text-slate-500 text-sm mb-6">
+            To change your password, use the password reset flow.
+          </p>
+          <Button
+            type="primary"
+            onClick={() => navigate("/auth/forgot-password")}
+            className="bg-[#8b85f6] hover:bg-[#7a74e5]! border-none h-11 px-8 rounded-lg font-semibold"
           >
-            <Input.Password className="h-11 rounded-lg border-slate-200" />
-          </Form.Item>
-
-          <Form.Item
-            name="newPassword"
-            label={<span className="text-[14px] font-medium text-slate-600">New Password</span>}
-            rules={[
-              { required: true, message: "Please enter your new password" },
-              { min: 8, message: "Password must be at least 8 characters" },
-            ]}
-          >
-            <Input.Password className="h-11 rounded-lg border-slate-200" />
-          </Form.Item>
-
-          <Form.Item
-            name="confirmPassword"
-            label={<span className="text-[14px] font-medium text-slate-600">Confirm New Password</span>}
-            dependencies={["newPassword"]}
-            rules={[
-              { required: true, message: "Please confirm your new password" },
-              ({ getFieldValue }) => ({
-                validator(_, value) {
-                  if (!value || getFieldValue("newPassword") === value) {
-                    return Promise.resolve();
-                  }
-                  return Promise.reject(new Error("The two passwords do not match!"));
-                },
-              }),
-            ]}
-          >
-            <Input.Password className="h-11 rounded-lg border-slate-200" />
-          </Form.Item>
-
-          <Form.Item className="mb-0 mt-4">
-            <Button
-              type="primary"
-              className="bg-[#8b85f6] hover:bg-[#7a74e5]! border-none h-11 px-8 rounded-lg font-semibold"
-            >
-              Update Password
-            </Button>
-          </Form.Item>
-        </Form>
+            Reset Password
+          </Button>
+        </div>
       </Card>
     </div>
   );
 };
 
 export default Settings;
-
-

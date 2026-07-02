@@ -1,14 +1,16 @@
 import { Modal, Button, Form, Input } from "antd";
 import { useEffect, useState } from "react";
+import type { IFaq } from "../../../redux/features/Support/supportApi";
 
 interface AddEditFAQModalProps {
   visible: boolean;
   onCancel: () => void;
-  onSave: (values: any) => void;
-  initialValues?: any;
+  onSave: (values: { question: string; answer: string }) => void;
+  initialValues?: IFaq | null;
+  isLoading?: boolean;
 }
 
-const AddEditFAQModal = ({ visible, onCancel, onSave, initialValues }: AddEditFAQModalProps) => {
+const AddEditFAQModal = ({ visible, onCancel, onSave, initialValues, isLoading }: AddEditFAQModalProps) => {
   const [form] = Form.useForm();
   const [questionCount, setQuestionCount] = useState(0);
   const [answerCount, setAnswerCount] = useState(0);
@@ -16,7 +18,10 @@ const AddEditFAQModal = ({ visible, onCancel, onSave, initialValues }: AddEditFA
   useEffect(() => {
     if (visible) {
       if (initialValues) {
-        form.setFieldsValue(initialValues);
+        form.setFieldsValue({
+          question: initialValues.question,
+          answer: initialValues.answer,
+        });
         setQuestionCount(initialValues.question?.length || 0);
         setAnswerCount(initialValues.answer?.length || 0);
       } else {
@@ -55,7 +60,7 @@ const AddEditFAQModal = ({ visible, onCancel, onSave, initialValues }: AddEditFA
       >
         <div className="space-y-4">
           <p className="text-[16px] font-bold text-slate-700">FAQ Content</p>
-          
+
           <Form.Item
             name="question"
             label={
@@ -67,9 +72,9 @@ const AddEditFAQModal = ({ visible, onCancel, onSave, initialValues }: AddEditFA
             rules={[{ required: true, message: "Please enter a question" }]}
             className="mb-0"
           >
-            <Input.TextArea 
-              rows={3} 
-              placeholder="Enter the question users will see..." 
+            <Input.TextArea
+              rows={3}
+              placeholder="Enter the question users will see..."
               className="rounded-xl border-slate-200"
               maxLength={200}
               onChange={(e) => setQuestionCount(e.target.value.length)}
@@ -87,9 +92,9 @@ const AddEditFAQModal = ({ visible, onCancel, onSave, initialValues }: AddEditFA
             rules={[{ required: true, message: "Please enter an answer" }]}
             className="mb-0"
           >
-            <Input.TextArea 
-              rows={8} 
-              placeholder="Enter the detailed answer..." 
+            <Input.TextArea
+              rows={8}
+              placeholder="Enter the detailed answer..."
               className="rounded-xl border-slate-200"
               maxLength={2000}
               onChange={(e) => setAnswerCount(e.target.value.length)}
@@ -107,6 +112,7 @@ const AddEditFAQModal = ({ visible, onCancel, onSave, initialValues }: AddEditFA
           <Button
             type="primary"
             onClick={handleSubmit}
+            loading={isLoading}
             className="flex-1 h-14 rounded-2xl bg-[#8b85f6] border-none text-white font-bold text-lg hover:bg-[#7a74e5]! order-1 sm:order-2"
           >
             Save

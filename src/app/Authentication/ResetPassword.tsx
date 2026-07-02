@@ -1,26 +1,42 @@
 import { Button, Form, Input, Modal } from "antd";
-import { Link, useNavigate } from "react-router";
+import { Link, Navigate, useLocation, useNavigate } from "react-router";
 import { FiLock, FiChevronLeft } from "react-icons/fi";
 import { MdVerified } from "react-icons/md";
 import { useState } from "react";
+import { useResetPasswordMutation } from "../../redux/features/Auth/authApi";
+import { errorAlert } from "../../lib/helpers/alert";
+
+type LocationState = {
+  resetToken?: string;
+};
 
 const ResetPassword = () => {
   const navigate = useNavigate();
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const location = useLocation();
+  const state = location.state as LocationState | null;
 
-  const onFinish = (values: any) => {
-    setLoading(true);
-    console.log("Received new password: ", values);
-    setTimeout(() => {
-      setLoading(false);
+  const [resetPassword, { isLoading }] = useResetPasswordMutation();
+  const [isModalVisible, setIsModalVisible] = useState(false);
+
+  if (!state?.resetToken) {
+    return <Navigate to="/auth/forgot-password" replace />;
+  }
+
+  const onFinish = async (values: { password: string }) => {
+    try {
+      await resetPassword({
+        resetToken: state.resetToken!,
+        newPassword: values.password,
+      }).unwrap();
       setIsModalVisible(true);
-    }, 1000);
+    } catch (err) {
+      errorAlert({ error: err as { data?: { message?: string | string[] } } });
+    }
   };
 
   const handleModalClose = () => {
     setIsModalVisible(false);
-    navigate("/");
+    navigate("/auth/sign-in");
   };
 
   return (
@@ -45,7 +61,7 @@ const ResetPassword = () => {
             name="password"
             rules={[
               { required: true, message: "Please input your new password!" },
-              { min: 6, message: "Password must be at least 6 characters long!" },
+              { min: 8, message: "Password must be at least 8 characters long!" },
             ]}
             className="mb-5"
           >
@@ -85,7 +101,7 @@ const ResetPassword = () => {
             <Button
               type="primary"
               htmlType="submit"
-              loading={loading}
+              loading={isLoading}
               className="auth-pill-button w-full border-none"
             >
               Reset Password
@@ -108,9 +124,9 @@ const ResetPassword = () => {
       >
         <div className="flex flex-col items-center text-center">
           <h3 className="text-2xl font-bold text-gray-900 mb-2">
-            password Updated
+            Password Updated
           </h3>
-          <p className="text-gray-500 mb-6">Your password already changed</p>
+          <p className="text-gray-500 mb-6">Your password has been changed successfully</p>
 
           <div className="relative my-2 mb-8 w-24 h-24 flex items-center justify-center">
             <span className="absolute top-2 -left-1 w-2 h-2 rounded-full bg-indigo-200" />
@@ -131,7 +147,7 @@ const ResetPassword = () => {
               background: "#6366f1",
             }}
           >
-            Back To Dashboard
+            Back To Login
           </Button>
         </div>
       </Modal>

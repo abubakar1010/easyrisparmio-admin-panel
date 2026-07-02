@@ -1,89 +1,141 @@
-import { Button } from "antd";
+import { Button, Spin, Tag, message } from "antd";
 import { FiArrowLeft } from "react-icons/fi";
-import { HiOutlineDocumentText } from "react-icons/hi2";
+import { LuZap, LuDroplets, LuWifi, LuFlame, LuActivity } from "react-icons/lu";
 import { useNavigate, useParams } from "react-router";
+import { useGetMeterByIdQuery } from "../../redux/features/Meters/metersApi";
+
+const getTypeIcon = (type: string) => {
+  switch (type) {
+    case "electricity":
+      return <LuZap className="h-6 w-6" />;
+    case "gas":
+      return <LuFlame className="h-6 w-6" />;
+    case "water":
+      return <LuDroplets className="h-6 w-6" />;
+    case "internet":
+      return <LuWifi className="h-6 w-6" />;
+    default:
+      return <LuActivity className="h-6 w-6" />;
+  }
+};
+
+const getTypeColors = (type: string) => {
+  switch (type) {
+    case "electricity":
+      return "bg-amber-50 text-amber-600";
+    case "gas":
+      return "bg-rose-50 text-rose-600";
+    case "water":
+      return "bg-blue-50 text-blue-600";
+    case "internet":
+      return "bg-indigo-50 text-indigo-600";
+    default:
+      return "bg-slate-50 text-slate-600";
+  }
+};
 
 const MeterDetails = () => {
   const navigate = useNavigate();
   const { meterId } = useParams();
-  console.log("Viewing details for meter:", meterId);
 
-  // In a real app, you would fetch the meter details based on the meterId
-  // For now, we mock the data based on the screenshot provided
-  const meter = {
-    type: "Electricity",
-    ref: "IT001E556779",
-    technicalData: {
-      power: "3 KW",
-      voltage: "230 Volt",
-      tariff: "Time on Use",
-      useType: "Domestic Residence",
-    },
-    usage: {
-      amount: "2800 KWh",
-      cost: "$643/year",
-    },
-  };
+  const { data: meter, isLoading, error } = useGetMeterByIdQuery(meterId!, {
+    skip: !meterId,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Spin size="large" />
+      </div>
+    );
+  }
+
+  if (error || !meter) {
+    message.error("Failed to load service type details");
+    return (
+      <div className="space-y-6 pb-12">
+        <Button
+          type="link"
+          className="px-0 text-slate-500 hover:text-slate-800"
+          icon={<FiArrowLeft />}
+          onClick={() => navigate("/meter-reading")}
+        >
+          Back to Service Types
+        </Button>
+        <div className="text-center py-20 text-slate-500">
+          Service type not found or failed to load.
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
       {/* Back Button */}
       <div>
-        <Button type="link" className="mb-2 px-0 text-slate-500 hover:text-slate-800" icon={<FiArrowLeft />} onClick={() => navigate("/meter-reading")}>
-          Back to Meter
+        <Button
+          type="link"
+          className="mb-2 px-0 text-slate-500 hover:text-slate-800"
+          icon={<FiArrowLeft />}
+          onClick={() => navigate("/meter-reading")}
+        >
+          Back to Service Types
         </Button>
       </div>
 
       {/* Header Card */}
       <div className="bg-white rounded-xl border border-slate-200/60 p-6 shadow-sm">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-50 text-purple-600 mb-4">
-          <HiOutlineDocumentText className="h-6 w-6" />
-        </div>
-        <h1 className="text-2xl font-bold text-slate-900">{meter.type}</h1>
-        <p className="text-sm font-medium text-slate-400 mt-1">{meter.ref}</p>
-      </div>
-
-      {/* Details Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-        {/* Technical Data Card */}
-        <div className="bg-white rounded-xl border border-slate-200/60 shadow-sm flex flex-col">
-          <div className="px-6 py-4 border-b border-slate-100">
-            <h2 className="text-base font-bold text-slate-900">Technical Data</h2>
-          </div>
-          <div className="p-6 grid grid-cols-2 gap-y-6 gap-x-4">
-            <div>
-              <p className="text-xs font-medium text-slate-400 mb-1">Power</p>
-              <p className="text-sm font-bold text-slate-800">{meter.technicalData.power}</p>
+        <div className="flex items-start justify-between">
+          <div>
+            <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${getTypeColors(meter.utilityType)} mb-4`}>
+              {getTypeIcon(meter.utilityType)}
             </div>
-            <div>
-              <p className="text-xs font-medium text-slate-400 mb-1">Voltage</p>
-              <p className="text-sm font-bold text-slate-800">{meter.technicalData.voltage}</p>
-            </div>
-            <div>
-              <p className="text-xs font-medium text-slate-400 mb-1">Tarrif</p>
-              <p className="text-sm font-bold text-slate-800">{meter.technicalData.tariff}</p>
-            </div>
-            <div>
-              <p className="text-xs font-medium text-slate-400 mb-1">Use Type</p>
-              <p className="text-sm font-bold text-slate-800">{meter.technicalData.useType}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* 12 Months Usage Card */}
-        <div className="bg-white rounded-xl border border-slate-200/60 shadow-sm flex flex-col">
-          <div className="px-6 py-4 border-b border-slate-100">
-            <h2 className="text-base font-bold text-slate-900">12 Months Usage</h2>
-          </div>
-          <div className="p-6 flex flex-col justify-center">
-            <p className="text-3xl font-bold text-emerald-600 mb-2">{meter.usage.amount}</p>
-            <p className="text-sm font-medium text-slate-500">
-              Estimated Cost {meter.usage.cost}
+            <h1 className="text-2xl font-bold text-slate-900">
+              {meter.name}
+            </h1>
+            <p className="text-sm font-medium text-slate-400 mt-1 capitalize">
+              {meter.utilityType}
             </p>
           </div>
+          <Tag
+            className={`m-0 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider border ${
+              meter.isActive
+                ? "bg-emerald-50 text-emerald-600 border-emerald-100"
+                : "bg-slate-50 text-slate-500 border-slate-200"
+            }`}
+          >
+            {meter.isActive ? "Active" : "Inactive"}
+          </Tag>
         </div>
+      </div>
 
+      {/* Details Card */}
+      <div className="bg-white rounded-xl border border-slate-200/60 shadow-sm">
+        <div className="px-6 py-4 border-b border-slate-100">
+          <h2 className="text-base font-bold text-slate-900">Details</h2>
+        </div>
+        <div className="p-6 space-y-5">
+          <div>
+            <p className="text-xs font-medium text-slate-400 mb-1">Description</p>
+            <p className="text-sm font-medium text-slate-700">
+              {meter.description || "No description provided"}
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <p className="text-xs font-medium text-slate-400 mb-1">Created</p>
+              <p className="text-sm font-medium text-slate-700">
+                {new Date(meter.createdAt).toLocaleDateString()}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-slate-400 mb-1">Last Updated</p>
+              <p className="text-sm font-medium text-slate-700">
+                {new Date(meter.updatedAt).toLocaleDateString()}
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

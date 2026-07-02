@@ -1,172 +1,216 @@
-import { Avatar, Button, Input, Table, Tag, Tooltip } from "antd";
+import { Avatar, Button, Input, Select, Spin, Empty, Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { FiEye, FiFilter, FiSearch, FiUser } from "react-icons/fi";
+import { FiEye, FiSearch } from "react-icons/fi";
 import { LuClock3 } from "react-icons/lu";
 import { useNavigate } from "react-router";
+import { useState } from "react";
+import { useGetCasesQuery, type ICase } from "../../redux/features/Cases/caseApi";
+import { debounce } from "../../utils/debounce";
 
-type CaseStatus = "Processing" | "Signature" | "Data Collected" | "Completed";
-type UtilityType = "Electric" | "Gas" | "Internet";
+const { Option } = Select;
 
-type CaseRow = {
-  id: string;
-  customer: string;
-  type: "Switch" | "Transfer" | "Takeover";
-  utility: UtilityType;
-  supplier: string;
-  status: CaseStatus;
-  sla: string;
-  operator: string;
+const caseStatusColor: Record<string, string> = {
+  new: "blue",
+  in_progress: "processing",
+  documents_pending: "default",
+  contract_sent: "gold",
+  contract_signed: "cyan",
+  activated: "green",
+  rejected: "red",
+  cancelled: "default",
 };
 
-const caseStatusColor: Record<CaseStatus, string> = {
-  Processing: "blue",
-  Signature: "gold",
-  "Data Collected": "default",
-  Completed: "green",
+const caseStatusLabel: Record<string, string> = {
+  new: "New",
+  in_progress: "Processing",
+  documents_pending: "Docs Pending",
+  contract_sent: "Contract Sent",
+  contract_signed: "Signed",
+  activated: "Completed",
+  rejected: "Rejected",
+  cancelled: "Cancelled",
 };
-
-const caseData: CaseRow[] = [
-  {
-    id: "#1234",
-    customer: "Mario Rossi",
-    type: "Switch",
-    utility: "Electric",
-    supplier: "Enel",
-    status: "Processing",
-    sla: "15d",
-    operator: "Giuseppe Verdi",
-  },
-  {
-    id: "#1235",
-    customer: "Giulia Bianchi",
-    type: "Transfer",
-    utility: "Gas",
-    supplier: "Eni",
-    status: "Signature",
-    sla: "8d",
-    operator: "Maria Ferrari",
-  },
-  {
-    id: "#1236",
-    customer: "Luca Ferrari",
-    type: "Switch",
-    utility: "Internet",
-    supplier: "Fastweb",
-    status: "Data Collected",
-    sla: "3d",
-    operator: "Giuseppe Verdi",
-  },
-  {
-    id: "#1237",
-    customer: "Anna Verde",
-    type: "Takeover",
-    utility: "Electric",
-    supplier: "A2A",
-    status: "Completed",
-    sla: "45d",
-    operator: "Maria Ferrari",
-  },
-];
 
 const CaseManagement = () => {
   const navigate = useNavigate();
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string | undefined>();
 
-  const columns: ColumnsType<CaseRow> = [
-    { title: "CASE ID", dataIndex: "id", key: "id", width: 110, render: (value) => <span className="font-semibold text-brand">{value}</span> },
+  const { data, isLoading } = useGetCasesQuery({
+    page,
+    limit: 20,
+    search: search || undefined,
+    status: statusFilter,
+  });
+
+  const cases = data?.data || [];
+  const meta = data?.meta;
+
+  const handleSearch = debounce((value: string) => {
+    setSearch(value);
+    setPage(1);
+  }, 400);
+
+  const columns: ColumnsType<ICase> = [
+    {
+      title: "CASE ID",
+      dataIndex: "caseNumber",
+      key: "caseNumber",
+      width: 160,
+      render: (value) => <span className="font-semibold text-brand">{value || "—"}</span>,
+    },
     {
       title: "CUSTOMER",
-      dataIndex: "customer",
       key: "customer",
       width: 180,
-      render: (value: string) => (
-        <div className="flex items-center gap-2">
-          <Avatar size={22} className="bg-gray-100 text-owngray">
-            <FiUser className="h-3 w-3" />
-          </Avatar>
-          <span className="text-sm text-brand">{value}</span>
-        </div>
-      ),
+      render: (_, record) => {
+        const name = record.user
+          ? `${record.user.firstName} ${record.user.lastName}`
+          : "—";
+        return (
+          <div className="flex items-center gap-2">
+            <Avatar size={32} className="bg-indigo-100 text-indigo-600 font-semibold text-xs">
+              {record.user?.firstName?.[0]}{record.user?.lastName?.[0]}
+            </Avatar>
+            <span className="font-medium text-slate-700">{name}</span>
+          </div>
+        );
+      },
     },
-    { title: "TYPE", dataIndex: "type", key: "type", width: 100 },
     {
-      title: "UTILITY",
-      dataIndex: "utility",
-      key: "utility",
-      width: 100,
-      render: (value: UtilityType) => <Tag className="rounded border-0 bg-gray-100 text-xs text-brand">{value}</Tag>,
+      title: "TYPE",
+      dataIndex: "caseType",
+      key: "caseType",
+      width: 120,
+      render: (v) => <span className="capitalize">{v?.replace("_", " ")}</span>,
     },
-    { title: "SUPPLIER", dataIndex: "supplier", key: "supplier", width: 100 },
+    {
+      title: "SUPPLIER",
+      key: "supplier",
+      width: 140,
+      responsive: ["md"],
+      render: (_, record) => record.toSupplier?.name || record.fromSupplier?.name || "—",
+    },
     {
       title: "STATUS",
       dataIndex: "status",
       key: "status",
-      width: 120,
-      render: (value: CaseStatus) => (
-        <Tag color={caseStatusColor[value]} className="rounded-full! px-2.5! pb-0.5! text-xs font-semibold">
-          {value}
+      width: 140,
+      render: (status: string) => (
+        <Tag color={caseStatusColor[status] || "default"} className="rounded-full! px-2.5! text-xs font-semibold">
+          {caseStatusLabel[status] || status}
         </Tag>
       ),
-      align: "center",
     },
     {
       title: "SLA",
-      dataIndex: "sla",
       key: "sla",
-      width: 90,
-      render: (value: string) => (
-        <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-600">
-          <LuClock3 className="h-3.5 w-3.5" />
-          {value}
-        </span>
-      ),
+      width: 80,
+      responsive: ["lg"],
+      render: (_, record) => {
+        if (!record.slaDeadline) return "—";
+        const daysLeft = Math.ceil(
+          (new Date(record.slaDeadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+        );
+        return (
+          <span className={`flex items-center gap-1 text-sm font-medium ${daysLeft <= 3 ? "text-red-500" : "text-slate-500"}`}>
+            <LuClock3 className="h-3.5 w-3.5" />
+            {daysLeft > 0 ? `${daysLeft}d` : "Overdue"}
+          </span>
+        );
+      },
     },
-    { title: "OPERATOR", dataIndex: "operator", key: "operator", width: 150 },
+    {
+      title: "OPERATOR",
+      key: "operator",
+      width: 160,
+      responsive: ["lg"],
+      render: (_, record) =>
+        record.assignedAgent
+          ? `${record.assignedAgent.firstName} ${record.assignedAgent.lastName}`
+          : "Unassigned",
+    },
     {
       title: "ACTIONS",
       key: "actions",
-      width: 95,
-      render: (_, record) => (
-        <Tooltip title="Details">
-          <Button
-            type="link"
-            size="small"
-            icon={<FiEye className="h-3.5 w-3.5" />}
-            onClick={() => navigate(`/case-management/${encodeURIComponent(record.id.replace("#", ""))}`)}
-          >
-            Details
-          </Button>
-        </Tooltip>
-      ),
+      width: 100,
       align: "center",
+      render: (_, record) => (
+        <Button
+          type="link"
+          icon={<FiEye />}
+          onClick={() => navigate(`/case-management/${record.id}`)}
+          className="text-indigo-500 font-medium"
+        >
+          Details
+        </Button>
+      ),
     },
   ];
 
   return (
-    <div className="space-y-6">
-      <section className="space-y-3">
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h3 className="text-2xl font-semibold text-brand">Case Management</h3>
-          <p className="text-sm text-owngray">Complete case workflow management</p>
+          <h1 className="text-2xl font-bold text-slate-800">Case Management</h1>
+          <p className="text-sm text-slate-500 mt-1">Track and manage switching cases</p>
         </div>
-        <div className="rounded-2xl border border-cborder/60 bg-white p-3 shadow-sm">
-          <div className="mb-3 flex items-center gap-2">
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
+        <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 bg-white p-4">
+          <div className="flex-1 min-w-[240px]">
             <Input
-              allowClear
-              placeholder="Search case by ID, customer, supplier..."
-              prefix={<FiSearch className="text-owngray" />}
+              placeholder="Search by case ID, customer..."
+              prefix={<FiSearch className="text-slate-400 mr-2" />}
+              onChange={(e) => handleSearch(e.target.value)}
+              className="h-11 rounded-xl border-slate-200"
             />
-            <Button icon={<FiFilter className="h-4 w-4" />}>Filters</Button>
           </div>
-          <Table<CaseRow>
+          <Select
+            allowClear
+            placeholder="Status"
+            onChange={(v) => { setStatusFilter(v); setPage(1); }}
+            className="w-40 [&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-xl"
+          >
+            <Option value="new">New</Option>
+            <Option value="in_progress">In Progress</Option>
+            <Option value="documents_pending">Docs Pending</Option>
+            <Option value="contract_sent">Contract Sent</Option>
+            <Option value="contract_signed">Signed</Option>
+            <Option value="activated">Activated</Option>
+            <Option value="rejected">Rejected</Option>
+            <Option value="cancelled">Cancelled</Option>
+          </Select>
+        </div>
+
+        {isLoading ? (
+          <div className="flex items-center justify-center py-24">
+            <Spin size="large" />
+          </div>
+        ) : cases.length === 0 ? (
+          <div className="py-24">
+            <Empty description="No cases found" />
+          </div>
+        ) : (
+          <Table<ICase>
             rowKey="id"
             columns={columns}
-            dataSource={caseData}
-            pagination={false}
-            size="middle"
-            scroll={{ x: 1000 }}
+            dataSource={cases}
+            scroll={{ x: 900 }}
+            pagination={{
+              current: page,
+              pageSize: meta?.limit || 20,
+              total: meta?.total || 0,
+              onChange: setPage,
+              showSizeChanger: false,
+              className: "p-4 mt-0 border-t border-slate-100",
+            }}
+            className="[&_.ant-table-thead_th]:bg-slate-50/50 [&_.ant-table-thead_th]:text-slate-500 [&_.ant-table-thead_th]:text-[11px] [&_.ant-table-thead_th]:font-bold [&_.ant-table-thead_th]:uppercase [&_.ant-table-thead_th]:tracking-widest [&_.ant-table-thead_th]:py-4 [&_.ant-table-row]:hover:bg-slate-50/30 [&_.ant-table-cell]:py-4"
           />
-        </div>
-      </section>
+        )}
+      </div>
     </div>
   );
 };

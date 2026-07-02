@@ -1,13 +1,23 @@
 import { Button, Input, Form } from "antd";
 import { Link, useNavigate } from "react-router";
 import { FiMail, FiChevronLeft } from "react-icons/fi";
+import { useForgotPasswordMutation } from "../../redux/features/Auth/authApi";
+import { successAlert, errorAlert } from "../../lib/helpers/alert";
 
 const ForgotPassword = () => {
   const navigate = useNavigate();
+  const [forgotPassword, { isLoading }] = useForgotPasswordMutation();
 
-  const onFinish = (values: any) => {
-    console.log("Received values of form: ", values);
-    navigate("/auth/verify-email");
+  const onFinish = async (values: { email: string }) => {
+    try {
+      const result = await forgotPassword({ email: values.email }).unwrap();
+      successAlert({ message: result.message });
+      navigate("/auth/verify-email", {
+        state: { email: values.email, type: "password_reset" },
+      });
+    } catch (err) {
+      errorAlert({ error: err as { data?: { message?: string | string[] } } });
+    }
   };
 
   return (
@@ -46,6 +56,7 @@ const ForgotPassword = () => {
           <Button
             type="primary"
             htmlType="submit"
+            loading={isLoading}
             className="auth-pill-button w-full border-none"
           >
             Send OTP

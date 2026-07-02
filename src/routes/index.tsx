@@ -1,4 +1,5 @@
 import { createBrowserRouter, Navigate } from "react-router";
+import { useEffect } from "react";
 import Main from "../layouts/Main/Main";
 import Auth from "../layouts/Auth/Auth";
 import NotFoundPage from "../app/NotFoundPage";
@@ -8,18 +9,69 @@ import SignIn from "../app/Authentication/SignIn";
 import ForgotPassword from "../app/Authentication/ForgotPassword";
 import VerifyEmail from "../app/Authentication/VerifyEmail";
 import ResetPassword from "../app/Authentication/ResetPassword";
+import { useAppSelector, useAppDispatch } from "../redux/hooks";
+import { useGetMeQuery } from "../redux/features/Auth/authApi";
+import { setUser, logout } from "../redux/features/Auth/authSlice";
+import { Spin } from "antd";
+
+const ProtectedRoute = () => {
+  const dispatch = useAppDispatch();
+  const { token, user, isLoading } = useAppSelector((state) => state.auth);
+
+  const { data, error, isLoading: isMeLoading } = useGetMeQuery(undefined, {
+    skip: !token,
+  });
+
+  useEffect(() => {
+    if (data) {
+      dispatch(setUser({ user: data }));
+    }
+  }, [data, dispatch]);
+
+  useEffect(() => {
+    if (error && "status" in error && error.status === 401) {
+      dispatch(logout());
+    }
+  }, [error, dispatch]);
+
+  if (!token) {
+    return <Navigate to="/auth/sign-in" replace />;
+  }
+
+  if (isLoading || isMeLoading) {
+    return (
+      <div className="h-screen w-screen flex items-center justify-center">
+        <Spin size="large" />
+      </div>
+    );
+  }
+
+  if (user && user.role !== "admin") {
+    return <Navigate to="/auth/sign-in" replace />;
+  }
+
+  return <Main />;
+};
+
+const AuthRoute = () => {
+  const { token } = useAppSelector((state) => state.auth);
+
+  if (token) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <Auth />;
+};
 
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <Main />,
+    element: <ProtectedRoute />,
     children: routesGenerators(dashboardItems),
-
-    // errorElement: <div>404 Not Found</div>,
   },
   {
     path: "/auth",
-    element: <Auth />,
+    element: <AuthRoute />,
     children: [
       {
         path: "/auth",

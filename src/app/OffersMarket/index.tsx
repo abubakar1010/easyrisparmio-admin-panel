@@ -1,102 +1,89 @@
-import { Table, Button, Tag, Space, Input, Select, Card } from "antd";
-import { FiPlus, FiSearch, FiEdit2, FiTrash2, FiLock, FiFilter } from "react-icons/fi";
+import { Table, Button, Tag, Space, Input, Select, Card, Spin, Empty, Modal, message } from "antd";
+import { FiPlus, FiSearch, FiEdit2, FiTrash2, FiFilter } from "react-icons/fi";
 import { LuTrendingUp, LuTag, LuLeaf } from "react-icons/lu";
 import type { ColumnsType } from "antd/es/table";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CreateOfferModal } from "./components/CreateOfferModal";
+import {
+  useGetOffersAdminQuery,
+  useDeleteOfferMutation,
+  useUpdateOfferStatusMutation,
+  type IOffer,
+} from "../../redux/features/Offers/offerApi";
+import { debounce } from "../../utils/debounce";
 
 const { Option } = Select;
 
-interface OfferData {
-  key: string;
-  id: string;
-  name: string;
-  supplier: string;
-  commodity: "ELECTRICITY" | "GAS";
-  priceType: "Fixed" | "Variable";
-  commission: string;
-  validity: string;
-  status: "Active" | "Expiring" | "Draft";
-}
-
-const data: OfferData[] = [
-  {
-    key: "1",
-    id: "OFF-001",
-    name: "Trend Home Electricity",
-    supplier: "Enel Energia",
-    commodity: "ELECTRICITY",
-    priceType: "Variable",
-    commission: "€ 40.00",
-    validity: "31/12/2024",
-    status: "Active",
-  },
-  {
-    key: "2",
-    id: "OFF-002",
-    name: "Pure Energy Electricity",
-    supplier: "A2A Energy",
-    commodity: "ELECTRICITY",
-    priceType: "Fixed",
-    commission: "€ 55.00",
-    validity: "15/01/2025",
-    status: "Active",
-  },
-  {
-    key: "3",
-    id: "OFF-003",
-    name: "World Easy Electricity",
-    supplier: "Edison",
-    commodity: "ELECTRICITY",
-    priceType: "Variable",
-    commission: "€ 42.00",
-    validity: "30/06/2024",
-    status: "Expiring",
-  },
-  {
-    key: "4",
-    id: "OFF-004",
-    name: "Click Gas",
-    supplier: "Iren Mercato",
-    commodity: "GAS",
-    priceType: "Fixed",
-    commission: "€ 38.00",
-    validity: "31/12/2024",
-    status: "Active",
-  },
-  {
-    key: "5",
-    id: "OFF-005",
-    name: "Next Energy",
-    supplier: "Sorgenia",
-    commodity: "ELECTRICITY",
-    priceType: "Fixed",
-    commission: "€ 48.00",
-    validity: "01/03/2025",
-    status: "Draft",
-  },
-  {
-    key: "6",
-    id: "OFF-006",
-    name: "Green Future Gas",
-    supplier: "E.ON",
-    commodity: "GAS",
-    priceType: "Variable",
-    commission: "€ 50.00",
-    validity: "31/12/2024",
-    status: "Active",
-  },
-];
+const statusDot: Record<string, string> = {
+  active: "bg-emerald-500",
+  expiring: "bg-amber-500",
+  draft: "bg-slate-300",
+  expired: "bg-red-400",
+  archived: "bg-slate-400",
+};
 
 const OffersMarket = () => {
   const [createOfferOpen, setCreateOfferOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [energyType, setEnergyType] = useState<string | undefined>();
+  const [offerStatus, setOfferStatus] = useState<string | undefined>();
 
-  const columns: ColumnsType<OfferData> = [
+  const { data, isLoading } = useGetOffersAdminQuery({
+    page,
+    limit: 20,
+    search: search || undefined,
+    energyType,
+    offerStatus,
+  });
+  const [deleteOffer] = useDeleteOfferMutation();
+  const [updateStatus] = useUpdateOfferStatusMutation();
+
+  const offers = data?.data || [];
+  const meta = data?.meta;
+
+  const totalOffers = meta?.total || 0;
+  const activeCount = offers.filter((o) => o.offerStatus === "active").length;
+
+  const handleSearch = debounce((value: string) => {
+    setSearch(value);
+    setPage(1);
+  }, 400);
+
+  const handleDelete = (offer: IOffer) => {
+    Modal.confirm({
+      title: "Delete offer?",
+      content: `"${offer.name}" will be permanently removed.`,
+      okText: "Delete",
+      okButtonProps: { danger: true },
+      centered: true,
+      onOk: async () => {
+        try {
+          await deleteOffer(offer.id).unwrap();
+          message.success("Offer deleted");
+        } catch {
+          message.error("Failed to delete offer");
+        }
+      },
+    });
+  };
+
+  const handleArchive = async (offer: IOffer) => {
+    try {
+      await updateStatus({ id: offer.id, offerStatus: "archived" }).unwrap();
+      message.success("Offer archived");
+    } catch {
+      message.error("Failed to archive offer");
+    }
+  };
+
+  const columns: ColumnsType<IOffer> = [
     {
       title: "ID",
-      dataIndex: "id",
-      key: "id",
+      dataIndex: "offerCode",
+      key: "offerCode",
       className: "text-slate-500 font-medium",
+      render: (v) => v || "—",
     },
     {
       title: "NAME",
@@ -106,18 +93,25 @@ const OffersMarket = () => {
     },
     {
       title: "SUPPLIER",
-      dataIndex: "supplier",
       key: "supplier",
       className: "text-slate-500",
       responsive: ["md"],
+      render: (_, record) => record.supplier?.name || "—",
     },
     {
       title: "COMMODITY",
-      dataIndex: "commodity",
-      key: "commodity",
-      render: (type) => (
-        <Tag className={`border-0 rounded font-bold text-[10px] px-2 py-0 ${type === "ELECTRICITY" ? "bg-emerald-50 text-emerald-600" : "bg-blue-50 text-blue-600"
-          }`}>
+      dataIndex: "energyType",
+      key: "energyType",
+      render: (type: string) => (
+        <Tag
+          className={`border-0 rounded font-bold text-[10px] px-2 py-0 uppercase ${
+            type === "electricity"
+              ? "bg-emerald-50 text-emerald-600"
+              : type === "gas"
+              ? "bg-blue-50 text-blue-600"
+              : "bg-purple-50 text-purple-600"
+          }`}
+        >
           {type}
         </Tag>
       ),
@@ -125,44 +119,58 @@ const OffersMarket = () => {
     },
     {
       title: "PRICE TYPE",
-      dataIndex: "priceType",
-      key: "priceType",
-      className: "text-slate-500",
+      dataIndex: "marketType",
+      key: "marketType",
+      className: "text-slate-500 capitalize",
       responsive: ["lg"],
     },
     {
       title: "COMMISSION",
-      dataIndex: "commission",
-      key: "commission",
-      render: (val) => <span className="text-emerald-600 font-bold">{val}</span>,
+      dataIndex: "activationCost",
+      key: "activationCost",
+      render: (val) => (
+        <span className="text-emerald-600 font-bold">
+          {val != null ? `€ ${Number(val).toFixed(2)}` : "—"}
+        </span>
+      ),
     },
     {
       title: "VALIDITY",
-      dataIndex: "validity",
-      key: "validity",
+      dataIndex: "validUntil",
+      key: "validUntil",
       className: "text-slate-500",
       responsive: ["md"],
+      render: (v) => (v ? new Date(v).toLocaleDateString("it-IT") : "—"),
     },
     {
       title: "STATUS",
-      dataIndex: "status",
-      key: "status",
-      render: (status) => (
+      dataIndex: "offerStatus",
+      key: "offerStatus",
+      render: (status: string) => (
         <span className="flex items-center gap-2">
-          <span className={`h-2 w-2 rounded-full ${status === 'Active' ? 'bg-emerald-500' : status === 'Expiring' ? 'bg-amber-500' : 'bg-slate-300'
-            }`} />
-          <span className="text-sm font-medium text-slate-600">{status}</span>
+          <span className={`h-2 w-2 rounded-full ${statusDot[status] || "bg-slate-300"}`} />
+          <span className="text-sm font-medium text-slate-600 capitalize">{status}</span>
         </span>
       ),
     },
     {
       title: "ACTIONS",
       key: "action",
-      render: () => (
+      render: (_, record) => (
         <Space size="middle">
           <Button type="text" size="small" icon={<FiEdit2 className="text-slate-400" />} />
-          <Button type="text" size="small" icon={<FiTrash2 className="text-slate-400" />} />
-          <Button type="text" size="small" icon={<FiLock className="text-slate-400" />} />
+          <Button
+            type="text"
+            size="small"
+            icon={<FiTrash2 className="text-slate-400" />}
+            onClick={() => handleDelete(record)}
+          />
+          <Button
+            type="text"
+            size="small"
+            icon={<FiFilter className="text-slate-400" />}
+            onClick={() => handleArchive(record)}
+          />
         </Space>
       ),
       align: "center",
@@ -190,10 +198,10 @@ const OffersMarket = () => {
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { title: "Total Offers", value: "6", icon: <LuTag className="h-6 w-6" />, color: "bg-blue-50 text-blue-500" },
-          { title: "Active", value: "3", icon: <LuLeaf className="h-6 w-6" />, color: "bg-emerald-50 text-emerald-500" },
-          { title: "Avg Commission", value: "$45", icon: <LuLeaf className="h-6 w-6" />, color: "bg-emerald-50 text-emerald-500" },
-          { title: "Suppliers", value: "4", icon: <LuTrendingUp className="h-6 w-6" />, color: "bg-purple-50 text-purple-500" },
+          { title: "Total Offers", value: String(totalOffers), icon: <LuTag className="h-6 w-6" />, color: "bg-blue-50 text-blue-500" },
+          { title: "Active", value: String(activeCount), icon: <LuLeaf className="h-6 w-6" />, color: "bg-emerald-50 text-emerald-500" },
+          { title: "Avg Commission", value: "—", icon: <LuLeaf className="h-6 w-6" />, color: "bg-emerald-50 text-emerald-500" },
+          { title: "Suppliers", value: String(new Set(offers.map((o) => o.supplierId)).size), icon: <LuTrendingUp className="h-6 w-6" />, color: "bg-purple-50 text-purple-500" },
         ].map((kpi, idx) => (
           <Card key={idx} className="border-slate-100 shadow-sm rounded-2xl overflow-hidden [&_.ant-card-body]:p-5">
             <div className="flex items-center gap-4">
@@ -211,57 +219,68 @@ const OffersMarket = () => {
 
       {/* Filters & Table */}
       <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
-        {/* Filter Bar */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-white p-4">
           <div className="w-full min-w-0 flex-1 sm:min-w-[280px]">
             <Input
-              placeholder="Search offers by name or ID..."
+              placeholder="Search offers by name or code..."
               prefix={<FiSearch className="text-slate-400 mr-2" />}
+              onChange={(e) => handleSearch(e.target.value)}
               className="h-11 rounded-xl border-slate-200 hover:border-indigo-400 focus:border-indigo-400 shadow-sm"
             />
           </div>
-          <div className="grid w-full grid-cols-1 gap-2 sm:w-auto sm:grid-cols-[auto_auto_auto] sm:gap-3">
-            <Select defaultValue="Commodity" style={{ height: "44px" }} className="w-full sm:w-36 [&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-xl [&_.ant-select-selector]:border-slate-200">
-              <Option value="Electricity">Electricity</Option>
-              <Option value="Gas">Gas</Option>
-            </Select>
-            <Select defaultValue="Status" style={{ height: "44px" }} className="w-full sm:w-32 [&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-xl [&_.ant-select-selector]:border-slate-200">
-              <Option value="Active">Active</Option>
-              <Option value="Expiring">Expiring</Option>
-              <Option value="Draft">Draft</Option>
-            </Select>
-            <Button
-              icon={<FiFilter />}
+          <div className="grid w-full grid-cols-1 gap-2 sm:w-auto sm:grid-cols-[auto_auto] sm:gap-3">
+            <Select
+              allowClear
+              placeholder="Commodity"
+              onChange={(v) => { setEnergyType(v); setPage(1); }}
               style={{ height: "44px" }}
-              className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border-slate-200 px-5 font-medium text-slate-500 sm:w-auto"
+              className="w-full sm:w-36 [&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-xl [&_.ant-select-selector]:border-slate-200"
             >
-              More filters
-            </Button>
+              <Option value="electricity">Electricity</Option>
+              <Option value="gas">Gas</Option>
+              <Option value="dual">Dual</Option>
+            </Select>
+            <Select
+              allowClear
+              placeholder="Status"
+              onChange={(v) => { setOfferStatus(v); setPage(1); }}
+              style={{ height: "44px" }}
+              className="w-full sm:w-32 [&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-xl [&_.ant-select-selector]:border-slate-200"
+            >
+              <Option value="active">Active</Option>
+              <Option value="expiring">Expiring</Option>
+              <Option value="draft">Draft</Option>
+              <Option value="expired">Expired</Option>
+              <Option value="archived">Archived</Option>
+            </Select>
           </div>
         </div>
 
-        {/* Detailed Table */}
-        <Table
-          columns={columns}
-          dataSource={data}
-          scroll={{ x: 980 }}
-          // pagination={{ 
-          //   pageSize: 10,
-          //   showSizeChanger: false,
-          //   className: "p-6 mt-0 border-t border-slate-100",
-          //   itemRender: (_, type, originalElement) => {
-          //     if (type === 'prev') return <Button className="rounded-lg h-9">Previous</Button>;
-          //     if (type === 'next') return <Button className="rounded-lg h-9">Next</Button>;
-          //     return originalElement;
-          //   }
-          // }}
-          className="[&_.ant-table-thead_th]:bg-slate-50/50 [&_.ant-table-thead_th]:text-slate-500 [&_.ant-table-thead_th]:text-[11px] [&_.ant-table-thead_th]:font-bold [&_.ant-table-thead_th]:uppercase [&_.ant-table-thead_th]:tracking-widest [&_.ant-table-thead_th]:py-4 [&_.ant-table-row]:hover:bg-slate-50/30 [&_.ant-table-cell]:py-4"
-        />
-
-        {/* Custom Footer Info */}
-        <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/30">
-          <p className="text-sm text-slate-400 font-medium">Showing 1 to 6 of 6 entries</p>
-        </div>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-24">
+            <Spin size="large" />
+          </div>
+        ) : offers.length === 0 ? (
+          <div className="py-24">
+            <Empty description="No offers found" />
+          </div>
+        ) : (
+          <Table<IOffer>
+            rowKey="id"
+            columns={columns}
+            dataSource={offers}
+            scroll={{ x: 980 }}
+            pagination={{
+              current: page,
+              pageSize: meta?.limit || 20,
+              total: meta?.total || 0,
+              onChange: setPage,
+              showSizeChanger: false,
+              className: "p-4 mt-0 border-t border-slate-100",
+            }}
+            className="[&_.ant-table-thead_th]:bg-slate-50/50 [&_.ant-table-thead_th]:text-slate-500 [&_.ant-table-thead_th]:text-[11px] [&_.ant-table-thead_th]:font-bold [&_.ant-table-thead_th]:uppercase [&_.ant-table-thead_th]:tracking-widest [&_.ant-table-thead_th]:py-4 [&_.ant-table-row]:hover:bg-slate-50/30 [&_.ant-table-cell]:py-4"
+          />
+        )}
       </div>
 
       <CreateOfferModal open={createOfferOpen} onClose={() => setCreateOfferOpen(false)} />

@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { Button, Form, Input, Modal, Select, Upload } from "antd";
+import { Button, Form, Input, Modal, Select, Upload, message } from "antd";
+import type { UploadFile } from "antd";
 import { FiSearch, FiUploadCloud } from "react-icons/fi";
 import { FaPlus } from "react-icons/fa6";
 import { MdOutlineUploadFile } from "react-icons/md";
 import { HiOutlineUserPlus } from "react-icons/hi2";
+import { useUploadBillMutation } from "../../redux/features/Bills/billApi";
 
 type ModalType = "contract" | "upload" | "lead" | null;
 
@@ -12,7 +14,8 @@ const actionBtn =
 
 export function HomeTopBar() {
   const [activeModal, setActiveModal] = useState<ModalType>(null);
-  // console.log(activeModal);
+  const [uploadBill, { isLoading: isUploading }] = useUploadBillMutation();
+  const [uploadFile, setUploadFile] = useState<UploadFile | null>(null);
   return (
     <>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -127,22 +130,43 @@ export function HomeTopBar() {
         centered
         className="home-action-modal"
       >
-        <Form layout="vertical" className="pt-2">
-          <Form.Item label="Customer Name or Tax ID" className="mb-2">
-            <Input placeholder="Search existing customer" />
-          </Form.Item>
-          <Form.Item label="Bill Type" className="mb-2">
+        <Form
+          layout="vertical"
+          className="pt-2"
+          onFinish={async (values: { billType: string }) => {
+            if (!uploadFile?.originFileObj) {
+              message.error("Please select a file");
+              return;
+            }
+            const formData = new FormData();
+            formData.append("file", uploadFile.originFileObj);
+            formData.append("billType", values.billType);
+            try {
+              await uploadBill(formData).unwrap();
+              message.success("Bill uploaded — OCR processing started");
+              setUploadFile(null);
+              setActiveModal(null);
+            } catch {
+              message.error("Failed to upload bill");
+            }
+          }}
+        >
+          <Form.Item label="Bill Type" name="billType" className="mb-2" rules={[{ required: true, message: "Select bill type" }]}>
             <Select
               placeholder="Select bill type"
               options={[
                 { value: "electricity", label: "Electricity" },
                 { value: "gas", label: "Gas" },
-                { value: "water", label: "Water" },
               ]}
             />
           </Form.Item>
           <Form.Item label="Upload Bill Document" className="mb-2">
-            <Upload.Dragger beforeUpload={() => false} multiple={false} showUploadList={false}>
+            <Upload.Dragger
+              beforeUpload={(file) => { setUploadFile({ uid: file.uid, name: file.name, originFileObj: file } as UploadFile); return false; }}
+              multiple={false}
+              fileList={uploadFile ? [uploadFile] : []}
+              onRemove={() => setUploadFile(null)}
+            >
               <div className="py-6">
                 <FiUploadCloud className="mx-auto mb-3 h-8 w-8 text-owngray" />
                 <p className="text-sm text-brand">Click to upload or drag and drop</p>
@@ -154,8 +178,8 @@ export function HomeTopBar() {
             OCR Processing: the system will automatically extract POD/PDR, consumption data, and billing information.
           </div>
           <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button onClick={() => setActiveModal(null)}>Cancel</Button>
-            <Button type="primary" className="!bg-[#22C55E] hover:!bg-[#16A34A]">
+            <Button onClick={() => { setActiveModal(null); setUploadFile(null); }}>Cancel</Button>
+            <Button type="primary" htmlType="submit" loading={isUploading} className="!bg-[#22C55E] hover:!bg-[#16A34A]">
               Upload &amp; Process
             </Button>
           </div>

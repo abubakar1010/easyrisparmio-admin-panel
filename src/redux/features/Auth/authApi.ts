@@ -1,85 +1,128 @@
-// import { baseApi } from "../../api/baseApi";
+import { baseApi } from "../../api/baseApi";
+import type { TProfile } from "../../../types/profile.type";
 
-// const authApi = baseApi.injectEndpoints({
-//   endpoints: (builder) => ({
-//     postLogin: builder.mutation({
-//       query: (data) => {
-//         return {
-//           url: `user/admin-login`,
-//           method: "POST",
-//           body: data,
-//         };
-//       },
-//       invalidatesTags: ["auth"],
-//     }),
-//     forgotPassword: builder.mutation({
-//       query: (data) => {
-//         return {
-//           url: `user/forget-password`,
-//           method: "POST",
-//           body: data,
-//         };
-//       },
-//       invalidatesTags: ["auth"],
-//     }),
-//     verifyEmail: builder.mutation({
-//       query: ({ id, otp }) => {
-//         return {
-//           url: `user/verify-forget-otp?email=${id}`,
-//           method: "POST",
-//           body: { otp },
-//         };
-//       },
-//       invalidatesTags: ["auth"],
-//     }),
-//     resetPassword: builder.mutation({
-//       query: ({ id, token, data }) => {
-//         return {
-//           url: `user/reset-password?email=${id}`,
-//           method: "POST",
-//           headers: { Authorization: `Bearer ${token}` },
-//           body: data,
-//         };
-//       },
-//       invalidatesTags: ["auth"],
-//     }),
-//     changePasswordByOldPass: builder.mutation({
-//       query: (body) => {
-//         return {
-//           url: `user/change-password`,
-//           method: "POST",
-//           body,
-//         };
-//       },
-//       invalidatesTags: ["auth"],
-//     }),
+type LoginResponse = {
+  user: TProfile;
+  accessToken: string;
+  refreshToken: string;
+};
 
-//     // resendOTP: builder.query({
-//     //   query: (id) => {
-//     //     return {
-//     //       url: `otp/resend?userId=${id}`,
-//     //       method: "GET",
-//     //     };
-//     //   },
-//     // }),
+type VerifyOtpPayload = {
+  email?: string;
+  verificationToken?: string;
+  code: string;
+  type: string;
+};
 
-//     getUserByToken: builder.query({
-//       query: (data) => {
-//         return {
-//           url: `user/my-profile`,
-//           method: "GET",
-//         };
-//       },
-//       providesTags: ["user"],
-//     }),
-//   }),
-// });
+type ResendOtpPayload = {
+  email?: string;
+  verificationToken?: string;
+  type: string;
+};
 
-// export const {
-//   usePostLoginMutation,
-//   useGetUserByTokenQuery,
-//   useForgotPasswordMutation,
-//   useVerifyEmailMutation,
-//   useResetPasswordMutation,
-//   useChangePasswordByOldPassMutation
-// } = authApi;
+type ResetPasswordPayload = {
+  resetToken: string;
+  newPassword: string;
+};
+
+type TokenResponse = {
+  accessToken: string;
+  refreshToken: string;
+};
+
+type MessageResponse = {
+  message: string;
+  resetToken?: string;
+};
+
+const authApi = baseApi.injectEndpoints({
+  endpoints: (builder) => ({
+    postLogin: builder.mutation<LoginResponse, { email: string; password: string }>({
+      query: (data) => ({
+        url: "auth/login",
+        method: "POST",
+        body: data,
+      }),
+      transformResponse: (response: { success: boolean; data: LoginResponse }) =>
+        response.data,
+    }),
+    forgotPassword: builder.mutation<MessageResponse, { email: string }>({
+      query: (data) => ({
+        url: "auth/forgot-password",
+        method: "POST",
+        body: data,
+      }),
+      transformResponse: (response: { success: boolean; data: MessageResponse }) =>
+        response.data,
+    }),
+    verifyOtp: builder.mutation<MessageResponse, VerifyOtpPayload>({
+      query: (data) => ({
+        url: "auth/verify-otp",
+        method: "POST",
+        body: data,
+      }),
+      transformResponse: (response: { success: boolean; data: MessageResponse }) =>
+        response.data,
+    }),
+    resendOtp: builder.mutation<MessageResponse, ResendOtpPayload>({
+      query: (data) => ({
+        url: "auth/resend-otp",
+        method: "POST",
+        body: data,
+      }),
+      transformResponse: (response: { success: boolean; data: MessageResponse }) =>
+        response.data,
+    }),
+    resetPassword: builder.mutation<MessageResponse, ResetPasswordPayload>({
+      query: (data) => ({
+        url: "auth/reset-password",
+        method: "POST",
+        body: data,
+      }),
+      transformResponse: (response: { success: boolean; data: MessageResponse }) =>
+        response.data,
+    }),
+    refreshToken: builder.mutation<TokenResponse, { refreshToken: string }>({
+      query: (data) => ({
+        url: "auth/refresh-token",
+        method: "POST",
+        body: data,
+      }),
+      transformResponse: (response: { success: boolean; data: TokenResponse }) =>
+        response.data,
+    }),
+    getMe: builder.query<TProfile, void>({
+      query: () => ({
+        url: "auth/me",
+        method: "GET",
+      }),
+      transformResponse: (response: { success: boolean; data: TProfile }) =>
+        response.data,
+      providesTags: ["user"],
+    }),
+    updateProfile: builder.mutation<
+      TProfile,
+      { firstName?: string; lastName?: string; phone?: string }
+    >({
+      query: (data) => ({
+        url: "users/profile",
+        method: "PATCH",
+        body: data,
+      }),
+      transformResponse: (response: { success: boolean; data: TProfile }) =>
+        response.data,
+      invalidatesTags: ["user"],
+    }),
+  }),
+});
+
+export const {
+  usePostLoginMutation,
+  useForgotPasswordMutation,
+  useVerifyOtpMutation,
+  useResendOtpMutation,
+  useResetPasswordMutation,
+  useRefreshTokenMutation,
+  useGetMeQuery,
+  useUpdateProfileMutation,
+} = authApi;
