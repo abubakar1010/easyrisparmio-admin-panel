@@ -19,6 +19,8 @@ const rawBaseQuery = fetchBaseQuery({
   },
 });
 
+let refreshPromise: Promise<boolean> | null = null;
+
 const baseQueryWithReauth: BaseQueryFn<
   string | FetchArgs,
   unknown,
@@ -27,34 +29,49 @@ const baseQueryWithReauth: BaseQueryFn<
   let result = await rawBaseQuery(args, api, extraOptions);
 
   if (result.error && result.error.status === 401) {
-    const refreshToken = (
-      api.getState() as { auth: { refreshToken: string | null } }
-    ).auth.refreshToken;
+    // If a refresh is already in progress, wait for it instead of firing another
+    if (!refreshPromise) {
+      refreshPromise = (async () => {
+        const refreshToken = (
+          api.getState() as { auth: { refreshToken: string | null } }
+        ).auth.refreshToken;
 
-    if (refreshToken) {
-      const refreshResult = await rawBaseQuery(
-        {
-          url: "auth/refresh-token",
-          method: "POST",
-          body: { refreshToken },
-        },
-        api,
-        extraOptions
-      );
+        if (!refreshToken) return false;
 
-      if (refreshResult.data) {
-        const data = (refreshResult.data as { success: boolean; data: { accessToken: string; refreshToken: string } }).data;
-        api.dispatch(
-          setTokens({
-            token: data.accessToken,
-            refreshToken: data.refreshToken,
-          })
+        const refreshResult = await rawBaseQuery(
+          {
+            url: "auth/refresh-token",
+            method: "POST",
+            body: { refreshToken },
+          },
+          api,
+          extraOptions
         );
-        result = await rawBaseQuery(args, api, extraOptions);
-      } else {
-        api.dispatch(logout());
-        window.location.href = "/auth/sign-in";
-      }
+
+        if (refreshResult.data) {
+          const data = (
+            refreshResult.data as {
+              success: boolean;
+              data: { accessToken: string; refreshToken: string };
+            }
+          ).data;
+          api.dispatch(
+            setTokens({
+              token: data.accessToken,
+              refreshToken: data.refreshToken,
+            })
+          );
+          return true;
+        }
+        return false;
+      })().finally(() => {
+        refreshPromise = null;
+      });
+    }
+
+    const refreshed = await refreshPromise;
+    if (refreshed) {
+      result = await rawBaseQuery(args, api, extraOptions);
     } else {
       api.dispatch(logout());
       window.location.href = "/auth/sign-in";

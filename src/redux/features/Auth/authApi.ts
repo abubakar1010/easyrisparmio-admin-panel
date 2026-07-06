@@ -91,6 +91,15 @@ const authApi = baseApi.injectEndpoints({
       transformResponse: (response: { success: boolean; data: TokenResponse }) =>
         response.data,
     }),
+    postLogout: builder.mutation<MessageResponse, { refreshToken: string }>({
+      query: (data) => ({
+        url: "auth/logout",
+        method: "POST",
+        body: data,
+      }),
+      transformResponse: (response: { success: boolean; data: MessageResponse }) =>
+        response.data,
+    }),
     getMe: builder.query<TProfile, void>({
       query: () => ({
         url: "auth/me",
@@ -118,6 +127,7 @@ const authApi = baseApi.injectEndpoints({
 
 export const {
   usePostLoginMutation,
+  usePostLogoutMutation,
   useForgotPasswordMutation,
   useVerifyOtpMutation,
   useResendOtpMutation,

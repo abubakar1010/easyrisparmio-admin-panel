@@ -7,6 +7,7 @@ import { LuLayoutDashboard } from "react-icons/lu";
 import { routeLinkGenerators } from "../../lib/helpers/generateLink";
 import { useAppSelector, useAppDispatch } from "../../redux/hooks";
 import { logout } from "../../redux/features/Auth/authSlice";
+import { usePostLogoutMutation } from "../../redux/features/Auth/authApi";
 import type { TUserRole } from "../../types/common.type";
 import { cn } from "../../utils/cn";
 import { dashboardItems } from "../../constants/router.constants";
@@ -19,7 +20,8 @@ const Sidebar = ({ mobileOpen = false, onMobileClose }: SidebarProps) => {
   const location = useLocation();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { user } = useAppSelector((state) => state.auth);
+  const { user, refreshToken } = useAppSelector((state) => state.auth);
+  const [postLogout] = usePostLogoutMutation();
   const [openNome, setOpenNome] = useState<{ name: string | null }>({
     name: null,
   });
@@ -32,8 +34,15 @@ const Sidebar = ({ mobileOpen = false, onMobileClose }: SidebarProps) => {
       showConfirmButton: true,
       confirmButtonColor: "#DC2626",
       reverseButtons: true,
-    }).then((res) => {
+    }).then(async (res) => {
       if (res.isConfirmed) {
+        if (refreshToken) {
+          try {
+            await postLogout({ refreshToken }).unwrap();
+          } catch {
+            // Server-side revocation failed — still clear local state
+          }
+        }
         dispatch(logout());
         navigate("/auth/sign-in");
       }
