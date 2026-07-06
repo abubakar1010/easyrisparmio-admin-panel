@@ -29,8 +29,16 @@ const ProtectedRoute = () => {
   }, [data, dispatch]);
 
   useEffect(() => {
-    if (error && "status" in error && error.status === 401) {
-      dispatch(logout());
+    if (error) {
+      if ("status" in error && error.status === 401) {
+        dispatch(logout());
+      } else if (user) {
+        // Network error or server error — stop loading, use cached user
+        dispatch(setUser({ user }));
+      } else {
+        // No cached user and server unreachable — can't proceed
+        dispatch(logout());
+      }
     }
   }, [error, dispatch]);
 
