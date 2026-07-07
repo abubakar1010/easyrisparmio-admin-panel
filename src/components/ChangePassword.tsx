@@ -18,14 +18,13 @@ const ChangePassword = ({
   const navigate = useNavigate();
   const [form] = Form.useForm();
   // const [mutation, { isLoading }] = useChangePasswordByOldPassMutation();
-  const onFinish: FormProps<FieldType>["onFinish"] = async (values) => {
+  const onFinish: FormProps<FieldType>["onFinish"] = async (_values) => {
     try {
-      console.log(values);
       // const response = await mutation(values).unwrap();
       form.resetFields();
       setIsModalOpen(false);
     } catch (error) {
-      console.log(error);
+      // Error handled by mutation
     }
   };
   return (

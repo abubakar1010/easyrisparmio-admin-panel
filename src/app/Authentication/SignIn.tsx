@@ -61,7 +61,7 @@ const SignIn = () => {
             message:
               error?.status === 401
                 ? "Invalid email or password"
-                : error?.data?.message,
+                : "Login failed. Please check your credentials and try again.",
           },
         },
       });
