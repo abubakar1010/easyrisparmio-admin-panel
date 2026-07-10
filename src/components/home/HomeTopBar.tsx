@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button, Form, Input, Modal, Select, Upload, message } from "antd";
 import type { UploadFile } from "antd";
 import { FiSearch, FiUploadCloud } from "react-icons/fi";
@@ -13,6 +14,7 @@ const actionBtn =
   "inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition";
 
 export function HomeTopBar() {
+  const { t } = useTranslation();
   const [activeModal, setActiveModal] = useState<ModalType>(null);
   const [uploadBill, { isLoading: isUploading }] = useUploadBillMutation();
   const [uploadFile, setUploadFile] = useState<UploadFile | null>(null);
@@ -26,7 +28,7 @@ export function HomeTopBar() {
             onClick={() => setActiveModal("contract")}
           >
             <FaPlus className="h-4 w-4" />
-            New Contract
+            {t("home.new_contract")}
           </button>
           <button
             type="button"
@@ -34,7 +36,7 @@ export function HomeTopBar() {
             onClick={() => setActiveModal("upload")}
           >
             <MdOutlineUploadFile className="h-5 w-5" />
-            Upload Bill
+            {t("home.upload_bill")}
           </button>
           <button
             type="button"
@@ -42,12 +44,12 @@ export function HomeTopBar() {
             onClick={() => setActiveModal("lead")}
           >
             <HiOutlineUserPlus className="h-5 w-5" />
-            New Lead
+            {t("home.new_lead")}
           </button>
         </div>
         <Input
           size="large"
-          placeholder="Search by Name, Tax ID, POD, PDR..."
+          placeholder={t("home.search_placeholder")}
           prefix={<FiSearch className="text-owngray" />}
           className="max-w-full lg:max-w-md rounded-lg border-gray-200"
           allowClear
@@ -55,7 +57,7 @@ export function HomeTopBar() {
       </div>
 
       <Modal
-        title={<span className="text-xl font-bold text-slate-800">New Contract</span>}
+        title={<span className="text-xl font-bold text-slate-800">{t("home.new_contract")}</span>}
         open={activeModal === "contract"}
         onCancel={() => setActiveModal(null)}
         footer={null}
@@ -66,62 +68,62 @@ export function HomeTopBar() {
       >
         <Form layout="vertical" className="pt-2">
           <div className="grid gap-3 sm:grid-cols-2">
-            <Form.Item label="First Name" className="mb-2">
-              <Input placeholder="Enter first name" />
+            <Form.Item label={t("home.first_name")} className="mb-2">
+              <Input placeholder={t("home.enter_first_name")} />
             </Form.Item>
-            <Form.Item label="Last Name" className="mb-2">
-              <Input placeholder="Enter last name" />
+            <Form.Item label={t("home.last_name")} className="mb-2">
+              <Input placeholder={t("home.enter_last_name")} />
             </Form.Item>
-            <Form.Item label="Tax ID" className="mb-2">
-              <Input placeholder="Enter tax ID" />
+            <Form.Item label={t("home.tax_id")} className="mb-2">
+              <Input placeholder={t("home.enter_tax_id")} />
             </Form.Item>
-            <Form.Item label="POD/PDR Number" className="mb-2">
+            <Form.Item label={t("home.pod_pdr_number")} className="mb-2">
               <Input placeholder="IT001E..." />
             </Form.Item>
-            <Form.Item label="Contract Type" className="mb-2">
+            <Form.Item label={t("home.contract_type")} className="mb-2">
               <Select
-                placeholder="Select type"
+                placeholder={t("home.select_type")}
                 options={[
-                  { value: "electricity", label: "Electricity" },
-                  { value: "gas", label: "Gas" },
-                  { value: "dual", label: "Dual Fuel" },
+                  { value: "electricity", label: t("home.electricity") },
+                  { value: "gas", label: t("home.gas") },
+                  { value: "dual", label: t("home.dual_fuel") },
                 ]}
               />
             </Form.Item>
           </div>
-          <Form.Item label="Email" className="mb-2">
+          <Form.Item label={t("home.email")} className="mb-2">
             <Input placeholder="customer@email.com" />
           </Form.Item>
-          <Form.Item label="Phone" className="mb-2">
+          <Form.Item label={t("home.phone")} className="mb-2">
             <Input placeholder="+39 123 456 7890" />
           </Form.Item>
-          <Form.Item label="Address" className="mb-2">
-            <Input.TextArea placeholder="Enter full address" autoSize={{ minRows: 2, maxRows: 3 }} />
+          <Form.Item label={t("home.address")} className="mb-2">
+            <Input.TextArea placeholder={t("home.enter_full_address")} autoSize={{ minRows: 2, maxRows: 3 }} />
           </Form.Item>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Form.Item label="Start Date" className="mb-2">
+            <Form.Item label={t("home.start_date")} className="mb-2">
               <Input placeholder="DD/MM/YYYY" />
             </Form.Item>
-            <Form.Item label="Contract Duration" className="mb-2">
+            <Form.Item label={t("home.contract_duration")} className="mb-2">
               <Select
-                placeholder="Select duration"
+                placeholder={t("home.select_duration")}
                 options={[
-                  { value: "12m", label: "12 Months" },
-                  { value: "24m", label: "24 Months" },
-                  { value: "36m", label: "36 Months" },
+                  { value: "12m", label: t("home.12_months") },
+                  { value: "24m", label: t("home.24_months") },
+                  { value: "36m", label: t("home.36_months") },
                 ]}
               />
             </Form.Item>
           </div>
           <div className="mt-3 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button onClick={() => setActiveModal(null)}>Cancel</Button>
-            <Button type="primary">Create Contract</Button>
+            <Button onClick={() => setActiveModal(null)}>{t("common.cancel")}</Button>
+            <Button type="primary">{t("home.create_contract")}</Button>
           </div>
         </Form>
       </Modal>
 
       <Modal
-        title={<span className="text-xl font-bold text-slate-800">Upload Bill (OCR)</span>}
+        title={<span className="text-xl font-bold text-slate-800">{t("home.upload_bill_ocr")}</span>}
         open={activeModal === "upload"}
         onCancel={() => setActiveModal(null)}
         footer={null}
@@ -135,7 +137,7 @@ export function HomeTopBar() {
           className="pt-2"
           onFinish={async (values: { billType: string }) => {
             if (!uploadFile?.originFileObj) {
-              message.error("Please select a file");
+              message.error(t("home.please_select_file"));
               return;
             }
             const formData = new FormData();
@@ -143,24 +145,24 @@ export function HomeTopBar() {
             formData.append("billType", values.billType);
             try {
               await uploadBill(formData).unwrap();
-              message.success("Bill uploaded — OCR processing started");
+              message.success(t("home.bill_uploaded_ocr_processing"));
               setUploadFile(null);
               setActiveModal(null);
             } catch {
-              message.error("Failed to upload bill");
+              message.error(t("home.failed_upload_bill"));
             }
           }}
         >
-          <Form.Item label="Bill Type" name="billType" className="mb-2" rules={[{ required: true, message: "Select bill type" }]}>
+          <Form.Item label={t("home.bill_type")} name="billType" className="mb-2" rules={[{ required: true, message: t("home.select_bill_type") }]}>
             <Select
-              placeholder="Select bill type"
+              placeholder={t("home.select_bill_type")}
               options={[
-                { value: "electricity", label: "Electricity" },
-                { value: "gas", label: "Gas" },
+                { value: "electricity", label: t("home.electricity") },
+                { value: "gas", label: t("home.gas") },
               ]}
             />
           </Form.Item>
-          <Form.Item label="Upload Bill Document" className="mb-2">
+          <Form.Item label={t("home.upload_bill_document")} className="mb-2">
             <Upload.Dragger
               beforeUpload={(file) => { setUploadFile({ uid: file.uid, name: file.name, originFileObj: file } as UploadFile); return false; }}
               multiple={false}
@@ -169,25 +171,25 @@ export function HomeTopBar() {
             >
               <div className="py-6">
                 <FiUploadCloud className="mx-auto mb-3 h-8 w-8 text-owngray" />
-                <p className="text-sm text-brand">Click to upload or drag and drop</p>
-                <p className="text-xs text-owngray">PDF, JPG, PNG up to 10MB</p>
+                <p className="text-sm text-brand">{t("home.click_upload_drag_drop")}</p>
+                <p className="text-xs text-owngray">{t("home.pdf_jpg_png_10mb")}</p>
               </div>
             </Upload.Dragger>
           </Form.Item>
           <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-700">
-            OCR Processing: the system will automatically extract POD/PDR, consumption data, and billing information.
+            {t("home.ocr_processing_info")}
           </div>
           <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button onClick={() => { setActiveModal(null); setUploadFile(null); }}>Cancel</Button>
+            <Button onClick={() => { setActiveModal(null); setUploadFile(null); }}>{t("common.cancel")}</Button>
             <Button type="primary" htmlType="submit" loading={isUploading} className="!bg-[#22C55E] hover:!bg-[#16A34A]">
-              Upload &amp; Process
+              {t("home.upload_process")}
             </Button>
           </div>
         </Form>
       </Modal>
 
       <Modal
-        title={<span className="text-xl font-bold text-slate-800">New Lead</span>}
+        title={<span className="text-xl font-bold text-slate-800">{t("home.new_lead")}</span>}
         open={activeModal === "lead"}
         onCancel={() => setActiveModal(null)}
         footer={null}
@@ -198,57 +200,57 @@ export function HomeTopBar() {
       >
         <Form layout="vertical" className="pt-2">
           <div className="grid gap-3 sm:grid-cols-2">
-            <Form.Item label="Lead Type" className="mb-2">
+            <Form.Item label={t("home.lead_type")} className="mb-2">
               <Select
-                placeholder="Select lead type"
+                placeholder={t("home.select_lead_type")}
                 options={[
-                  { value: "residential", label: "Residential" },
-                  { value: "business", label: "Business" },
+                  { value: "residential", label: t("home.residential") },
+                  { value: "business", label: t("home.business") },
                 ]}
               />
             </Form.Item>
-            <Form.Item label="Priority" className="mb-2">
+            <Form.Item label={t("home.priority")} className="mb-2">
               <Select
-                placeholder="Priority level"
+                placeholder={t("home.priority")}
                 options={[
-                  { value: "high", label: "High" },
-                  { value: "medium", label: "Medium" },
-                  { value: "low", label: "Low" },
+                  { value: "high", label: t("home.high") },
+                  { value: "medium", label: t("home.medium") },
+                  { value: "low", label: t("home.low") },
                 ]}
               />
             </Form.Item>
-            <Form.Item label="Name / Company" className="mb-2">
-              <Input placeholder="Enter name or company" />
+            <Form.Item label={t("home.name_company")} className="mb-2">
+              <Input placeholder={t("home.enter_name_company")} />
             </Form.Item>
-            <Form.Item label="Contact Person" className="mb-2">
-              <Input placeholder="Contact name" />
+            <Form.Item label={t("home.contact_person")} className="mb-2">
+              <Input placeholder={t("home.contact_person")} />
             </Form.Item>
-            <Form.Item label="Email" className="mb-2">
+            <Form.Item label={t("home.email")} className="mb-2">
               <Input placeholder="email@example.com" />
             </Form.Item>
-            <Form.Item label="Phone" className="mb-2">
+            <Form.Item label={t("home.phone")} className="mb-2">
               <Input placeholder="+39 123 456 7890" />
             </Form.Item>
           </div>
-          <Form.Item label="Estimated Annual Value" className="mb-2">
+          <Form.Item label={t("home.estimated_annual_value")} className="mb-2">
             <Input placeholder="€ 24,000" />
           </Form.Item>
-          <Form.Item label="Source" className="mb-2">
+          <Form.Item label={t("home.source")} className="mb-2">
             <Select
-              placeholder="Lead source"
+              placeholder={t("home.source")}
               options={[
-                { value: "website", label: "Website" },
-                { value: "partner", label: "Partner" },
-                { value: "referral", label: "Referral" },
+                { value: "website", label: t("home.website") },
+                { value: "partner", label: t("home.partner") },
+                { value: "referral", label: t("home.referral") },
               ]}
             />
           </Form.Item>
-          <Form.Item label="Notes" className="mb-2">
-            <Input.TextArea placeholder="Add any relevant notes..." autoSize={{ minRows: 2, maxRows: 4 }} />
+          <Form.Item label={t("home.notes")} className="mb-2">
+            <Input.TextArea placeholder={t("home.add_relevant_notes")} autoSize={{ minRows: 2, maxRows: 4 }} />
           </Form.Item>
           <div className="mt-3 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button onClick={() => setActiveModal(null)}>Cancel</Button>
-            <Button type="primary">Create Lead</Button>
+            <Button onClick={() => setActiveModal(null)}>{t("common.cancel")}</Button>
+            <Button type="primary">{t("home.create_lead")}</Button>
           </div>
         </Form>
       </Modal>

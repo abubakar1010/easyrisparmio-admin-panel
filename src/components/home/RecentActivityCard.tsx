@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { DashboardCard } from "./DashboardCard";
 import { FiChevronRight } from "react-icons/fi";
 import type { AdminDashboardData } from "../../redux/features/Dashboard/dashboardApi";
@@ -17,30 +18,31 @@ function getDotColor(entityType: string): string {
   return dotColors[entityType] ?? "bg-gray-400";
 }
 
-function timeAgo(dateStr: string): string {
+function timeAgo(dateStr: string, t: (key: string) => string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "Just now";
-  if (mins < 60) return `${mins} minute${mins === 1 ? "" : "s"} ago`;
+  if (mins < 1) return t("dashboard.just_now");
+  if (mins < 60) return `${mins} ${t("dashboard.minutes_ago")}`;
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  if (hours < 24) return `${hours} ${t("dashboard.hours_ago")}`;
   const days = Math.floor(hours / 24);
-  return `${days} day${days === 1 ? "" : "s"} ago`;
+  return `${days} ${t("dashboard.days_ago")}`;
 }
 
 export function RecentActivityCard({ data }: Props) {
+  const { t } = useTranslation();
   const items = data ?? [];
 
   if (items.length === 0) {
     return (
-      <DashboardCard title="Recent Activity">
-        <p className="py-8 text-center text-sm text-gray-400">No recent activity</p>
+      <DashboardCard title={t("dashboard.recent_activity")}>
+        <p className="py-8 text-center text-sm text-gray-400">{t("dashboard.no_recent_activity")}</p>
       </DashboardCard>
     );
   }
 
   return (
-    <DashboardCard title="Recent Activity">
+    <DashboardCard title={t("dashboard.recent_activity")}>
       <ul className="relative space-y-0 pl-2">
         <span className="absolute left-[12px] top-2 bottom-2 w-px bg-gray-200" aria-hidden />
         {items.map((item: Activity) => {
@@ -58,7 +60,7 @@ export function RecentActivityCard({ data }: Props) {
                   {userName && `${userName} · `}
                   {item.entityType}
                 </p>
-                <p className="mt-1 text-[11px] text-gray-400">{timeAgo(item.createdAt)}</p>
+                <p className="mt-1 text-[11px] text-gray-400">{timeAgo(item.createdAt, t)}</p>
               </div>
             </li>
           );

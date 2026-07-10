@@ -1,6 +1,7 @@
 import { Button, Form, Input } from "antd";
 import { Link, Navigate, useLocation, useNavigate } from "react-router";
 import { FiChevronLeft } from "react-icons/fi";
+import { useTranslation } from "react-i18next";
 import { useState, useEffect, useCallback } from "react";
 import {
   useVerifyOtpMutation,
@@ -15,6 +16,7 @@ type LocationState = {
 };
 
 const VerifyEmail = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const state = location.state as LocationState | null;
@@ -43,7 +45,7 @@ const VerifyEmail = () => {
         payload.email = state.email;
       }
       await resendOtp(payload).unwrap();
-      successAlert({ message: "OTP has been resent to your email." });
+      successAlert({ message: t("auth.otp_resent") });
       setCooldown(60);
     } catch (err) {
       errorAlert({ error: err as { data?: { message?: string | string[] } } });
@@ -79,7 +81,7 @@ const VerifyEmail = () => {
           state: { resetToken: result.resetToken },
         });
       } else {
-        successAlert({ message: "Email verified successfully!" });
+        successAlert({ message: t("auth.email_verified_successfully") });
         navigate("/auth/sign-in");
       }
     } catch (err) {
@@ -94,12 +96,12 @@ const VerifyEmail = () => {
         className="inline-flex items-center gap-2 text-3xl sm:text-4xl font-bold text-gray-900 mb-8 hover:text-gray-700 transition-colors"
       >
         <FiChevronLeft className="text-2xl sm:text-3xl" />
-        <span>Verify Email</span>
+        <span>{t("auth.verify_email")}</span>
       </Link>
 
       {state?.email && (
         <p className="text-gray-500 mb-6 text-sm">
-          Enter the 6-digit code sent to <strong>{state.email}</strong>
+          {t("auth.enter_6_digit_code")} <strong>{state.email}</strong>
         </p>
       )}
 
@@ -112,7 +114,7 @@ const VerifyEmail = () => {
       >
         <Form.Item
           name="otp"
-          rules={[{ required: true, message: "Please input the OTP!" }]}
+          rules={[{ required: true, message: t("auth.please_input_otp") }]}
           className="mb-6"
         >
           <Input.OTP length={6} size="large" />
@@ -127,8 +129,8 @@ const VerifyEmail = () => {
             className="text-[#4f46e5] hover:text-[#4338ca] font-medium text-sm p-0"
           >
             {cooldown > 0
-              ? `Resend OTP in ${cooldown}s`
-              : "Resend OTP"}
+              ? t("auth.resend_otp_in", { seconds: cooldown })
+              : t("auth.resend_otp")}
           </Button>
         </div>
 
@@ -139,7 +141,7 @@ const VerifyEmail = () => {
             loading={isLoading}
             className="auth-pill-button w-full border-none"
           >
-            Verify OTP
+            {t("auth.verify_otp")}
           </Button>
         </Form.Item>
       </Form>

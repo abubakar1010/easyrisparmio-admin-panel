@@ -1,12 +1,14 @@
 import { Button, Input, Form } from "antd";
 import { Link, useNavigate } from "react-router";
 import { FiMail, FiLock } from "react-icons/fi";
+import { useTranslation } from "react-i18next";
 import { usePostLoginMutation } from "../../redux/features/Auth/authApi";
 import { useAppDispatch } from "../../redux/hooks";
 import { setLogin } from "../../redux/features/Auth/authSlice";
 import { errorAlert } from "../../lib/helpers/alert";
 
 const SignIn = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const [login, { isLoading }] = usePostLoginMutation();
@@ -21,7 +23,7 @@ const SignIn = () => {
       if (result.user.role !== "admin") {
         errorAlert({
           error: {
-            data: { message: "This dashboard is for administrators only." },
+            data: { message: t("auth.dashboard_admin_only") },
           },
         });
         return;
@@ -60,8 +62,8 @@ const SignIn = () => {
           data: {
             message:
               error?.status === 401
-                ? "Invalid email or password"
-                : "Login failed. Please check your credentials and try again.",
+                ? t("auth.invalid_email_password")
+                : t("auth.login_failed"),
           },
         },
       });
@@ -70,7 +72,7 @@ const SignIn = () => {
 
   return (
     <div className="max-w-md w-full mx-auto md:mx-0">
-      <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-8">Login</h2>
+      <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-8">{t("auth.login")}</h2>
 
       <Form
         name="login_form"
@@ -82,26 +84,26 @@ const SignIn = () => {
         <Form.Item
           name="email"
           rules={[
-            { required: true, message: "Please input your Email!" },
-            { type: "email", message: "Please enter a valid email!" },
+            { required: true, message: t("auth.please_input_email") },
+            { type: "email", message: t("auth.please_enter_valid_email") },
           ]}
           className="mb-5"
         >
           <Input
             prefix={<FiMail />}
-            placeholder="Email"
+            placeholder={t("auth.email")}
             className="auth-pill-input"
           />
         </Form.Item>
 
         <Form.Item
           name="password"
-          rules={[{ required: true, message: "Please input your Password!" }]}
+          rules={[{ required: true, message: t("auth.please_input_password") }]}
           className="mb-3"
         >
           <Input.Password
             prefix={<FiLock />}
-            placeholder="Password"
+            placeholder={t("auth.password")}
             className="auth-pill-input"
           />
         </Form.Item>
@@ -111,7 +113,7 @@ const SignIn = () => {
             to="/auth/forgot-password"
             className="text-[#4f46e5] hover:text-[#4338ca] font-medium text-sm transition-colors"
           >
-            Forget password?
+            {t("auth.forget_password")}
           </Link>
         </div>
 
@@ -122,7 +124,7 @@ const SignIn = () => {
             loading={isLoading}
             className="auth-pill-button w-full border-none"
           >
-            Log in
+            {t("auth.log_in")}
           </Button>
         </Form.Item>
       </Form>

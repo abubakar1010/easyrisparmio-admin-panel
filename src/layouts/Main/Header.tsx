@@ -6,6 +6,7 @@ import { IoNotificationsOutline } from "react-icons/io5";
 import { FiMenu } from "react-icons/fi";
 import { BrandLightningMark } from "../../components/ui/BrandLightningMark";
 import { useGetUnreadCountQuery } from "../../redux/features/Notifications/notificationApi";
+import { useTranslation } from "react-i18next";
 
 type HeaderProps = {
   onMobileMenuClick?: () => void;
@@ -19,6 +20,13 @@ const Header = ({ onMobileMenuClick }: HeaderProps) => {
   const [notificationPopup, setNotificationPopup] = useState(false);
   const { data: unreadData } = useGetUnreadCountQuery();
   const unreadCount = unreadData?.count || 0;
+  const { t, i18n } = useTranslation();
+
+  const toggleLanguage = () => {
+    const newLang = i18n.language === "en" ? "it" : "en";
+    i18n.changeLanguage(newLang);
+    localStorage.setItem("dashboard_language", newLang);
+  };
 
   const fullName = user?.firstName
     ? `${user.firstName} ${user.lastName}`
@@ -63,11 +71,19 @@ const Header = ({ onMobileMenuClick }: HeaderProps) => {
           <BrandLightningMark size="sm" decorative className="mt-0.5 shrink-0 lg:hidden" />
           <div className="min-w-0">
             <p className="text-base sm:text-lg font-medium text-brand tracking-[-0.01em]">
-              Welcome, {fullName}
+              {t("header.welcome")} {fullName}
             </p>
           </div>
         </div>
         <div className="flex gap-2 sm:gap-3 md:gap-5 items-center shrink-0">
+          <button
+            onClick={toggleLanguage}
+            className="flex items-center justify-center rounded-lg px-2 py-1 text-xs font-semibold bg-playground/80 border border-cborder/40 text-brand hover:bg-playground transition-colors"
+            type="button"
+            title={t("settings.language")}
+          >
+            {i18n.language === "en" ? "IT" : "EN"}
+          </button>
           <button
             onClick={() => setNotificationPopup(true)}
             className="relative flex items-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2"
@@ -91,7 +107,7 @@ const Header = ({ onMobileMenuClick }: HeaderProps) => {
               <h4 className="text-sm font-semibold text-brand truncate max-w-[120px] sm:max-w-[200px] leading-tight">
                 {fullName}
               </h4>
-              <span className="text-xs text-owngray">Admin</span>
+              <span className="text-xs text-owngray">{t("header.admin")}</span>
             </div>
           </div>
         </div>
@@ -109,7 +125,7 @@ const Header = ({ onMobileMenuClick }: HeaderProps) => {
                 type="primary"
                 className="w-40 rounded-xl border-0 shadow-sm hover:shadow-md transition-shadow duration-200"
               >
-                See More
+                {t("header.see_more")}
               </Button>
             </div>
           </div>

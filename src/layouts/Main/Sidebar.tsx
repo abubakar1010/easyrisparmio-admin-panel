@@ -11,20 +11,46 @@ import { usePostLogoutMutation } from "../../redux/features/Auth/authApi";
 import type { TUserRole } from "../../types/common.type";
 import { cn } from "../../utils/cn";
 import { dashboardItems } from "../../constants/router.constants";
+import { useTranslation } from "react-i18next";
 type SidebarProps = {
   mobileOpen?: boolean;
   onMobileClose?: () => void;
+};
+
+// Maps sidebar item names to i18n keys
+const sidebarI18nKeys: Record<string, string> = {
+  "Dashboard": "sidebar.dashboard",
+  "Client Management": "sidebar.client_management",
+  "Case Management": "sidebar.case_management",
+  "Utilities / Services": "sidebar.utilities_services",
+  "Meter Reading": "sidebar.meter_reading",
+  "Comparator": "sidebar.comparator",
+  "OCR": "sidebar.ocr",
+  "Suppliers": "sidebar.suppliers",
+  "Offers / Market": "sidebar.offers_market",
+  "Agreement Section": "sidebar.agreement_section",
+  "CSV Reconciliation": "sidebar.csv_reconciliation",
+  "Referrals": "sidebar.referrals",
+  "Support": "sidebar.support",
+  "Commission": "sidebar.commission",
+  "Settings": "sidebar.settings",
 };
 
 const Sidebar = ({ mobileOpen = false, onMobileClose }: SidebarProps) => {
   const location = useLocation();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { user, refreshToken } = useAppSelector((state) => state.auth);
   const [postLogout] = usePostLogoutMutation();
   const [openNome, setOpenNome] = useState<{ name: string | null }>({
     name: null,
   });
+
+  const translateName = (name: string) => {
+    const key = sidebarI18nKeys[name];
+    return key ? t(key) : name;
+  };
   const handleLogOut = () => {
     Swal.fire({
       text: "Are you sure you want to logout?",
@@ -74,7 +100,7 @@ const Sidebar = ({ mobileOpen = false, onMobileClose }: SidebarProps) => {
             <LuLayoutDashboard size={18} />
           </span>
           <span className="text-lg font-bold text-[#6366f1] tracking-tight">
-            Admin Portal
+            {t("sidebar.admin_portal")}
           </span>
         </div>
         <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain space-y-1 px-2.5 py-1 scroll-py-2 [scrollbar-width:thin] [scrollbar-color:oklch(0.68_0_0)_transparent]">
@@ -104,7 +130,7 @@ const Sidebar = ({ mobileOpen = false, onMobileClose }: SidebarProps) => {
                     >
                       <div className="flex items-center justify-start gap-2.5">
                         <div>{createElement(icon, { size: "20" })}</div>
-                        <span>{name}</span>
+                        <span>{translateName(name)}</span>
                       </div>
                       <MdOutlineArrowRight
                         className={cn(
@@ -143,7 +169,7 @@ const Sidebar = ({ mobileOpen = false, onMobileClose }: SidebarProps) => {
                           }
                         >
                           <div>{createElement(child.icon, { size: "15" })}</div>
-                          <span> {child.name}</span>
+                          <span> {translateName(child.name)}</span>
                         </NavLink>
                       ))}
                     </div>
@@ -171,7 +197,7 @@ const Sidebar = ({ mobileOpen = false, onMobileClose }: SidebarProps) => {
                       }
                     >
                       <div>{createElement(icon, { size: "18" })}</div>
-                      <span> {name}</span>
+                      <span> {translateName(name)}</span>
                     </NavLink>
                   </li>
                 )
@@ -184,7 +210,7 @@ const Sidebar = ({ mobileOpen = false, onMobileClose }: SidebarProps) => {
             className="group w-full px-4 py-3 flex items-center justify-start gap-2.5 2xl:text-lg outline-none rounded-xl text-[#373643] cursor-pointer transition-colors duration-200 ease-[cubic-bezier(0.3,0,0,1)] hover:bg-red-50/90 active:bg-red-50"
           >
             <FiLogOut className="text-red-400 transition-transform duration-200 group-hover:-translate-x-0.5" size={18} />
-            <span className="text-red-500 font-medium">Logout</span>
+            <span className="text-red-500 font-medium">{t("common.logout")}</span>
           </button>
         </div>
       </div>

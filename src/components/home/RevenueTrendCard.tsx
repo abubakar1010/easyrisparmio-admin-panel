@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { DashboardCard } from "./DashboardCard";
 import type { AdminDashboardData } from "../../redux/features/Dashboard/dashboardApi";
 
@@ -6,6 +7,7 @@ const monthLabels = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"]
 type Props = { data?: AdminDashboardData["revenueTrend"] };
 
 export function RevenueTrendCard({ data }: Props) {
+  const { t } = useTranslation();
   const trend = data ?? [];
 
   // Sum totals across all months
@@ -18,7 +20,7 @@ export function RevenueTrendCard({ data }: Props) {
   const chartMax = Math.max(...collected, 1);
 
   return (
-    <DashboardCard title="Revenue Trend">
+    <DashboardCard title={t("dashboard.revenue_trend")}>
       <div className="flex w-full flex-col rounded-lg bg-gradient-to-b from-sky-50/80 to-white pt-3">
         {collected.length > 1 ? (
           <RevenueAreaChart values={collected} max={chartMax} />
@@ -37,19 +39,19 @@ export function RevenueTrendCard({ data }: Props) {
       </div>
       <div className="-mx-4 -mb-4 mt-4 flex justify-between rounded-b-xl border-t border-slate-100 bg-slate-50/50 px-6 py-4 sm:-mx-5 sm:-mb-5 sm:px-8 sm:py-5">
         <div className="flex flex-col items-center">
-          <span className="mb-1 text-xs text-slate-500 sm:text-sm">Potential</span>
+          <span className="mb-1 text-xs text-slate-500 sm:text-sm">{t("dashboard.potential")}</span>
           <span className="text-sm font-bold text-slate-900 sm:text-base">
             {formatEuro(totalPotential)}
           </span>
         </div>
         <div className="flex flex-col items-center">
-          <span className="mb-1 text-xs text-slate-500 sm:text-sm">Validated</span>
+          <span className="mb-1 text-xs text-slate-500 sm:text-sm">{t("dashboard.validated")}</span>
           <span className="text-sm font-bold text-blue-600 sm:text-base">
             {formatEuro(totalValidated)}
           </span>
         </div>
         <div className="flex flex-col items-center">
-          <span className="mb-1 text-xs text-slate-500 sm:text-sm">Collected</span>
+          <span className="mb-1 text-xs text-slate-500 sm:text-sm">{t("dashboard.collected")}</span>
           <span className="text-sm font-bold text-emerald-600 sm:text-base">
             {formatEuro(totalCollected)}
           </span>

@@ -1,19 +1,22 @@
-import { Button, Card, Form, Input, Upload, Avatar, Typography, message } from "antd";
+import { Button, Card, Form, Input, Upload, Avatar, Typography, message, Select } from "antd";
 import type { UploadFile, UploadProps } from "antd";
 import { useState } from "react";
-import { FiUser, FiLock, FiSave } from "react-icons/fi";
+import { FiUser, FiLock, FiSave, FiGlobe } from "react-icons/fi";
 import { useNavigate } from "react-router";
 import { useAppSelector, useAppDispatch } from "../../redux/hooks";
 import { getRoleLabel } from "../../lib/helpers/getRoleLabel";
 import type { TUserRole } from "../../types/common.type";
 import { useUpdateProfileMutation } from "../../redux/features/Auth/authApi";
 import { setUser } from "../../redux/features/Auth/authSlice";
+import { useTranslation } from "react-i18next";
+import { supportedLanguages } from "../../constants/language.contants";
 
 const { Title, Text } = Typography;
 
 const Settings = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  const { t, i18n } = useTranslation();
   const [profileForm] = Form.useForm();
   const [updateProfile, { isLoading: isSaving }] = useUpdateProfileMutation();
   const [fileList, setFileList] = useState<UploadFile[]>([]);
@@ -41,15 +44,20 @@ const Settings = () => {
     showUploadList: false,
   };
 
+  const handleLanguageChange = (value: string) => {
+    i18n.changeLanguage(value);
+    localStorage.setItem("dashboard_language", value);
+  };
+
   return (
     <div className="max-w-[1200px] mx-auto p-4 sm:p-6 space-y-8 animate-in fade-in duration-500">
       {/* Page Header */}
       <div className="mb-8">
         <Title level={2} className="mb-1! text-[24px]! font-semibold text-slate-800">
-          Profile & Admin Settings
+          {t("settings.title")}
         </Title>
         <Text className="text-slate-500 text-[15px]">
-          Manage your profile and system settings
+          {t("settings.description")}
         </Text>
       </div>
 
@@ -59,7 +67,7 @@ const Settings = () => {
         title={
           <div className="flex items-center gap-2 py-1">
             <FiUser className="text-[#8b85f6] text-lg" />
-            <span className="text-[16px] font-semibold text-slate-700">Admin Profile</span>
+            <span className="text-[16px] font-semibold text-slate-700">{t("settings.admin_profile")}</span>
           </div>
         }
         styles={{ header: { borderBottom: '1px solid #f1f5f9', padding: '16px 24px' }, body: { padding: '24px' } }}
@@ -79,11 +87,11 @@ const Settings = () => {
                 <Button
                   className="bg-[#8b85f6] hover:bg-[#7a74e5]! border-none text-white font-medium rounded-lg px-6 h-10"
                 >
-                  Change Photo
+                  {t("settings.change_photo")}
                 </Button>
               </Upload>
               <Text className="text-[13px] text-slate-400">
-                JPG, GIF or PNG. Max size of 2MB
+                {t("settings.photo_requirements")}
               </Text>
             </div>
           </div>
@@ -97,7 +105,7 @@ const Settings = () => {
               lastName: user?.lastName || "",
               email: user?.email || "",
               phone: user?.phone || "",
-              role: getRoleLabel(user?.role as TUserRole) || "Administrator",
+              role: getRoleLabel(user?.role as TUserRole) || t("settings.administrator"),
             }}
             onFinish={async (values) => {
               try {
@@ -107,9 +115,9 @@ const Settings = () => {
                   phone: values.phone || undefined,
                 }).unwrap();
                 dispatch(setUser({ user: updated }));
-                message.success("Profile updated");
+                message.success(t("settings.profile_updated"));
               } catch {
-                message.error("Failed to update profile");
+                message.error(t("settings.failed_update_profile"));
               }
             }}
             className="w-full"
@@ -117,26 +125,26 @@ const Settings = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
               <Form.Item
                 name="firstName"
-                label={<span className="text-[14px] font-medium text-slate-600">First Name</span>}
-                rules={[{ required: true, message: "Please enter your first name" }]}
+                label={<span className="text-[14px] font-medium text-slate-600">{t("settings.first_name")}</span>}
+                rules={[{ required: true, message: t("settings.first_name") }]}
               >
-                <Input placeholder="First Name" className="h-11 rounded-lg border-slate-200" />
+                <Input placeholder={t("settings.first_name")} className="h-11 rounded-lg border-slate-200" />
               </Form.Item>
 
               <Form.Item
                 name="lastName"
-                label={<span className="text-[14px] font-medium text-slate-600">Last Name</span>}
-                rules={[{ required: true, message: "Please enter your last name" }]}
+                label={<span className="text-[14px] font-medium text-slate-600">{t("settings.last_name")}</span>}
+                rules={[{ required: true, message: t("settings.last_name") }]}
               >
-                <Input placeholder="Last Name" className="h-11 rounded-lg border-slate-200" />
+                <Input placeholder={t("settings.last_name")} className="h-11 rounded-lg border-slate-200" />
               </Form.Item>
 
               <Form.Item
                 name="email"
-                label={<span className="text-[14px] font-medium text-slate-600">Email Address</span>}
+                label={<span className="text-[14px] font-medium text-slate-600">{t("settings.email_address")}</span>}
                 rules={[
-                  { required: true, message: "Please enter your email" },
-                  { type: "email", message: "Please enter a valid email" }
+                  { required: true, message: t("settings.email_address") },
+                  { type: "email", message: t("auth.please_enter_valid_email") }
                 ]}
               >
                 <Input placeholder="admin@example.com" className="h-11 rounded-lg border-slate-200" disabled />
@@ -144,16 +152,16 @@ const Settings = () => {
 
               <Form.Item
                 name="phone"
-                label={<span className="text-[14px] font-medium text-slate-600">Phone Number</span>}
+                label={<span className="text-[14px] font-medium text-slate-600">{t("settings.phone_number")}</span>}
               >
                 <Input placeholder="+1 234 567 8900" className="h-11 rounded-lg border-slate-200" />
               </Form.Item>
 
               <Form.Item
                 name="role"
-                label={<span className="text-[14px] font-medium text-slate-600">Role</span>}
+                label={<span className="text-[14px] font-medium text-slate-600">{t("settings.role")}</span>}
               >
-                <Input placeholder="Administrator" className="h-11 rounded-lg border-slate-200" disabled />
+                <Input placeholder={t("settings.administrator")} className="h-11 rounded-lg border-slate-200" disabled />
               </Form.Item>
             </div>
 
@@ -165,10 +173,38 @@ const Settings = () => {
                 icon={<FiSave className="text-lg" />}
                 className="bg-[#8b85f6] hover:bg-[#7a74e5]! border-none h-11 px-6 rounded-lg font-semibold flex items-center gap-2"
               >
-                Save Changes
+                {t("common.save_changes")}
               </Button>
             </Form.Item>
           </Form>
+        </div>
+      </Card>
+
+      {/* Language Card */}
+      <Card
+        className="rounded-xl border-slate-200 shadow-sm overflow-hidden"
+        title={
+          <div className="flex items-center gap-2 py-1">
+            <FiGlobe className="text-[#8b85f6] text-lg" />
+            <span className="text-[16px] font-semibold text-slate-700">{t("settings.language")}</span>
+          </div>
+        }
+        styles={{ header: { borderBottom: '1px solid #f1f5f9', padding: '16px 24px' }, body: { padding: '24px' } }}
+      >
+        <div className="max-w-[440px]">
+          <p className="text-slate-500 text-sm mb-4">
+            {t("settings.language_description")}
+          </p>
+          <Select
+            value={i18n.language}
+            onChange={handleLanguageChange}
+            className="w-full"
+            size="large"
+            options={supportedLanguages.map((lang) => ({
+              label: lang.title,
+              value: lang.name,
+            }))}
+          />
         </div>
       </Card>
 
@@ -178,21 +214,21 @@ const Settings = () => {
         title={
           <div className="flex items-center gap-2 py-1">
             <FiLock className="text-[#8b85f6] text-lg" />
-            <span className="text-[16px] font-semibold text-slate-700">Change Password</span>
+            <span className="text-[16px] font-semibold text-slate-700">{t("settings.change_password")}</span>
           </div>
         }
         styles={{ header: { borderBottom: '1px solid #f1f5f9', padding: '16px 24px' }, body: { padding: '24px' } }}
       >
         <div className="max-w-[440px]">
           <p className="text-slate-500 text-sm mb-6">
-            To change your password, use the password reset flow.
+            {t("settings.password_reset_flow")}
           </p>
           <Button
             type="primary"
             onClick={() => navigate("/auth/forgot-password")}
             className="bg-[#8b85f6] hover:bg-[#7a74e5]! border-none h-11 px-8 rounded-lg font-semibold"
           >
-            Reset Password
+            {t("settings.reset_password")}
           </Button>
         </div>
       </Card>

@@ -15,6 +15,8 @@ const rawBaseQuery = fetchBaseQuery({
     if (token) {
       headers.set("Authorization", `Bearer ${token}`);
     }
+    const lang = localStorage.getItem("dashboard_language") || "en";
+    headers.set("Accept-Language", lang);
     return headers;
   },
 });

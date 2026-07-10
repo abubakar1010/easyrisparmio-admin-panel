@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { DashboardCard } from "./DashboardCard";
 import { FiChevronRight } from "react-icons/fi";
 import { LuFileWarning, LuCalendarClock, LuClipboardCheck, LuPhone } from "react-icons/lu";
@@ -6,36 +7,37 @@ import type { AdminDashboardData } from "../../redux/features/Dashboard/dashboar
 type Props = { data?: AdminDashboardData["priorityTasks"] };
 
 export function PriorityTasksCard({ data }: Props) {
+  const { t } = useTranslation();
   const d = data;
 
   const rows = [
     {
-      title: "Missing Documents",
-      desc: `${d?.missingDocuments ?? 0} contracts waiting`,
+      title: t("dashboard.missing_documents"),
+      desc: `${d?.missingDocuments ?? 0} ${t("dashboard.contracts_waiting")}`,
       count: String(d?.missingDocuments ?? 0),
       bg: "bg-red-50",
       border: "border-red-100",
       icon: <LuFileWarning className="h-5 w-5 text-red-600" />,
     },
     {
-      title: "Expiring Contracts",
-      desc: "Within 30 days",
+      title: t("dashboard.expiring_contracts"),
+      desc: t("dashboard.within_30_days"),
       count: String(d?.expiringContracts ?? 0),
       bg: "bg-orange-50",
       border: "border-orange-100",
       icon: <LuCalendarClock className="h-5 w-5 text-orange-600" />,
     },
     {
-      title: "Pending Validation",
-      desc: "Awaiting approval",
+      title: t("dashboard.pending_validation"),
+      desc: t("dashboard.awaiting_approval"),
       count: String(d?.pendingValidation ?? 0),
       bg: "bg-amber-50",
       border: "border-amber-100",
       icon: <LuClipboardCheck className="h-5 w-5 text-amber-700" />,
     },
     {
-      title: "Follow-up Required",
-      desc: "Customer contact needed",
+      title: t("dashboard.follow_up_required"),
+      desc: t("dashboard.customer_contact_needed"),
       count: String(d?.followUpRequired ?? 0),
       bg: "bg-sky-50",
       border: "border-sky-100",
@@ -44,7 +46,7 @@ export function PriorityTasksCard({ data }: Props) {
   ];
 
   return (
-    <DashboardCard title="Priority Tasks">
+    <DashboardCard title={t("dashboard.priority_tasks")}>
       <ul className="space-y-2">
         {rows.map((row) => (
           <li

@@ -1,31 +1,33 @@
+import { useTranslation } from "react-i18next";
 import type { AdminDashboardData } from "../../redux/features/Dashboard/dashboardApi";
 
 type Props = { data?: AdminDashboardData["financialKpis"] };
 
 export function KpiFinancialCards({ data }: Props) {
+  const { t } = useTranslation();
   const d = data;
 
   const items = [
     {
-      label: "Acquisition Commission",
+      label: t("dashboard.acquisition_commission"),
       value: d ? `€ ${d.acquisitionCommission.total.toLocaleString()}` : "—",
-      sub: d ? `${d.acquisitionCommission.count} contracts` : "",
+      sub: d ? `${d.acquisitionCommission.count} ${t("dashboard.contracts")}` : "",
       color: "text-[#3B82F6]",
     },
     {
-      label: "Recurring Commission",
+      label: t("dashboard.recurring_commission"),
       value: d ? `€ ${d.recurringCommission.total.toLocaleString()}` : "—",
-      sub: d ? `${d.recurringCommission.count} active` : "",
+      sub: d ? `${d.recurringCommission.count} ${t("common.active").toLowerCase()}` : "",
       color: "text-emerald-600",
     },
     {
-      label: "Pending Revenue",
+      label: t("dashboard.pending_revenue"),
       value: d ? `€ ${d.pendingRevenue.total.toLocaleString()}` : "—",
-      sub: d ? `${d.pendingRevenue.count} pending` : "",
+      sub: d ? `${d.pendingRevenue.count} ${t("common.pending").toLowerCase()}` : "",
       color: "text-orange-500",
     },
     {
-      label: "Churn Rate",
+      label: t("dashboard.churn_rate"),
       value: d ? `${d.churnRate}%` : "—",
       sub: "Target: <2%",
       color: "text-red-600",

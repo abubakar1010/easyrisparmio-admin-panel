@@ -2,6 +2,7 @@ import { Button, Form, Input, Modal } from "antd";
 import { Link, Navigate, useLocation, useNavigate } from "react-router";
 import { FiLock, FiChevronLeft } from "react-icons/fi";
 import { MdVerified } from "react-icons/md";
+import { useTranslation } from "react-i18next";
 import { useState } from "react";
 import { useResetPasswordMutation } from "../../redux/features/Auth/authApi";
 import { errorAlert } from "../../lib/helpers/alert";
@@ -11,6 +12,7 @@ type LocationState = {
 };
 
 const ResetPassword = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const state = location.state as LocationState | null;
@@ -47,7 +49,7 @@ const ResetPassword = () => {
           className="inline-flex items-center gap-2 text-3xl sm:text-4xl font-bold text-gray-900 mb-8 hover:text-gray-700 transition-colors"
         >
           <FiChevronLeft className="text-2xl sm:text-3xl" />
-          <span>Reset Password</span>
+          <span>{t("auth.reset_password")}</span>
         </Link>
 
         <Form
@@ -60,14 +62,14 @@ const ResetPassword = () => {
           <Form.Item
             name="password"
             rules={[
-              { required: true, message: "Please input your new password!" },
-              { min: 8, message: "Password must be at least 8 characters long!" },
+              { required: true, message: t("auth.please_input_new_password") },
+              { min: 8, message: t("auth.password_must_be_8_10_chars") },
             ]}
             className="mb-5"
           >
             <Input.Password
               prefix={<FiLock />}
-              placeholder="Set Your Password"
+              placeholder={t("auth.set_your_password")}
               className="auth-pill-input"
             />
           </Form.Item>
@@ -76,14 +78,14 @@ const ResetPassword = () => {
             name="confirmPassword"
             dependencies={["password"]}
             rules={[
-              { required: true, message: "Please confirm your password!" },
+              { required: true, message: t("auth.please_confirm_password") },
               ({ getFieldValue }) => ({
                 validator(_, value) {
                   if (!value || getFieldValue("password") === value) {
                     return Promise.resolve();
                   }
                   return Promise.reject(
-                    new Error("The new password that you entered do not match!")
+                    new Error(t("auth.passwords_do_not_match"))
                   );
                 },
               }),
@@ -92,7 +94,7 @@ const ResetPassword = () => {
           >
             <Input.Password
               prefix={<FiLock />}
-              placeholder="Re - Enter your  New Password"
+              placeholder={t("auth.re_enter_new_password")}
               className="auth-pill-input"
             />
           </Form.Item>
@@ -104,7 +106,7 @@ const ResetPassword = () => {
               loading={isLoading}
               className="auth-pill-button w-full border-none"
             >
-              Reset Password
+              {t("auth.reset_password")}
             </Button>
           </Form.Item>
         </Form>
@@ -124,9 +126,9 @@ const ResetPassword = () => {
       >
         <div className="flex flex-col items-center text-center">
           <h3 className="text-2xl font-bold text-gray-900 mb-2">
-            Password Updated
+            {t("auth.password_updated")}
           </h3>
-          <p className="text-gray-500 mb-6">Your password has been changed successfully</p>
+          <p className="text-gray-500 mb-6">{t("auth.password_changed_successfully")}</p>
 
           <div className="relative my-2 mb-8 w-24 h-24 flex items-center justify-center">
             <span className="absolute top-2 -left-1 w-2 h-2 rounded-full bg-indigo-200" />
@@ -147,7 +149,7 @@ const ResetPassword = () => {
               background: "#6366f1",
             }}
           >
-            Back To Login
+            {t("auth.back_to_login")}
           </Button>
         </div>
       </Modal>

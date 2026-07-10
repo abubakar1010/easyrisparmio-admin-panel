@@ -1,23 +1,25 @@
+import { useTranslation } from "react-i18next";
 import { DashboardCard } from "./DashboardCard";
 import type { AdminDashboardData } from "../../redux/features/Dashboard/dashboardApi";
 
 type Props = { data?: AdminDashboardData["conversionFunnel"] };
 
 export function ConversionFunnelCard({ data }: Props) {
+  const { t } = useTranslation();
   const d = data;
 
   const stages = [
-    { label: "Request Received", value: d?.requestReceived ?? 0, barClass: "bg-[#3B82F6]" },
-    { label: "Documentation", value: d?.documentation ?? 0, barClass: "bg-[#3B82F6]" },
-    { label: "Validation", value: d?.validation ?? 0, barClass: "bg-[#3B82F6]" },
-    { label: "Activation", value: d?.activation ?? 0, barClass: "bg-[#22C55E]" },
-    { label: "Rejected (KO)", value: d?.rejected ?? 0, barClass: "bg-red-500" },
+    { label: t("dashboard.request_received"), value: d?.requestReceived ?? 0, barClass: "bg-[#3B82F6]" },
+    { label: t("dashboard.documentation"), value: d?.documentation ?? 0, barClass: "bg-[#3B82F6]" },
+    { label: t("dashboard.validation"), value: d?.validation ?? 0, barClass: "bg-[#3B82F6]" },
+    { label: t("dashboard.activation"), value: d?.activation ?? 0, barClass: "bg-[#22C55E]" },
+    { label: t("dashboard.rejected_ko"), value: d?.rejected ?? 0, barClass: "bg-red-500" },
   ];
 
   const max = Math.max(...stages.map((s) => s.value), 1);
 
   return (
-    <DashboardCard title="Conversion Funnel">
+    <DashboardCard title={t("dashboard.conversion_funnel")}>
       <div className="space-y-4">
         {stages.map((s) => (
           <div key={s.label}>
@@ -35,7 +37,7 @@ export function ConversionFunnelCard({ data }: Props) {
         ))}
       </div>
       <p className="mt-5 border-t border-gray-100 pt-4 text-center text-xs text-gray-500">
-        Conversion Rate: <span className="font-semibold text-brand">{d?.conversionRate ?? 0}%</span>
+        {t("dashboard.conversion_rate")}: <span className="font-semibold text-brand">{d?.conversionRate ?? 0}%</span>
       </p>
     </DashboardCard>
   );
