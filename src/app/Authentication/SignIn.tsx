@@ -124,7 +124,7 @@ const SignIn = () => {
             loading={isLoading}
             className="auth-pill-button w-full border-none"
           >
-            {t("auth.log_in")}
+            {t("auth.login")}
           </Button>
         </Form.Item>
       </Form>

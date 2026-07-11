@@ -67,7 +67,11 @@
     "passwords_do_not_match": "Le nuove password inserite non corrispondono!",
     "please_input_email": "Inserisci la tua email!",
     "please_enter_valid_email": "Inserisci un'email valida!",
-    "please_input_password": "Inserisci la tua password!"
+    "please_input_password": "Inserisci la tua password!",
+    "otp_resent": "OTP reinviato con successo",
+    "please_input_otp": "Inserisci il codice OTP!",
+    "set_your_password": "Imposta la tua password",
+    "please_confirm_password": "Conferma la tua password!"
   },
   "header": {
     "welcome": "Benvenuto,",

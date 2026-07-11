@@ -94,7 +94,7 @@ const ResetPassword = () => {
           >
             <Input.Password
               prefix={<FiLock />}
-              placeholder={t("auth.re_enter_new_password")}
+              placeholder={t("auth.confirm_new_password")}
               className="auth-pill-input"
             />
           </Form.Item>

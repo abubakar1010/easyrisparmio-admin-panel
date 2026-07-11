@@ -67,7 +67,11 @@
     "passwords_do_not_match": "The new password that you entered do not match!",
     "please_input_email": "Please input your Email!",
     "please_enter_valid_email": "Please enter a valid email!",
-    "please_input_password": "Please input your Password!"
+    "please_input_password": "Please input your Password!",
+    "otp_resent": "OTP has been resent successfully",
+    "please_input_otp": "Please input the OTP!",
+    "set_your_password": "Set your password",
+    "please_confirm_password": "Please confirm your password!"
   },
   "header": {
     "welcome": "Welcome,",
