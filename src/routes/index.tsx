@@ -10,13 +10,14 @@ import ForgotPassword from "../app/Authentication/ForgotPassword";
 import VerifyEmail from "../app/Authentication/VerifyEmail";
 import ResetPassword from "../app/Authentication/ResetPassword";
 import { useAppSelector, useAppDispatch } from "../redux/hooks";
-import { useGetMeQuery } from "../redux/features/Auth/authApi";
+import { useGetMeQuery, usePostLogoutMutation } from "../redux/features/Auth/authApi";
 import { setUser, logout } from "../redux/features/Auth/authSlice";
 import { Spin } from "antd";
 
 const ProtectedRoute = () => {
   const dispatch = useAppDispatch();
-  const { token, user, isLoading } = useAppSelector((state) => state.auth);
+  const { token, user, refreshToken, isLoading } = useAppSelector((state) => state.auth);
+  const [postLogout] = usePostLogoutMutation();
 
   const { data, error, isLoading: isMeLoading } = useGetMeQuery(undefined, {
     skip: !token,
@@ -30,14 +31,18 @@ const ProtectedRoute = () => {
 
   useEffect(() => {
     if (error) {
-      if ("status" in error && error.status === 401) {
+      const shouldLogout =
+        ("status" in error && error.status === 401) || !user;
+
+      if (shouldLogout) {
+        // Revoke refresh token on server before clearing local state
+        if (refreshToken) {
+          postLogout({ refreshToken }).catch(() => {});
+        }
         dispatch(logout());
-      } else if (user) {
+      } else {
         // Network error or server error — stop loading, use cached user
         dispatch(setUser({ user }));
-      } else {
-        // No cached user and server unreachable — can't proceed
-        dispatch(logout());
       }
     }
   }, [error, dispatch]);

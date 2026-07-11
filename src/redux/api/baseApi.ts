@@ -34,11 +34,20 @@ const baseQueryWithReauth: BaseQueryFn<
     // If a refresh is already in progress, wait for it instead of firing another
     if (!refreshPromise) {
       refreshPromise = (async () => {
-        const refreshToken = (
-          api.getState() as { auth: { refreshToken: string | null } }
-        ).auth.refreshToken;
+        const authState = api.getState() as {
+          auth: {
+            refreshToken: string | null;
+            refreshTokenExpiresAt: number | null;
+          };
+        };
+        const { refreshToken, refreshTokenExpiresAt } = authState.auth;
 
         if (!refreshToken) return false;
+
+        // Skip refresh attempt if the refresh token has expired client-side
+        if (refreshTokenExpiresAt && Date.now() > refreshTokenExpiresAt) {
+          return false;
+        }
 
         const refreshResult = await rawBaseQuery(
           {
@@ -75,6 +84,25 @@ const baseQueryWithReauth: BaseQueryFn<
     if (refreshed) {
       result = await rawBaseQuery(args, api, extraOptions);
     } else {
+      // Revoke refresh token on server before clearing local state
+      const refreshToken = (
+        api.getState() as { auth: { refreshToken: string | null } }
+      ).auth.refreshToken;
+      if (refreshToken) {
+        try {
+          await rawBaseQuery(
+            {
+              url: "auth/logout",
+              method: "POST",
+              body: { refreshToken },
+            },
+            api,
+            extraOptions
+          );
+        } catch {
+          // Best-effort server revocation — ignore failures
+        }
+      }
       api.dispatch(logout());
       window.location.href = "/auth/sign-in";
     }
