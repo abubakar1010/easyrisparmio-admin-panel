@@ -12,6 +12,7 @@ import {
 } from "react-icons/fi";
 import { HiOutlineDocumentText } from "react-icons/hi2";
 import { LuZap, LuFlame } from "react-icons/lu";
+import { useNavigate } from "react-router";
 import {
   useGetBillsAdminQuery,
   useUploadBillMutation,
@@ -32,6 +33,7 @@ const statusConfig: Record<string, { color: string; label: string }> = {
 };
 
 const OCRBills = () => {
+  const navigate = useNavigate();
   const [queryParams, setQueryParams] = useState<IBillQuery>({ page: 1, limit: 20 });
   const [search, setSearch] = useState("");
   const [billTypeFilter, setBillTypeFilter] = useState<string | undefined>();
@@ -421,6 +423,10 @@ const OCRBills = () => {
               pagination={false}
               scroll={{ x: 1100 }}
               loading={isFetching && !isLoading}
+              onRow={(record) => ({
+                onClick: () => navigate(`/ocr/${record.id}`),
+                className: "cursor-pointer",
+              })}
               className="[&_.ant-table-thead_th]:bg-slate-50/50 [&_.ant-table-thead_th]:text-slate-500 [&_.ant-table-thead_th]:text-[11px] [&_.ant-table-thead_th]:font-bold [&_.ant-table-thead_th]:uppercase [&_.ant-table-thead_th]:tracking-widest [&_.ant-table-thead_th]:py-4 [&_.ant-table-row]:hover:bg-slate-50/30 [&_.ant-table-cell]:py-4"
             />
             <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3">

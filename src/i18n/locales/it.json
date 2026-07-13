@@ -94,6 +94,7 @@
     "referrals": "Referral",
     "support": "Supporto",
     "commission": "Commissioni",
+    "static_pages": "Pagine Statiche",
     "settings": "Impostazioni",
     "admin_portal": "Portale admin"
   },
@@ -512,6 +513,20 @@
     "language": "Lingua",
     "language_description": "Seleziona la lingua di visualizzazione della dashboard",
     "select_language": "Seleziona lingua"
+  },
+  "static_pages": {
+    "title": "Pagine Statiche",
+    "subtitle": "Gestisci Privacy Policy, Termini e Condizioni e Chi Siamo",
+    "add": "Aggiungi Pagina",
+    "edit": "Modifica Pagina",
+    "page_type": "Tipo di Pagina",
+    "content": "Contenuto",
+    "language": "Lingua",
+    "no_pages": "Nessuna pagina statica trovata",
+    "confirm_delete": "Eliminare questa pagina?",
+    "deleted": "Pagina eliminata",
+    "created": "Pagina creata con successo",
+    "updated": "Pagina aggiornata con successo"
   },
   "page_not_found": {
     "title": "404",

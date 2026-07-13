@@ -28,6 +28,12 @@ export interface IBill {
   costPerUnit: number | null;
   fixedCharges: number | null;
   taxes: number | null;
+  supplyAddress: string | null;
+  codiceFiscale: string | null;
+  partitaIva: string | null;
+  contractNumber: string | null;
+  meterNumber: string | null;
+  customerName: string | null;
   rawAnalysisData: Record<string, unknown> | null;
   userId: string;
   supplierId: string | null;

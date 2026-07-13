@@ -1,57 +1,55 @@
-import { Button, Card, DatePicker, Form, Input, Modal, Select, Spin, Empty, Switch, Table, Tag, message } from "antd";
+import { Button, Input, Select, Spin, Empty, Switch, Table, Tag, Modal, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { FiEdit2, FiEye, FiPlus, FiTag, FiTrash2, FiUpload } from "react-icons/fi";
+import { FiEdit2, FiEye, FiPlus, FiSearch, FiTag, FiTrash2 } from "react-icons/fi";
 import { LuCalendarDays } from "react-icons/lu";
 import { useState } from "react";
+import { useNavigate } from "react-router";
 import dayjs from "dayjs";
 import {
   useGetAgreementsAdminQuery,
-  useCreateAgreementMutation,
   useToggleAgreementStatusMutation,
   useDeleteAgreementMutation,
   type IAgreement,
 } from "../../redux/features/Agreements/agreementApi";
+import { debounce } from "../../utils/debounce";
+import AgreementFormModal from "./AgreementFormModal";
+
+const { Option } = Select;
 
 const Agreements = () => {
-  const [addPartnerOpen, setAddPartnerOpen] = useState(false);
-  const [partnerForm] = Form.useForm();
+  const navigate = useNavigate();
   const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<boolean | undefined>();
+  const [audienceFilter, setAudienceFilter] = useState<string | undefined>();
 
-  const { data, isLoading } = useGetAgreementsAdminQuery({ page, limit: 20 });
-  const [createAgreement, { isLoading: isCreating }] = useCreateAgreementMutation();
+  // Modals
+  const [addOpen, setAddOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editingAgreement, setEditingAgreement] = useState<IAgreement | null>(null);
+
+  const { data, isLoading } = useGetAgreementsAdminQuery({
+    page,
+    limit: 20,
+    search: search || undefined,
+    isActive: statusFilter,
+    targetAudience: audienceFilter,
+  });
   const [toggleStatus] = useToggleAgreementStatusMutation();
   const [deleteAgreement] = useDeleteAgreementMutation();
 
   const agreements = data?.data || [];
   const meta = data?.meta;
 
-  const closePartnerModal = () => {
-    setAddPartnerOpen(false);
-    partnerForm.resetFields();
-  };
-
-  const submitPartnerForm = async (values: Record<string, any>) => {
-    try {
-      await createAgreement({
-        title: values.discount || values.partnerName,
-        partnerName: values.partnerName,
-        partnerLogoUrl: values.logo || undefined,
-        discountDescription: values.discount,
-        description: values.terms || undefined,
-        validFrom: dayjs(values.validFrom).format("YYYY-MM-DD"),
-        validUntil: values.validUntil ? dayjs(values.validUntil).format("YYYY-MM-DD") : undefined,
-      }).unwrap();
-      message.success("Agreement created");
-      closePartnerModal();
-    } catch (err: any) {
-      message.error(err?.data?.message?.[0] || "Failed to create agreement");
-    }
-  };
+  const handleSearch = debounce((value: string) => {
+    setSearch(value);
+    setPage(1);
+  }, 400);
 
   const handleToggleStatus = async (agreement: IAgreement) => {
     try {
       await toggleStatus({ id: agreement.id, isActive: !agreement.isActive }).unwrap();
-      message.success(`Status updated`);
+      message.success("Status updated");
     } catch {
       message.error("Failed to update status");
     }
@@ -75,11 +73,33 @@ const Agreements = () => {
     });
   };
 
+  const openEdit = (record: IAgreement) => {
+    setEditingAgreement(record);
+    setEditOpen(true);
+  };
+
+  const editInitialValues = editingAgreement
+    ? {
+        title: editingAgreement.title,
+        partnerName: editingAgreement.partnerName,
+        partnerLogoUrl: editingAgreement.partnerLogoUrl || undefined,
+        termsUrl: editingAgreement.termsUrl || undefined,
+        address: editingAgreement.address || undefined,
+        discountDescription: editingAgreement.discountDescription || undefined,
+        description: editingAgreement.description || undefined,
+        validFrom: editingAgreement.validFrom ? dayjs(editingAgreement.validFrom) : undefined,
+        validUntil: editingAgreement.validUntil ? dayjs(editingAgreement.validUntil) : undefined,
+        targetAudience: editingAgreement.targetAudience,
+        sortOrder: editingAgreement.sortOrder,
+        isActive: editingAgreement.isActive,
+      }
+    : undefined;
+
   const columns: ColumnsType<IAgreement> = [
     {
       title: "PARTNER",
       key: "partner",
-      width: 260,
+      width: 220,
       render: (_, record) => (
         <div className="flex items-center gap-3">
           {record.partnerLogoUrl ? (
@@ -92,6 +112,13 @@ const Agreements = () => {
           <span className="font-semibold text-slate-700">{record.partnerName}</span>
         </div>
       ),
+    },
+    {
+      title: "TITLE",
+      dataIndex: "title",
+      key: "title",
+      width: 200,
+      render: (value: string) => <span className="text-sm text-slate-700">{value}</span>,
     },
     {
       title: "DISCOUNT",
@@ -119,6 +146,17 @@ const Agreements = () => {
       ),
     },
     {
+      title: "AUDIENCE",
+      dataIndex: "targetAudience",
+      key: "targetAudience",
+      width: 120,
+      render: (value: string) => (
+        <Tag className="rounded-full border-0 bg-slate-100 px-2.5 text-xs font-semibold capitalize text-slate-600">
+          {value}
+        </Tag>
+      ),
+    },
+    {
       title: "STATUS",
       key: "status",
       width: 120,
@@ -134,9 +172,11 @@ const Agreements = () => {
     {
       title: "ACTIONS",
       key: "actions",
-      width: 110,
+      width: 140,
       render: (_, record) => (
         <div className="flex items-center gap-1">
+          <Button type="text" size="small" icon={<FiEye className="text-indigo-500" />} onClick={() => navigate(`/agreements/${record.id}`)} />
+          <Button type="text" size="small" icon={<FiEdit2 className="text-blue-500" />} onClick={() => openEdit(record)} />
           <Button type="text" size="small" icon={<FiTrash2 className="text-rose-400" />} onClick={() => handleDelete(record)} />
         </div>
       ),
@@ -155,13 +195,44 @@ const Agreements = () => {
           type="primary"
           icon={<FiPlus />}
           className="h-10 rounded-lg border-0 bg-[#8b85f6] px-5 font-semibold hover:bg-[#7a74e5]"
-          onClick={() => setAddPartnerOpen(true)}
+          onClick={() => setAddOpen(true)}
         >
-          Add Partner
+          Add Agreement
         </Button>
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-sm">
+        {/* Search & Filters */}
+        <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 bg-white p-4">
+          <div className="min-w-[240px] flex-1">
+            <Input
+              placeholder="Search by partner, title..."
+              prefix={<FiSearch className="mr-2 text-slate-400" />}
+              onChange={(e) => handleSearch(e.target.value)}
+              className="h-11 rounded-xl border-slate-200"
+            />
+          </div>
+          <Select
+            allowClear
+            placeholder="Status"
+            onChange={(v) => { setStatusFilter(v); setPage(1); }}
+            className="w-36 [&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-xl"
+          >
+            <Option value={true}>Active</Option>
+            <Option value={false}>Inactive</Option>
+          </Select>
+          <Select
+            allowClear
+            placeholder="Audience"
+            onChange={(v) => { setAudienceFilter(v); setPage(1); }}
+            className="w-36 [&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-xl"
+          >
+            <Option value="personal">Personal</Option>
+            <Option value="business">Business</Option>
+            <Option value="both">Both</Option>
+          </Select>
+        </div>
+
         {isLoading ? (
           <div className="flex items-center justify-center py-24"><Spin size="large" /></div>
         ) : agreements.length === 0 ? (
@@ -178,51 +249,23 @@ const Agreements = () => {
               onChange: setPage,
               className: "p-4",
             }}
-            scroll={{ x: 920 }}
+            scroll={{ x: 1200 }}
             className="[&_.ant-table-thead_th]:bg-slate-50 [&_.ant-table-thead_th]:text-[11px] [&_.ant-table-thead_th]:font-bold [&_.ant-table-thead_th]:text-slate-500 [&_.ant-table-thead_th]:tracking-wider [&_.ant-table-cell]:py-3"
           />
         )}
       </div>
 
-      <Modal
-        open={addPartnerOpen}
-        onCancel={closePartnerModal}
-        footer={null}
-        centered
-        destroyOnClose
-        width={980}
-        className="[&_.ant-modal-content]:rounded-2xl [&_.ant-modal-content]:p-4 sm:[&_.ant-modal-content]:p-6"
-      >
-        <h3 className="mb-4 text-2xl font-semibold text-slate-800">Add New Agreement</h3>
-        <Form form={partnerForm} layout="vertical" onFinish={submitPartnerForm}>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Form.Item name="partnerName" label="Partner Name" rules={[{ required: true, message: "Please enter partner name" }]}>
-              <Input className="h-11 rounded-lg" placeholder="E.g.: Restaurant Da Mario" />
-            </Form.Item>
-            <Form.Item name="logo" label="Logo URL">
-              <Input className="h-11 rounded-lg" placeholder="https://..." suffix={<FiUpload className="text-slate-500" />} />
-            </Form.Item>
-          </div>
-          <Form.Item name="discount" label="Discount Offered" rules={[{ required: true, message: "Please enter discount" }]}>
-            <Input className="h-11 rounded-lg" placeholder="E.g.: 15% off the entire menu" />
-          </Form.Item>
-          <Form.Item name="terms" label="Description">
-            <Input.TextArea rows={4} className="rounded-lg" placeholder="Describe the conditions..." />
-          </Form.Item>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Form.Item name="validFrom" label="Valid From" rules={[{ required: true, message: "Please select start date" }]}>
-              <DatePicker className="h-11! w-full rounded-lg" format="DD/MM/YYYY" />
-            </Form.Item>
-            <Form.Item name="validUntil" label="Valid Until">
-              <DatePicker className="h-11! w-full rounded-lg" format="DD/MM/YYYY" />
-            </Form.Item>
-          </div>
-          <Button htmlType="submit" type="primary" loading={isCreating}
-            className="h-11 w-full rounded-xl border-0 bg-[#8b85f6] text-base font-semibold hover:bg-[#7a74e5]">
-            Save Agreement
-          </Button>
-        </Form>
-      </Modal>
+      {/* Create Modal */}
+      <AgreementFormModal isOpen={addOpen} onClose={() => setAddOpen(false)} />
+
+      {/* Edit Modal */}
+      <AgreementFormModal
+        isOpen={editOpen}
+        onClose={() => { setEditOpen(false); setEditingAgreement(null); }}
+        mode="edit"
+        agreementId={editingAgreement?.id}
+        initialValues={editInitialValues}
+      />
     </div>
   );
 };

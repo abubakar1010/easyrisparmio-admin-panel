@@ -1,18 +1,12 @@
 import { Button, Card, Form, Input, Modal, Select, Spin, Empty, Table, Tag, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { FiClock, FiEye, FiFolder, FiPlus, FiSearch, FiUser } from "react-icons/fi";
+import { FiClock, FiFolder, FiPlus, FiSearch, FiUser } from "react-icons/fi";
 import { useMemo, useState } from "react";
-import CategoryFAQModal from "./components/CategoryFAQModal";
-import AddEditFAQModal from "./components/AddEditFAQModal";
 import {
   useGetTicketsQuery,
-  useGetFaqsQuery,
   useUpdateTicketMutation,
-  useCreateFaqMutation,
-  useUpdateFaqMutation,
-  useDeleteFaqMutation,
+  useGetActiveTopicsQuery,
   type ISupportTicket,
-  type IFaq,
 } from "../../redux/features/Support/supportApi";
 import { debounce } from "../../utils/debounce";
 
@@ -32,34 +26,15 @@ const statusLabel: Record<string, string> = {
   closed: "Closed",
 };
 
-const categoryLabel: Record<string, string> = {
-  technical_support: "Technical Support",
-  billing_payments: "Billing & Payments",
-  switching: "Switching",
-  general: "General",
-};
-
-export interface FAQCategoryGroup {
-  key: string;
-  categoryName: string;
-  faqCount: number;
-  faqs: IFaq[];
-  lastUpdated: string;
-}
-
 const SupportTicket = () => {
   const [newTicketOpen, setNewTicketOpen] = useState(false);
-  const [categoryModalVisible, setCategoryModalVisible] = useState(false);
-  const [addEditModalVisible, setAddEditModalVisible] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<FAQCategoryGroup | null>(null);
-  const [selectedFAQ, setSelectedFAQ] = useState<IFaq | null>(null);
   const [ticketForm] = Form.useForm();
 
   // Ticket state
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
-  const [categoryFilter, setCategoryFilter] = useState<string | undefined>();
+  const [topicFilter, setTopicFilter] = useState<string | undefined>();
 
   // API queries
   const { data: ticketsData, isLoading: ticketsLoading } = useGetTicketsQuery({
@@ -67,19 +42,16 @@ const SupportTicket = () => {
     limit: 20,
     search: search || undefined,
     status: statusFilter,
-    category: categoryFilter,
+    topicId: topicFilter,
   });
-  const { data: faqsData, isLoading: faqsLoading } = useGetFaqsQuery();
+
+  const { data: activeTopics } = useGetActiveTopicsQuery();
 
   // Mutations
   const [updateTicket] = useUpdateTicketMutation();
-  const [createFaq, { isLoading: isCreatingFaq }] = useCreateFaqMutation();
-  const [updateFaq, { isLoading: isUpdatingFaq }] = useUpdateFaqMutation();
-  const [deleteFaq] = useDeleteFaqMutation();
 
   const tickets = ticketsData?.data || [];
   const meta = ticketsData?.meta;
-  const faqs = faqsData || [];
 
   // Compute KPI stats from tickets data
   const kpiStats = useMemo(() => {
@@ -91,25 +63,6 @@ const SupportTicket = () => {
       { label: "Closed", value: all.filter((t) => t.status === "closed").length, dot: "bg-slate-500" },
     ];
   }, [tickets]);
-
-  // Group FAQs by category
-  const faqCategoryGroups: FAQCategoryGroup[] = useMemo(() => {
-    const groups: Record<string, IFaq[]> = {};
-    for (const faq of faqs) {
-      if (!groups[faq.category]) groups[faq.category] = [];
-      groups[faq.category].push(faq);
-    }
-    return Object.entries(groups).map(([cat, items], idx) => {
-      const sorted = [...items].sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime());
-      return {
-        key: String(idx + 1),
-        categoryName: cat,
-        faqCount: items.length,
-        faqs: items,
-        lastUpdated: sorted[0]?.updatedAt || sorted[0]?.createdAt || "",
-      };
-    });
-  }, [faqs]);
 
   const handleSearch = debounce((value: string) => {
     setSearch(value);
@@ -125,52 +78,6 @@ const SupportTicket = () => {
     closeTicketModal();
   };
 
-  const handleViewCategory = (category: FAQCategoryGroup) => {
-    setSelectedCategory(category);
-    setCategoryModalVisible(true);
-  };
-
-  const handleAddFAQ = (category?: string) => {
-    setSelectedFAQ(null);
-    setAddEditModalVisible(true);
-    if (category) {
-      setSelectedCategory((prev) => prev ? { ...prev, categoryName: category } : { key: "0", categoryName: category, faqCount: 0, faqs: [], lastUpdated: "" });
-    }
-  };
-
-  const handleEditFAQ = (faq: IFaq) => {
-    setSelectedFAQ(faq);
-    setAddEditModalVisible(true);
-  };
-
-  const handleSaveFAQ = async (values: { question: string; answer: string }) => {
-    try {
-      if (selectedFAQ) {
-        await updateFaq({ id: selectedFAQ.id, data: { question: values.question, answer: values.answer } }).unwrap();
-        message.success("FAQ updated successfully");
-      } else {
-        await createFaq({
-          category: selectedCategory?.categoryName || "general",
-          question: values.question,
-          answer: values.answer,
-        }).unwrap();
-        message.success("FAQ created successfully");
-      }
-      setAddEditModalVisible(false);
-    } catch (err: any) {
-      message.error(err?.data?.message?.[0] || "Failed to save FAQ");
-    }
-  };
-
-  const handleDeleteFAQ = async (faqId: string) => {
-    try {
-      await deleteFaq(faqId).unwrap();
-      message.success("FAQ deleted");
-    } catch {
-      message.error("Failed to delete FAQ");
-    }
-  };
-
   const handleUpdateTicketStatus = async (id: string, status: TicketStatus) => {
     try {
       await updateTicket({ id, data: { status } }).unwrap();
@@ -179,61 +86,6 @@ const SupportTicket = () => {
       message.error("Failed to update ticket status");
     }
   };
-
-  const faqColumns: ColumnsType<FAQCategoryGroup> = [
-    {
-      title: "ORDER",
-      key: "order",
-      width: 100,
-      render: (_: any, __: FAQCategoryGroup, index: number) => <span className="text-slate-500">{index + 1}</span>,
-    },
-    {
-      title: "CATEGORY NAME",
-      dataIndex: "categoryName",
-      key: "categoryName",
-      render: (value: string) => <span className="font-semibold text-slate-700 capitalize">{value}</span>,
-    },
-    {
-      title: "FAQ COUNT",
-      dataIndex: "faqCount",
-      key: "faqCount",
-      render: (value: number) => <span className="text-slate-500">{value} FAQs</span>,
-    },
-    {
-      title: "LAST UPDATED",
-      key: "lastUpdated",
-      render: (_: any, record: FAQCategoryGroup) => (
-        <div className="text-sm">
-          <p className="font-medium text-slate-700">
-            {record.lastUpdated ? new Date(record.lastUpdated).toLocaleDateString("it-IT") : "—"}
-          </p>
-        </div>
-      ),
-    },
-    {
-      title: "ACTIONS",
-      key: "actions",
-      width: 120,
-      render: (_: any, record: FAQCategoryGroup) => (
-        <div className="flex items-center gap-3">
-          <Button
-            type="text"
-            size="small"
-            icon={<FiEye className="text-blue-500 h-4 w-4" />}
-            onClick={() => handleViewCategory(record)}
-          />
-          <Button
-            type="primary"
-            size="small"
-            className="flex items-center justify-center bg-[#8b85f6] hover:bg-[#7a74e5]! border-none h-8 w-8 rounded-full"
-            icon={<FiPlus className="text-white h-4 w-4" />}
-            onClick={() => handleAddFAQ(record.categoryName)}
-          />
-        </div>
-      ),
-      align: "center",
-    },
-  ];
 
   const ticketColumns: ColumnsType<ISupportTicket> = [
     {
@@ -267,13 +119,12 @@ const SupportTicket = () => {
       render: (value: string) => <span className="text-slate-600 truncate block max-w-[200px]">{value}</span>,
     },
     {
-      title: "CATEGORY",
-      dataIndex: "category",
-      key: "category",
+      title: "TOPIC",
+      key: "topic",
       width: 160,
-      render: (value: string) => (
+      render: (_: any, record: ISupportTicket) => (
         <Tag className="rounded border-0 bg-slate-50 px-2 py-0.5 text-xs text-slate-500">
-          {categoryLabel[value] || value}
+          {record.topic?.name || "—"}
         </Tag>
       ),
     },
@@ -370,32 +221,6 @@ const SupportTicket = () => {
         ))}
       </div>
 
-      {/* FAQ Categories Section */}
-      <Card
-        className="rounded-2xl border-slate-100 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.05)] overflow-hidden"
-        title={<span className="text-lg font-bold text-slate-700">FAQ Categories Overview</span>}
-        styles={{ header: { borderBottom: '1px solid #f1f5f9', padding: '16px 20px' }, body: { padding: '0' } }}
-      >
-        {faqsLoading ? (
-          <div className="flex items-center justify-center py-24">
-            <Spin size="large" />
-          </div>
-        ) : faqCategoryGroups.length === 0 ? (
-          <div className="py-24">
-            <Empty description="No FAQ categories found" />
-          </div>
-        ) : (
-          <Table<FAQCategoryGroup>
-            rowKey="key"
-            columns={faqColumns}
-            dataSource={faqCategoryGroups}
-            pagination={false}
-            scroll={{ x: 800 }}
-            className="[&_.ant-table-thead_th]:bg-slate-50/50 [&_.ant-table-thead_th]:text-[11px] [&_.ant-table-thead_th]:font-bold [&_.ant-table-thead_th]:text-slate-400 [&_.ant-table-thead_th]:tracking-widest [&_.ant-table-cell]:px-5 [&_.ant-table-cell]:py-4"
-          />
-        )}
-      </Card>
-
       {/* Search & Filter Bar Section */}
       <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.05)]">
         <div className="flex flex-wrap items-center gap-3">
@@ -420,15 +245,13 @@ const SupportTicket = () => {
           </Select>
           <Select
             allowClear
-            placeholder="Category"
-            onChange={(v) => { setCategoryFilter(v); setPage(1); }}
+            placeholder="Topic"
+            onChange={(v) => { setTopicFilter(v); setPage(1); }}
             className="w-48 [&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-xl"
-          >
-            <Select.Option value="technical_support">Technical Support</Select.Option>
-            <Select.Option value="billing_payments">Billing & Payments</Select.Option>
-            <Select.Option value="switching">Switching</Select.Option>
-            <Select.Option value="general">General</Select.Option>
-          </Select>
+            options={
+              activeTopics?.map((t) => ({ value: t.id, label: t.name })) || []
+            }
+          />
         </div>
       </div>
 
@@ -482,19 +305,16 @@ const SupportTicket = () => {
           </Form.Item>
 
           <Form.Item
-            name="category"
-            label="Category"
-            rules={[{ required: true, message: "Please select category" }]}
+            name="topicId"
+            label="Topic"
+            rules={[{ required: true, message: "Please select a topic" }]}
           >
             <Select
               className="[&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-lg [&_.ant-select-selector]:border-slate-300 [&_.ant-select-selection-item]:leading-[42px] [&_.ant-select-selection-placeholder]:leading-[42px]"
-              placeholder="Select category"
-              options={[
-                { value: "technical_support", label: "Technical Support" },
-                { value: "billing_payments", label: "Billing & Payments" },
-                { value: "switching", label: "Switching" },
-                { value: "general", label: "General" },
-              ]}
+              placeholder="Select topic"
+              options={
+                activeTopics?.map((t) => ({ value: t.id, label: t.name })) || []
+              }
             />
           </Form.Item>
 
@@ -515,21 +335,6 @@ const SupportTicket = () => {
           </Button>
         </Form>
       </Modal>
-      <AddEditFAQModal
-        visible={addEditModalVisible}
-        onCancel={() => setAddEditModalVisible(false)}
-        onSave={handleSaveFAQ}
-        initialValues={selectedFAQ}
-        isLoading={isCreatingFaq || isUpdatingFaq}
-      />
-      <CategoryFAQModal
-        visible={categoryModalVisible}
-        onCancel={() => setCategoryModalVisible(false)}
-        category={selectedCategory}
-        onAddFAQ={() => handleAddFAQ(selectedCategory?.categoryName)}
-        onEditFAQ={handleEditFAQ}
-        onDeleteFAQ={handleDeleteFAQ}
-      />
     </div>
   );
 };

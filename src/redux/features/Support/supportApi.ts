@@ -1,11 +1,23 @@
 import { baseApi } from "../../api/baseApi";
 
+export interface ISupportTopic {
+  id: string;
+  name: string;
+  description: string | null;
+  isActive: boolean;
+  sortOrder: number;
+  icon: string | null;
+  ticketCount?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ISupportTicket {
   id: string;
   userId: string;
   assignedAgentId: string | null;
   subject: string;
-  category: "technical_support" | "billing_payments" | "switching" | "general";
+  topicId: string;
   priority: "low" | "medium" | "high" | "urgent";
   status: "open" | "in_progress" | "resolved" | "closed";
   resolvedAt: string | null;
@@ -14,6 +26,7 @@ export interface ISupportTicket {
   updatedAt: string;
   user?: { id: string; firstName: string; lastName: string; email: string };
   assignedAgent?: { id: string; firstName: string; lastName: string } | null;
+  topic?: ISupportTopic;
   messages?: ITicketMessage[];
 }
 
@@ -40,13 +53,30 @@ export interface IFaq {
   updatedAt: string;
 }
 
+export interface ITopicQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+  isActive?: boolean;
+}
+
 export interface ITicketQuery {
   page?: number;
   limit?: number;
   search?: string;
   status?: string;
-  category?: string;
+  topicId?: string;
   priority?: string;
+}
+
+export interface IFaqQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+  category?: string;
+  isActive?: boolean;
+  targetAudience?: string;
+  locale?: string;
 }
 
 interface IPaginatedResponse<T> {
@@ -56,6 +86,61 @@ interface IPaginatedResponse<T> {
 
 const supportApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
+    // ─── Topic Endpoints ───────────────────────────────────
+
+    getAdminTopics: builder.query<IPaginatedResponse<ISupportTopic>, ITopicQuery | void>({
+      query: (params) => {
+        const qp = new URLSearchParams();
+        if (params) {
+          if (params.page) qp.set("page", String(params.page));
+          if (params.limit) qp.set("limit", String(params.limit));
+          if (params.search) qp.set("search", params.search);
+          if (params.isActive !== undefined) qp.set("isActive", String(params.isActive));
+        }
+        return { url: `support/topics/admin?${qp.toString()}`, method: "GET" };
+      },
+      transformResponse: (response: { success: boolean; data: IPaginatedResponse<ISupportTopic> }) =>
+        response.data,
+      providesTags: (result) =>
+        result
+          ? [
+              ...result.data.map(({ id }) => ({ type: "support-topic" as const, id })),
+              { type: "support-topic" as const, id: "LIST" },
+            ]
+          : [{ type: "support-topic" as const, id: "LIST" }],
+    }),
+
+    getActiveTopics: builder.query<ISupportTopic[], void>({
+      query: () => ({ url: "support/topics", method: "GET" }),
+      transformResponse: (response: { success: boolean; data: ISupportTopic[] }) => response.data,
+      providesTags: [{ type: "support-topic", id: "LIST" }],
+    }),
+
+    createTopic: builder.mutation<
+      ISupportTopic,
+      { name: string; description?: string; isActive?: boolean; sortOrder?: number; icon?: string }
+    >({
+      query: (data) => ({ url: "support/topics", method: "POST", body: data }),
+      transformResponse: (response: { success: boolean; data: ISupportTopic }) => response.data,
+      invalidatesTags: [{ type: "support-topic", id: "LIST" }],
+    }),
+
+    updateTopic: builder.mutation<ISupportTopic, { id: string; data: Partial<ISupportTopic> }>({
+      query: ({ id, data }) => ({ url: `support/topics/${id}`, method: "PATCH", body: data }),
+      transformResponse: (response: { success: boolean; data: ISupportTopic }) => response.data,
+      invalidatesTags: (_r, _e, { id }) => [
+        { type: "support-topic", id },
+        { type: "support-topic", id: "LIST" },
+      ],
+    }),
+
+    deleteTopic: builder.mutation<void, string>({
+      query: (id) => ({ url: `support/topics/${id}`, method: "DELETE" }),
+      invalidatesTags: [{ type: "support-topic", id: "LIST" }],
+    }),
+
+    // ─── Ticket Endpoints ──────────────────────────────────
+
     getTickets: builder.query<IPaginatedResponse<ISupportTicket>, ITicketQuery | void>({
       query: (params) => {
         const qp = new URLSearchParams();
@@ -64,7 +149,7 @@ const supportApi = baseApi.injectEndpoints({
           if (params.limit) qp.set("limit", String(params.limit));
           if (params.search) qp.set("search", params.search);
           if (params.status) qp.set("status", params.status);
-          if (params.category) qp.set("category", params.category);
+          if (params.topicId) qp.set("topicId", params.topicId);
           if (params.priority) qp.set("priority", params.priority);
         }
         return { url: `support/tickets?${qp.toString()}`, method: "GET" };
@@ -115,6 +200,33 @@ const supportApi = baseApi.injectEndpoints({
       transformResponse: (response: { success: boolean; data: ITicketMessage[] }) => response.data,
     }),
 
+    // ─── FAQ Endpoints ─────────────────────────────────────
+
+    getAdminFaqs: builder.query<IPaginatedResponse<IFaq>, IFaqQuery | void>({
+      query: (params) => {
+        const qp = new URLSearchParams();
+        if (params) {
+          if (params.page) qp.set("page", String(params.page));
+          if (params.limit) qp.set("limit", String(params.limit));
+          if (params.search) qp.set("search", params.search);
+          if (params.category) qp.set("category", params.category);
+          if (params.isActive !== undefined) qp.set("isActive", String(params.isActive));
+          if (params.targetAudience) qp.set("targetAudience", params.targetAudience);
+          if (params.locale) qp.set("locale", params.locale);
+        }
+        return { url: `support/faqs/admin?${qp.toString()}`, method: "GET" };
+      },
+      transformResponse: (response: { success: boolean; data: IPaginatedResponse<IFaq> }) =>
+        response.data,
+      providesTags: (result) =>
+        result
+          ? [
+              ...result.data.map(({ id }) => ({ type: "faq" as const, id })),
+              { type: "faq" as const, id: "LIST" },
+            ]
+          : [{ type: "faq" as const, id: "LIST" }],
+    }),
+
     getFaqs: builder.query<IFaq[], string | void>({
       query: (category) => {
         const qp = new URLSearchParams();
@@ -127,7 +239,7 @@ const supportApi = baseApi.injectEndpoints({
 
     createFaq: builder.mutation<
       IFaq,
-      { category: string; question: string; answer: string; sortOrder?: number; isActive?: boolean }
+      { category: string; question: string; answer: string; sortOrder?: number; isActive?: boolean; locale?: string; targetAudience?: string }
     >({
       query: (data) => ({ url: "support/faqs", method: "POST", body: data }),
       transformResponse: (response: { success: boolean; data: IFaq }) => response.data,
@@ -148,11 +260,17 @@ const supportApi = baseApi.injectEndpoints({
 });
 
 export const {
+  useGetAdminTopicsQuery,
+  useGetActiveTopicsQuery,
+  useCreateTopicMutation,
+  useUpdateTopicMutation,
+  useDeleteTopicMutation,
   useGetTicketsQuery,
   useGetTicketByIdQuery,
   useUpdateTicketMutation,
   useAddTicketMessageMutation,
   useGetTicketMessagesQuery,
+  useGetAdminFaqsQuery,
   useGetFaqsQuery,
   useCreateFaqMutation,
   useUpdateFaqMutation,

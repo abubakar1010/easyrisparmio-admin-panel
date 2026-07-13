@@ -10,14 +10,13 @@ import ForgotPassword from "../app/Authentication/ForgotPassword";
 import VerifyEmail from "../app/Authentication/VerifyEmail";
 import ResetPassword from "../app/Authentication/ResetPassword";
 import { useAppSelector, useAppDispatch } from "../redux/hooks";
-import { useGetMeQuery, usePostLogoutMutation } from "../redux/features/Auth/authApi";
+import { useGetMeQuery } from "../redux/features/Auth/authApi";
 import { setUser, logout } from "../redux/features/Auth/authSlice";
 import { Spin } from "antd";
 
 const ProtectedRoute = () => {
   const dispatch = useAppDispatch();
-  const { token, user, refreshToken, isLoading } = useAppSelector((state) => state.auth);
-  const [postLogout] = usePostLogoutMutation();
+  const { token, user, isLoading } = useAppSelector((state) => state.auth);
 
   const { data, error, isLoading: isMeLoading } = useGetMeQuery(undefined, {
     skip: !token,
@@ -35,10 +34,8 @@ const ProtectedRoute = () => {
         ("status" in error && error.status === 401) || !user;
 
       if (shouldLogout) {
-        // Revoke refresh token on server before clearing local state
-        if (refreshToken) {
-          postLogout({ refreshToken }).catch(() => {});
-        }
+        // baseQueryWithReauth already handles 401 → refresh → retry → logout,
+        // so we only dispatch logout() here as defense-in-depth (idempotent).
         dispatch(logout());
       } else {
         // Network error or server error — stop loading, use cached user

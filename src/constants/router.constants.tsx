@@ -18,6 +18,8 @@ import {
   LuBuilding2,
   LuFileSpreadsheet,
   LuGitCompareArrows,
+  LuCircleHelp,
+  LuBookOpen,
 } from "react-icons/lu";
 import Settings from "../app/Settings/Settings";
 import ClientManagement from "../app/ClientManagement";
@@ -27,13 +29,18 @@ import MeterReading from "../app/MetterReading";
 import MeterDetails from "../app/MetterReading/MeterDetails";
 import Comparator from "../app/Comparators";
 import OCRBills from "../app/OCR";
+import BillDetailsView from "../app/OCR/BillDetailsView";
 import Suppliers from "../app/Suppliers";
 import SupplierDetails from "../app/Suppliers/SupplierDetails";
 import OffersMarket from "../app/OffersMarket";
 import Agreements from "../app/Agreements";
+import AgreementDetailsView from "../app/Agreements/AgreementDetailsView";
 import CSVReconciliation from "../app/CSVReconciliation";
 import Referrals from "../app/Referrals";
 import SupportTicket from "../app/SupportTicket";
+import SupportTopics from "../app/SupportTopics";
+import FAQManagement from "../app/FAQManagement";
+import StaticPages from "../app/StaticPages";
 import Commission from "../app/Commission";
 
 export const dashboardItems: DashboardItem[] = [
@@ -128,6 +135,10 @@ export const dashboardItems: DashboardItem[] = [
     element: <OCRBills />,
   },
   {
+    path: "ocr/:billId",
+    element: <BillDetailsView />,
+  },
+  {
     name: "Suppliers",
     path: "suppliers",
     icon: LuBuilding2,
@@ -153,6 +164,10 @@ export const dashboardItems: DashboardItem[] = [
     element: <Agreements />,
   },
   {
+    path: "agreements/:agreementId",
+    element: <AgreementDetailsView />,
+  },
+  {
     name: "CSV Reconciliation",
     path: "csv-reconciliation",
     icon: LuFileSpreadsheet,
@@ -172,6 +187,27 @@ export const dashboardItems: DashboardItem[] = [
     icon: LuMessageCircle,
     role: [ROLE.ADMIN],
     element: <SupportTicket />,
+  },
+  {
+    name: "Support Topics",
+    path: "support-topics",
+    icon: LuTag,
+    role: [ROLE.ADMIN],
+    element: <SupportTopics />,
+  },
+  {
+    name: "FAQ Management",
+    path: "faq-management",
+    icon: LuCircleHelp,
+    role: [ROLE.ADMIN],
+    element: <FAQManagement />,
+  },
+  {
+    name: "Static Pages",
+    path: "static-pages",
+    icon: LuBookOpen,
+    role: [ROLE.ADMIN],
+    element: <StaticPages />,
   },
   {
     name: "Commission",

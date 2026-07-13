@@ -8,6 +8,7 @@ export interface IAgreement {
   partnerLogoUrl: string | null;
   discountDescription: string | null;
   termsUrl: string | null;
+  address: string | null;
   isActive: boolean;
   targetAudience: "personal" | "business" | "both";
   validFrom: string;
@@ -32,6 +33,7 @@ export interface ICreateAgreement {
   partnerLogoUrl?: string;
   discountDescription?: string;
   termsUrl?: string;
+  address?: string;
   isActive?: boolean;
   targetAudience?: string;
   validFrom: string;

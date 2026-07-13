@@ -59,17 +59,15 @@ const baseQueryWithReauth: BaseQueryFn<
           extraOptions
         );
 
-        if (refreshResult.data) {
-          const data = (
-            refreshResult.data as {
-              success: boolean;
-              data: { accessToken: string; refreshToken: string };
-            }
-          ).data;
+        const refreshData = refreshResult.data as {
+          success: boolean;
+          data: { accessToken: string; refreshToken: string };
+        } | undefined;
+        if (refreshData?.success && refreshData.data) {
           api.dispatch(
             setTokens({
-              token: data.accessToken,
-              refreshToken: data.refreshToken,
+              token: refreshData.data.accessToken,
+              refreshToken: refreshData.data.refreshToken,
             })
           );
           return true;
@@ -117,7 +115,7 @@ export const baseApi = createApi({
   tagTypes: [
     "auth", "user", "setting", "meter", "dashboard", "supplier",
     "case", "offer", "bill", "contract", "referral",
-    "notification", "commission", "agreement", "support", "faq",
+    "notification", "commission", "agreement", "support", "faq", "support-topic", "static-page",
   ],
   endpoints: () => ({}),
 });
