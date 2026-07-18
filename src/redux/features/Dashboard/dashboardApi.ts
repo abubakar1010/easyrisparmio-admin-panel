@@ -1,5 +1,14 @@
 import { baseApi } from "../../api/baseApi";
 
+export interface IAdminSettings {
+  id: string;
+  autoSendOffers: boolean;
+  maxRecommendedOffers: number;
+  updatedBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface KpiDelta {
   value: number;
   delta: number;
@@ -73,7 +82,29 @@ const dashboardApi = baseApi.injectEndpoints({
       }) => response.data,
       providesTags: [{ type: "dashboard", id: "ADMIN" }],
     }),
+
+    getAdminSettings: builder.query<IAdminSettings, void>({
+      query: () => ({ url: "dashboard/admin/settings", method: "GET" }),
+      transformResponse: (response: { success: boolean; data: IAdminSettings }) =>
+        response.data,
+      providesTags: [{ type: "setting", id: "ADMIN" }],
+    }),
+
+    updateAdminSettings: builder.mutation<IAdminSettings, Partial<IAdminSettings>>({
+      query: (data) => ({
+        url: "dashboard/admin/settings",
+        method: "PATCH",
+        body: data,
+      }),
+      transformResponse: (response: { success: boolean; data: IAdminSettings }) =>
+        response.data,
+      invalidatesTags: [{ type: "setting", id: "ADMIN" }],
+    }),
   }),
 });
 
-export const { useGetAdminDashboardQuery } = dashboardApi;
+export const {
+  useGetAdminDashboardQuery,
+  useGetAdminSettingsQuery,
+  useUpdateAdminSettingsMutation,
+} = dashboardApi;

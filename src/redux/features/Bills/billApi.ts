@@ -17,7 +17,7 @@ export interface IBill {
   id: string;
   fileUrl: string;
   billType: "electricity" | "gas";
-  status: "uploaded" | "analyzing" | "analyzed" | "error";
+  status: "uploaded" | "analyzing" | "analyzed" | "error" | "offer_sent" | "case_created";
   podNumber: string | null;
   pdrNumber: string | null;
   billingPeriodStart: string | null;
@@ -43,6 +43,14 @@ export interface IBill {
   user?: { id: string; firstName: string; lastName: string; email: string };
   supplier?: { id: string; name: string } | null;
   analysis?: IBillAnalysis | null;
+  switchCases?: Array<{
+    id: string;
+    caseNumber: string | null;
+    status: string;
+    caseType: string;
+    priority: string;
+    createdAt: string;
+  }> | null;
 }
 
 export interface IBillQuery {

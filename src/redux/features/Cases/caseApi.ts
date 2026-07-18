@@ -61,11 +61,11 @@ export interface ICase {
   user?: ICaseUser;
   assignedAgent?: ICaseUser | null;
   selectedOffer?: { id: string; name: string; supplier?: { id: string; name: string } };
-  bill?: { id: string; billType: string; totalAmount: number | null };
+  bill?: { id: string; billType: string; totalAmount: number | null; podNumber?: string | null; pdrNumber?: string | null };
   fromSupplier?: { id: string; name: string } | null;
   toSupplier?: { id: string; name: string } | null;
   documents?: ICaseDocument[];
-  contract?: { id: string; contractNumber: string; status: string } | null;
+  contract?: { id: string; contractNumber: string; status: string; deliveryMethod?: string | null; documentUrl?: string | null; signedDocumentUrl?: string | null; signedAt?: string | null; activationDate?: string | null; expiryDate?: string | null; createdAt?: string } | null;
   events?: ICaseEvent[];
 }
 

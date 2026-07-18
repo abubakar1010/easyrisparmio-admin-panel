@@ -12,6 +12,8 @@ export interface IContract {
   expiryDate: string | null;
   signedAt: string | null;
   signedDocumentUrl: string | null;
+  deliveryMethod: "app" | "email" | "mail" | "phone" | null;
+  documentUrl: string | null;
   monthlyEstimate: number | null;
   renewalDate: string | null;
   cancellationReason: string | null;
@@ -64,7 +66,13 @@ const contractApi = baseApi.injectEndpoints({
 
     createContract: builder.mutation<
       IContract,
-      { caseId: string; contractNumber: string; podPdrNumber?: string }
+      {
+        caseId: string;
+        contractNumber: string;
+        podPdrNumber?: string;
+        deliveryMethod?: "app" | "email" | "mail" | "phone";
+        documentUrl?: string;
+      }
     >({
       query: (data) => ({ url: "contracts", method: "POST", body: data }),
       transformResponse: (response: { success: boolean; data: IContract }) => response.data,
@@ -84,6 +92,8 @@ const contractApi = baseApi.injectEndpoints({
           expiryDate?: string;
           signedDocumentUrl?: string;
           monthlyEstimate?: number;
+          deliveryMethod?: "app" | "email" | "mail" | "phone";
+          documentUrl?: string;
         };
       }
     >({
@@ -96,9 +106,10 @@ const contractApi = baseApi.injectEndpoints({
       ],
     }),
 
-    getContractByCase: builder.query<IContract, string>({
+    getContractByCase: builder.query<IContract | null, string>({
       query: (caseId) => ({ url: `contracts/case/${caseId}`, method: "GET" }),
       transformResponse: (response: { success: boolean; data: IContract }) => response.data,
+      providesTags: (_r, _e, caseId) => [{ type: "contract" as const, id: `case-${caseId}` }],
     }),
   }),
 });

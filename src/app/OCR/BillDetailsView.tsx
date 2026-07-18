@@ -12,7 +12,7 @@ import {
 import {
   LuZap,
   LuFlame,
-  LuBarChart3,
+  LuChartColumnIncreasing,
   LuLeaf,
   LuShieldCheck,
 } from "react-icons/lu";
@@ -210,7 +210,7 @@ const BillDetailsView = () => {
           )}
 
           {/* Financial Breakdown */}
-          <Card title="Financial Breakdown" icon={<LuBarChart3 className="h-4 w-4 text-emerald-500" />}>
+          <Card title="Financial Breakdown" icon={<LuChartColumnIncreasing className="h-4 w-4 text-emerald-500" />}>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <div className="rounded-xl bg-slate-50 p-4">
                 <p className="text-xs text-slate-400">Total Amount</p>
