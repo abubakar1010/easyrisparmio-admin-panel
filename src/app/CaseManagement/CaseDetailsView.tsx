@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Button, Input, Spin, Empty, Tag, Select, Upload, message } from "antd";
+import { Button, Input, Spin, Empty, Tag, Select, Upload, message, DatePicker } from "antd";
+import type { Dayjs } from "dayjs";
 import {
   FiArrowLeft,
   FiCheck,
@@ -668,8 +669,8 @@ function ContractTab({ caseData }: { caseData: ICase }) {
   const [podPdrNumber, setPodPdrNumber] = useState(caseData.bill?.podNumber || caseData.bill?.pdrNumber || "");
   const [deliveryMethod, setDeliveryMethod] = useState<string | undefined>(undefined);
   const [documentUrl, setDocumentUrl] = useState("");
-  const [activationDate, setActivationDate] = useState("");
-  const [expiryDate, setExpiryDate] = useState("");
+  const [activationDate, setActivationDate] = useState<Dayjs | null>(null);
+  const [expiryDate, setExpiryDate] = useState<Dayjs | null>(null);
 
   const hasContract = contract && !error;
 
@@ -694,8 +695,8 @@ function ContractTab({ caseData }: { caseData: ICase }) {
     try {
       const data: Record<string, string> = { status: newStatus };
       if (newStatus === "active") {
-        if (activationDate) data.activationDate = activationDate;
-        if (expiryDate) data.expiryDate = expiryDate;
+        if (activationDate) data.activationDate = activationDate.format("YYYY-MM-DD");
+        if (expiryDate) data.expiryDate = expiryDate.format("YYYY-MM-DD");
       }
       await updateContract({ id: contract.id, data }).unwrap();
       message.success(`Contract status updated to ${contractStatusLabel[newStatus]}`);
@@ -950,20 +951,22 @@ function ContractTab({ caseData }: { caseData: ICase }) {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 mb-3">
             <div>
               <label className="text-xs text-slate-500 mb-1 block">Activation Date</label>
-              <Input
-                type="date"
+              <DatePicker
                 value={activationDate}
-                onChange={(e) => setActivationDate(e.target.value)}
-                className="rounded-lg"
+                onChange={(date) => setActivationDate(date)}
+                format="DD/MM/YYYY"
+                className="w-full rounded-lg"
+                placeholder="Select activation date"
               />
             </div>
             <div>
               <label className="text-xs text-slate-500 mb-1 block">Expiry Date</label>
-              <Input
-                type="date"
+              <DatePicker
                 value={expiryDate}
-                onChange={(e) => setExpiryDate(e.target.value)}
-                className="rounded-lg"
+                onChange={(date) => setExpiryDate(date)}
+                format="DD/MM/YYYY"
+                className="w-full rounded-lg"
+                placeholder="Select expiry date"
               />
             </div>
           </div>
