@@ -358,23 +358,7 @@ const BillRequestDetailView = () => {
             })}
           </div>
 
-          {/* Action Buttons */}
-          {bill.status !== "case_created" && (
-            <div className="flex items-center gap-3 pb-6">
-              <Button
-                type="primary"
-                icon={<FiSend className="h-3.5 w-3.5" />}
-                loading={isSending}
-                onClick={handleSendOffers}
-                disabled={selectedRowKeys.length === 0}
-                className="h-10 rounded-lg bg-slate-800! hover:bg-slate-700! border-0! font-semibold"
-              >
-                {selectedRowKeys.length > 0
-                  ? `Send ${selectedRowKeys.length} Offer${selectedRowKeys.length > 1 ? "s" : ""} to User`
-                  : "Select Offers to Send"}
-              </Button>
-            </div>
-          )}
+          <div className="pb-2" />
         </div>
 
         {/* ── Tabs Navigation ──────────────────────────── */}
