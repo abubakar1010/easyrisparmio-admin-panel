@@ -16,13 +16,30 @@ import {
 import { debounce } from "../../utils/debounce";
 
 const billStatusConfig: Record<string, { color: string; label: string }> = {
+  // Bill statuses
   uploaded: { color: "blue", label: "Uploaded" },
   analyzing: { color: "orange", label: "Analyzing" },
   analyzed: { color: "green", label: "Analyzed" },
   error: { color: "red", label: "Error" },
   offer_sent: { color: "cyan", label: "Offer Sent" },
   case_created: { color: "purple", label: "Case Created" },
+  // Case statuses (shown when bill has a linked case)
+  new: { color: "blue", label: "New" },
+  in_progress: { color: "gold", label: "In Progress" },
+  documents_pending: { color: "default", label: "Docs Pending" },
+  contract_sent: { color: "gold", label: "Contract Sent" },
+  contract_signed: { color: "orange", label: "Contract Signed" },
+  activated: { color: "green", label: "Activated" },
+  rejected: { color: "red", label: "Rejected" },
+  cancelled: { color: "default", label: "Cancelled" },
 };
+
+function getEffectiveStatus(bill: IBill): string {
+  if (bill.status === "case_created" && bill.switchCases?.length) {
+    return bill.switchCases[0].status;
+  }
+  return bill.status;
+}
 
 const CaseManagement = () => {
   const navigate = useNavigate();
@@ -59,7 +76,12 @@ const CaseManagement = () => {
 
   const handleStatusFilter = (value: string | undefined) => {
     setStatusFilter(value);
-    setQueryParams((prev) => ({ ...prev, page: 1, status: value }));
+    if (value?.startsWith("case:")) {
+      const caseStatus = value.replace("case:", "");
+      setQueryParams((prev) => ({ ...prev, page: 1, status: undefined, caseStatus }));
+    } else {
+      setQueryParams((prev) => ({ ...prev, page: 1, status: value, caseStatus: undefined }));
+    }
   };
 
   const handleToggleAutoSend = async (checked: boolean) => {
@@ -164,11 +186,11 @@ const CaseManagement = () => {
     },
     {
       title: "STATUS",
-      dataIndex: "status",
       key: "status",
       width: 130,
-      render: (status: string) => {
-        const cfg = billStatusConfig[status] || { color: "default", label: status };
+      render: (_: unknown, record: IBill) => {
+        const effectiveStatus = getEffectiveStatus(record);
+        const cfg = billStatusConfig[effectiveStatus] || { color: "default", label: effectiveStatus };
         return (
           <Tag
             color={cfg.color}
@@ -259,14 +281,23 @@ const CaseManagement = () => {
             value={statusFilter}
             onChange={handleStatusFilter}
             style={{ height: "44px" }}
-            className="w-40 [&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-xl [&_.ant-select-selector]:border-slate-200"
+            className="w-48 [&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-xl [&_.ant-select-selector]:border-slate-200"
             options={[
-              { value: "uploaded", label: "Uploaded" },
-              { value: "analyzing", label: "Analyzing" },
-              { value: "analyzed", label: "Analyzed" },
-              { value: "error", label: "Error" },
-              { value: "offer_sent", label: "Offer Sent" },
-              { value: "case_created", label: "Case Created" },
+              { label: "Bill Statuses", options: [
+                { value: "uploaded", label: "Uploaded" },
+                { value: "analyzing", label: "Analyzing" },
+                { value: "analyzed", label: "Analyzed" },
+                { value: "error", label: "Error" },
+                { value: "offer_sent", label: "Offer Sent" },
+                { value: "case_created", label: "Case Created" },
+              ]},
+              { label: "Case Statuses", options: [
+                { value: "case:in_progress", label: "In Progress" },
+                { value: "case:documents_pending", label: "Docs Pending" },
+                { value: "case:contract_sent", label: "Contract Sent" },
+                { value: "case:contract_signed", label: "Contract Signed" },
+                { value: "case:activated", label: "Activated" },
+              ]},
             ]}
           />
         </div>

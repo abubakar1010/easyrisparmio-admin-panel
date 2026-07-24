@@ -59,6 +59,7 @@ export interface IBillQuery {
   search?: string;
   billType?: string;
   status?: string;
+  caseStatus?: string;
   dateFrom?: string;
   dateTo?: string;
 }
@@ -79,6 +80,8 @@ export interface IOfferWithSavings {
   supplierId: string;
   supplier?: { id: string; name: string } | null;
   estimatedSavings: number;
+  isSent?: boolean;
+  sentAt?: string | null;
 }
 
 interface IPaginatedResponse<T> {
@@ -97,6 +100,7 @@ const billApi = baseApi.injectEndpoints({
           if (params.search) qp.set("search", params.search);
           if (params.billType) qp.set("billType", params.billType);
           if (params.status) qp.set("status", params.status);
+          if (params.caseStatus) qp.set("caseStatus", params.caseStatus);
           if (params.dateFrom) qp.set("dateFrom", params.dateFrom);
           if (params.dateTo) qp.set("dateTo", params.dateTo);
         }
@@ -148,6 +152,7 @@ const billApi = baseApi.injectEndpoints({
       query: (billId) => ({ url: `bills/admin/${billId}/all-offers`, method: "GET" }),
       transformResponse: (response: { success: boolean; data: IOfferWithSavings[] }) =>
         response.data,
+      providesTags: (_r, _e, billId) => [{ type: "offer" as const, id: `bill-offers-${billId}` }],
     }),
 
     sendSelectedOffers: builder.mutation<
@@ -159,7 +164,10 @@ const billApi = baseApi.injectEndpoints({
         method: "POST",
         body: { offers },
       }),
-      invalidatesTags: (_r, _e, { billId }) => [{ type: "bill", id: billId }],
+      invalidatesTags: (_r, _e, { billId }) => [
+        { type: "bill", id: billId },
+        { type: "offer", id: `bill-offers-${billId}` },
+      ],
     }),
   }),
 });

@@ -60,8 +60,8 @@ const billStatusOrder = [
 const stepConfig = [
   { label: "Uploaded", statuses: ["uploaded", "analyzing"] },
   { label: "Offer Sent", statuses: ["analyzed", "offer_sent"] },
-  { label: "Case Created", statuses: ["case_created"] },
-  { label: "Activated", statuses: [] },
+  { label: "Case Created", statuses: ["case_created", "new", "in_progress", "documents_pending", "contract_sent", "contract_signed"] },
+  { label: "Activated", statuses: ["activated"] },
 ];
 
 const statusLabel: Record<string, string> = {
@@ -71,6 +71,14 @@ const statusLabel: Record<string, string> = {
   error: "Error",
   offer_sent: "Offer Sent",
   case_created: "Case Created",
+  new: "New",
+  in_progress: "In Progress",
+  documents_pending: "Documents Pending",
+  contract_sent: "Contract Sent",
+  contract_signed: "Contract Signed",
+  activated: "Activated",
+  rejected: "Rejected",
+  cancelled: "Cancelled",
 };
 
 const statusTagColor: Record<string, string> = {
@@ -80,20 +88,28 @@ const statusTagColor: Record<string, string> = {
   error: "red",
   offer_sent: "cyan",
   case_created: "purple",
+  new: "blue",
+  in_progress: "gold",
+  documents_pending: "default",
+  contract_sent: "gold",
+  contract_signed: "orange",
+  activated: "green",
+  rejected: "red",
+  cancelled: "default",
 };
 
 /* ── Helpers ──────────────────────────────────────────────── */
 
-function getStepIndex(status: string): number {
-  const idx = billStatusOrder.indexOf(status);
-  if (idx <= 1) return 0; // uploaded or analyzing → step 0
-  if (idx === 2 || idx === 3) return 1; // analyzed or offer_sent → step 1
-  if (idx === 4) return 2; // case_created → step 2
+function getStepIndex(billStatus: string, caseStatus?: string | null): number {
+  const status = (billStatus === "case_created" && caseStatus) ? caseStatus : billStatus;
+  for (let i = 0; i < stepConfig.length; i++) {
+    if (stepConfig[i].statuses.includes(status)) return i;
+  }
   return -1;
 }
 
-function getStepStates(status: string): ("done" | "current" | "pending")[] {
-  const currentStep = getStepIndex(status);
+function getStepStates(billStatus: string, caseStatus?: string | null): ("done" | "current" | "pending")[] {
+  const currentStep = getStepIndex(billStatus, caseStatus);
   if (currentStep < 0) return stepConfig.map(() => "pending");
   return stepConfig.map((_, i) => {
     if (i < currentStep) return "done";
@@ -170,7 +186,7 @@ const BillRequestDetailView = () => {
 
   const isElectricity = bill.billType === "electricity";
   const activeCase = bill.switchCases?.[0] ?? null;
-  const stepStates = getStepStates(bill.status);
+  const stepStates = getStepStates(bill.status, activeCase?.status);
   const currentStepIdx = stepStates.indexOf("current");
   const doneCount = stepStates.filter((s) => s === "done").length;
   const progressPct =
@@ -267,10 +283,10 @@ const BillRequestDetailView = () => {
               </span>
             </Tag>
             <Tag
-              color={statusTagColor[bill.status] || "default"}
+              color={statusTagColor[activeCase?.status || bill.status] || "default"}
               className="m-0! rounded-md! border-0! px-2.5! py-0.5! text-xs! font-semibold!"
             >
-              {statusLabel[bill.status] || bill.status}
+              {statusLabel[activeCase?.status || bill.status] || bill.status}
             </Tag>
             {activeCase && (
               <Tag className="m-0! rounded-md! border-0! bg-purple-50! px-2.5! py-0.5! text-xs! font-semibold! text-purple-600!">
@@ -522,6 +538,18 @@ function AvailableOffersTab({
       },
       align: "right",
     },
+    {
+      title: "",
+      key: "sentStatus",
+      width: 100,
+      render: (_, record) =>
+        record.isSent ? (
+          <Tag color="green" className="border-0! rounded-full! text-[10px]! font-bold! m-0!">
+            Already Sent
+          </Tag>
+        ) : null,
+      align: "center",
+    },
   ];
 
   return (
@@ -544,13 +572,21 @@ function AvailableOffersTab({
         </div>
       )}
 
-      {billStatus === "offer_sent" && (
-        <div className="rounded-lg bg-cyan-50 px-3 py-2">
-          <p className="text-xs text-cyan-700">
-            Offers have already been sent for this bill. You can still select and send additional offers.
-          </p>
-        </div>
-      )}
+      {(() => {
+        const sentCount = offers.filter((o) => o.isSent).length;
+        if (billStatus === "offer_sent" || sentCount > 0) {
+          return (
+            <div className="rounded-lg bg-cyan-50 px-3 py-2">
+              <p className="text-xs text-cyan-700">
+                {sentCount > 0
+                  ? `${sentCount} offer${sentCount > 1 ? "s" : ""} already sent to user. You can still select and send additional offers.`
+                  : "Offers have already been sent for this bill. You can still select and send additional offers."}
+              </p>
+            </div>
+          );
+        }
+        return null;
+      })()}
 
       {isLoadingOffers ? (
         <div className="flex items-center justify-center py-12">
@@ -564,6 +600,14 @@ function AvailableOffersTab({
             <LuPackageSearch className="h-4 w-4 text-amber-500" />
             <h4 className="text-sm font-semibold text-slate-800">
               Available Offers ({offers.length})
+              {(() => {
+                const sentCount = offers.filter((o) => o.isSent).length;
+                return sentCount > 0 ? (
+                  <span className="text-slate-400 font-normal ml-1">
+                    ({sentCount} already sent)
+                  </span>
+                ) : null;
+              })()}
             </h4>
           </div>
           <Table<IOfferWithSavings>
@@ -577,6 +621,9 @@ function AvailableOffersTab({
               type: "checkbox",
               selectedRowKeys,
               onChange: onSelectionChange,
+              getCheckboxProps: (record: IOfferWithSavings) => ({
+                disabled: record.isSent === true,
+              }),
             }}
             className="[&_.ant-table-thead_th]:bg-slate-50/50 [&_.ant-table-thead_th]:text-slate-500 [&_.ant-table-thead_th]:text-[10px] [&_.ant-table-thead_th]:font-bold [&_.ant-table-thead_th]:uppercase [&_.ant-table-thead_th]:tracking-widest [&_.ant-table-row]:hover:bg-slate-50/30 [&_.ant-table-cell]:py-3"
           />
