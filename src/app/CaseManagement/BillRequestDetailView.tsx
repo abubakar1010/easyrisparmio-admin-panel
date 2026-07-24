@@ -241,6 +241,8 @@ const BillRequestDetailView = () => {
             onSendOffers={handleSendOffers}
             isSending={isSending}
             billStatus={bill.status}
+            caseCreated={bill.status === "case_created"}
+            userSelectedOfferId={activeCase?.selectedOfferId ?? null}
           />
         );
       case "bill_data":
@@ -354,20 +356,22 @@ const BillRequestDetailView = () => {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-3 pb-6">
-            <Button
-              type="primary"
-              icon={<FiSend className="h-3.5 w-3.5" />}
-              loading={isSending}
-              onClick={handleSendOffers}
-              disabled={selectedRowKeys.length === 0}
-              className="h-10 rounded-lg bg-slate-800! hover:bg-slate-700! border-0! font-semibold"
-            >
-              {selectedRowKeys.length > 0
-                ? `Send ${selectedRowKeys.length} Offer${selectedRowKeys.length > 1 ? "s" : ""} to User`
-                : "Select Offers to Send"}
-            </Button>
-          </div>
+          {bill.status !== "case_created" && (
+            <div className="flex items-center gap-3 pb-6">
+              <Button
+                type="primary"
+                icon={<FiSend className="h-3.5 w-3.5" />}
+                loading={isSending}
+                onClick={handleSendOffers}
+                disabled={selectedRowKeys.length === 0}
+                className="h-10 rounded-lg bg-slate-800! hover:bg-slate-700! border-0! font-semibold"
+              >
+                {selectedRowKeys.length > 0
+                  ? `Send ${selectedRowKeys.length} Offer${selectedRowKeys.length > 1 ? "s" : ""} to User`
+                  : "Select Offers to Send"}
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* ── Tabs Navigation ──────────────────────────── */}
@@ -416,6 +420,8 @@ function AvailableOffersTab({
   onSendOffers,
   isSending,
   billStatus,
+  caseCreated,
+  userSelectedOfferId,
 }: {
   offers: IOfferWithSavings[];
   isLoading: boolean;
@@ -427,6 +433,8 @@ function AvailableOffersTab({
   onSendOffers: () => void;
   isSending: boolean;
   billStatus: string;
+  caseCreated: boolean;
+  userSelectedOfferId: string | null;
 }) {
   const unit = isElectricity ? "kWh" : "Smc";
 
@@ -541,21 +549,41 @@ function AvailableOffersTab({
     {
       title: "",
       key: "sentStatus",
-      width: 100,
-      render: (_, record) =>
-        record.isSent ? (
-          <Tag color="green" className="border-0! rounded-full! text-[10px]! font-bold! m-0!">
-            Already Sent
-          </Tag>
-        ) : null,
+      width: 120,
+      render: (_, record) => (
+        <div className="flex flex-col items-center gap-1">
+          {record.id === userSelectedOfferId && (
+            <Tag color="purple" className="border-0! rounded-full! text-[10px]! font-bold! m-0!">
+              User Selected
+            </Tag>
+          )}
+          {record.isSent && record.id !== userSelectedOfferId && (
+            <Tag color="green" className="border-0! rounded-full! text-[10px]! font-bold! m-0!">
+              Already Sent
+            </Tag>
+          )}
+        </div>
+      ),
       align: "center",
     },
   ];
 
   return (
     <div className="space-y-4">
+      {/* Case created banner */}
+      {caseCreated && (
+        <div className="rounded-lg bg-purple-50 border border-purple-200 px-4 py-3">
+          <p className="text-sm font-semibold text-purple-800">
+            User has accepted an offer and a case has been created.
+          </p>
+          <p className="text-xs text-purple-600 mt-0.5">
+            No more offers can be sent for this bill. The user-selected offer is highlighted below.
+          </p>
+        </div>
+      )}
+
       {/* Send action bar */}
-      {selectedRowKeys.length > 0 && (
+      {!caseCreated && selectedRowKeys.length > 0 && (
         <div className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50/50 p-3">
           <p className="text-sm font-semibold text-emerald-800">
             {selectedRowKeys.length} offer{selectedRowKeys.length > 1 ? "s" : ""} selected
@@ -572,7 +600,7 @@ function AvailableOffersTab({
         </div>
       )}
 
-      {(() => {
+      {!caseCreated && (() => {
         const sentCount = offers.filter((o) => o.isSent).length;
         if (billStatus === "offer_sent" || sentCount > 0) {
           return (
@@ -617,7 +645,7 @@ function AvailableOffersTab({
             size="small"
             pagination={offers.length > 20 ? { pageSize: 20, showSizeChanger: false } : false}
             scroll={{ x: 900 }}
-            rowSelection={{
+            rowSelection={caseCreated ? undefined : {
               type: "checkbox",
               selectedRowKeys,
               onChange: onSelectionChange,
@@ -625,6 +653,9 @@ function AvailableOffersTab({
                 disabled: record.isSent === true,
               }),
             }}
+            rowClassName={(record) =>
+              record.id === userSelectedOfferId ? "bg-purple-50/70" : ""
+            }
             className="[&_.ant-table-thead_th]:bg-slate-50/50 [&_.ant-table-thead_th]:text-slate-500 [&_.ant-table-thead_th]:text-[10px] [&_.ant-table-thead_th]:font-bold [&_.ant-table-thead_th]:uppercase [&_.ant-table-thead_th]:tracking-widest [&_.ant-table-row]:hover:bg-slate-50/30 [&_.ant-table-cell]:py-3"
           />
         </>

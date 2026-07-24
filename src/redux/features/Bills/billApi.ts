@@ -49,6 +49,7 @@ export interface IBill {
     status: string;
     caseType: string;
     priority: string;
+    selectedOfferId: string;
     createdAt: string;
   }> | null;
 }
