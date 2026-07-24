@@ -290,6 +290,10 @@ const CaseManagement = () => {
                 { value: "error", label: "Error" },
                 { value: "offer_sent", label: "Offer Sent" },
                 { value: "case_created", label: "Case Created" },
+                { value: "contract_sent", label: "Contract Sent" },
+                { value: "contract_signed", label: "Contract Signed" },
+                { value: "activated", label: "Activated" },
+                { value: "cancelled", label: "Cancelled" },
               ]},
               { label: "Case Statuses", options: [
                 { value: "case:in_progress", label: "In Progress" },

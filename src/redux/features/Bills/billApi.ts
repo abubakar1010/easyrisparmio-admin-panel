@@ -17,7 +17,7 @@ export interface IBill {
   id: string;
   fileUrl: string;
   billType: "electricity" | "gas";
-  status: "uploaded" | "analyzing" | "analyzed" | "error" | "offer_sent" | "case_created";
+  status: "uploaded" | "analyzing" | "analyzed" | "error" | "offer_sent" | "case_created" | "contract_sent" | "contract_signed" | "activated" | "cancelled";
   podNumber: string | null;
   pdrNumber: string | null;
   billingPeriodStart: string | null;

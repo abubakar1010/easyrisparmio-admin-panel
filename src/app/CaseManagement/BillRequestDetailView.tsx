@@ -58,12 +58,17 @@ const billStatusOrder = [
   "analyzed",
   "offer_sent",
   "case_created",
+  "contract_sent",
+  "contract_signed",
+  "activated",
+  "cancelled",
 ];
 
 const stepConfig = [
   { label: "Uploaded", statuses: ["uploaded", "analyzing"] },
   { label: "Offer Sent", statuses: ["analyzed", "offer_sent"] },
-  { label: "Case Created", statuses: ["case_created", "new", "in_progress", "documents_pending", "contract_sent", "contract_signed"] },
+  { label: "Case Created", statuses: ["case_created", "new", "in_progress", "documents_pending"] },
+  { label: "Contract", statuses: ["contract_sent", "contract_signed"] },
   { label: "Activated", statuses: ["activated"] },
 ];
 

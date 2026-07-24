@@ -29,6 +29,10 @@ const statusConfig: Record<string, { color: string; label: string }> = {
   error: { color: "red", label: "Error" },
   offer_sent: { color: "cyan", label: "Offer Sent" },
   case_created: { color: "purple", label: "Case Created" },
+  contract_sent: { color: "gold", label: "Contract Sent" },
+  contract_signed: { color: "orange", label: "Contract Signed" },
+  activated: { color: "green", label: "Activated" },
+  cancelled: { color: "default", label: "Cancelled" },
 };
 
 const OCRBills = () => {
@@ -371,6 +375,10 @@ const OCRBills = () => {
                 { value: "error", label: "Error" },
                 { value: "offer_sent", label: "Offer Sent" },
                 { value: "case_created", label: "Case Created" },
+                { value: "contract_sent", label: "Contract Sent" },
+                { value: "contract_signed", label: "Contract Signed" },
+                { value: "activated", label: "Activated" },
+                { value: "cancelled", label: "Cancelled" },
               ]}
             />
           </div>

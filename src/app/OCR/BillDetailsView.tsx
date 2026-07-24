@@ -32,6 +32,10 @@ const statusConfig: Record<string, { color: string; label: string }> = {
   error: { color: "red", label: "Error" },
   offer_sent: { color: "cyan", label: "Offer Sent" },
   case_created: { color: "purple", label: "Case Created" },
+  contract_sent: { color: "gold", label: "Contract Sent" },
+  contract_signed: { color: "orange", label: "Contract Signed" },
+  activated: { color: "green", label: "Activated" },
+  cancelled: { color: "default", label: "Cancelled" },
 };
 
 const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
