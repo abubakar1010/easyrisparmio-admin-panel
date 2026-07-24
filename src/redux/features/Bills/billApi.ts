@@ -63,6 +63,24 @@ export interface IBillQuery {
   dateTo?: string;
 }
 
+export interface IOfferWithSavings {
+  id: string;
+  name: string;
+  description: string | null;
+  energyType: "electricity" | "gas" | "dual";
+  marketType: "fixed" | "variable" | "indexed";
+  pricePerKwh: number | null;
+  pricePerSmc: number | null;
+  fixedMonthlyFee: number;
+  activationCost: number;
+  contractDurationMonths: number;
+  isGreenEnergy: boolean;
+  offerStatus: string;
+  supplierId: string;
+  supplier?: { id: string; name: string } | null;
+  estimatedSavings: number;
+}
+
 interface IPaginatedResponse<T> {
   data: T[];
   meta: { total: number; page: number; limit: number; totalPages: number };
@@ -125,6 +143,24 @@ const billApi = baseApi.injectEndpoints({
       query: (billId) => ({ url: `bills/admin/${billId}/send-offers`, method: "POST" }),
       invalidatesTags: (_r, _e, id) => [{ type: "bill", id }],
     }),
+
+    getAllOffersForBill: builder.query<IOfferWithSavings[], string>({
+      query: (billId) => ({ url: `bills/admin/${billId}/all-offers`, method: "GET" }),
+      transformResponse: (response: { success: boolean; data: IOfferWithSavings[] }) =>
+        response.data,
+    }),
+
+    sendSelectedOffers: builder.mutation<
+      { message: string },
+      { billId: string; offers: Array<{ offerId: string; estimatedSavings?: number }> }
+    >({
+      query: ({ billId, offers }) => ({
+        url: `bills/admin/${billId}/send-offers`,
+        method: "POST",
+        body: { offers },
+      }),
+      invalidatesTags: (_r, _e, { billId }) => [{ type: "bill", id: billId }],
+    }),
   }),
 });
 
@@ -135,4 +171,6 @@ export const {
   useReanalyzeBillMutation,
   useGetRecommendedOffersAdminQuery,
   useSendOffersToUserMutation,
+  useGetAllOffersForBillQuery,
+  useSendSelectedOffersMutation,
 } = billApi;

@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { Button, Input, Pagination, Select, Spin, Empty, Table, Tag, Tooltip, Upload, message, Space } from "antd";
+import { Button, Input, Pagination, Select, Spin, Empty, Table, Tag, Upload, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import type { UploadFile } from "antd/es/upload/interface";
 import {
@@ -7,7 +7,6 @@ import {
   FiUpload,
   FiAlertCircle,
   FiSearch,
-  FiRefreshCw,
   FiSend,
 } from "react-icons/fi";
 import { HiOutlineDocumentText } from "react-icons/hi2";
@@ -16,8 +15,6 @@ import { useNavigate } from "react-router";
 import {
   useGetBillsAdminQuery,
   useUploadBillMutation,
-  useReanalyzeBillMutation,
-  useSendOffersToUserMutation,
   type IBill,
   type IBillQuery,
 } from "../../redux/features/Bills/billApi";
@@ -30,6 +27,8 @@ const statusConfig: Record<string, { color: string; label: string }> = {
   analyzing: { color: "orange", label: "Analyzing" },
   analyzed: { color: "green", label: "Analyzed" },
   error: { color: "red", label: "Error" },
+  offer_sent: { color: "cyan", label: "Offer Sent" },
+  case_created: { color: "purple", label: "Case Created" },
 };
 
 const OCRBills = () => {
@@ -42,8 +41,6 @@ const OCRBills = () => {
 
   const { data, isLoading, isFetching } = useGetBillsAdminQuery(queryParams);
   const [uploadBill, { isLoading: isUploading }] = useUploadBillMutation();
-  const [reanalyzeBill] = useReanalyzeBillMutation();
-  const [sendOffers] = useSendOffersToUserMutation();
 
   const bills = data?.data || [];
   const meta = data?.meta;
@@ -51,10 +48,10 @@ const OCRBills = () => {
   // KPI computed values
   const kpis = useMemo(() => {
     const uploaded = bills.filter((b) => b.status === "uploaded").length;
-    const analyzing = bills.filter((b) => b.status === "analyzing").length;
+    const offerSent = bills.filter((b) => b.status === "offer_sent").length;
     const analyzed = bills.filter((b) => b.status === "analyzed").length;
     const errors = bills.filter((b) => b.status === "error").length;
-    return { uploaded, analyzing, analyzed, errors };
+    return { uploaded, offerSent, analyzed, errors };
   }, [bills]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -91,24 +88,6 @@ const OCRBills = () => {
       message.success("Bill uploaded successfully");
     } catch {
       message.error("Failed to upload bill");
-    }
-  };
-
-  const handleReanalyze = async (bill: IBill) => {
-    try {
-      await reanalyzeBill(bill.id).unwrap();
-      message.success("Bill re-analysis started");
-    } catch {
-      message.error("Failed to start re-analysis");
-    }
-  };
-
-  const handleSendOffers = async (bill: IBill) => {
-    try {
-      await sendOffers(bill.id).unwrap();
-      message.success("Offers sent to user");
-    } catch {
-      message.error("Failed to send offers");
     }
   };
 
@@ -224,29 +203,19 @@ const OCRBills = () => {
     {
       title: "ACTIONS",
       key: "actions",
-      width: 120,
+      width: 80,
       render: (_, record) => (
-        <Space size={2}>
-          <Tooltip title="Reanalyze">
-            <Button
-              type="text"
-              size="small"
-              icon={<FiRefreshCw className="h-4 w-4" />}
-              onClick={() => handleReanalyze(record)}
-              disabled={record.status === "analyzing"}
-            />
-          </Tooltip>
-          {record.status === "analyzed" && (
-            <Tooltip title="Send offers to user">
-              <Button
-                type="text"
-                size="small"
-                icon={<FiSend className="h-4 w-4 text-emerald-500" />}
-                onClick={() => handleSendOffers(record)}
-              />
-            </Tooltip>
-          )}
-        </Space>
+        <Button
+          type="link"
+          size="small"
+          className="text-[#7061ED] font-semibold"
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/ocr/${record.id}`);
+          }}
+        >
+          View
+        </Button>
       ),
       align: "center",
     },
@@ -272,10 +241,10 @@ const OCRBills = () => {
             bg: "bg-amber-100 text-amber-600",
           },
           {
-            label: "Analyzing",
-            value: kpis.analyzing,
-            icon: <FiRefreshCw className="h-5 w-5" />,
-            bg: "bg-blue-100 text-blue-600",
+            label: "Offer Sent",
+            value: kpis.offerSent,
+            icon: <FiSend className="h-5 w-5" />,
+            bg: "bg-cyan-100 text-cyan-600",
           },
           {
             label: "Analyzed",
@@ -400,6 +369,8 @@ const OCRBills = () => {
                 { value: "analyzing", label: "Analyzing" },
                 { value: "analyzed", label: "Analyzed" },
                 { value: "error", label: "Error" },
+                { value: "offer_sent", label: "Offer Sent" },
+                { value: "case_created", label: "Case Created" },
               ]}
             />
           </div>

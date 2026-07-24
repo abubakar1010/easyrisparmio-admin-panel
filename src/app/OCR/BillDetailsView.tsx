@@ -1,9 +1,9 @@
-import { useState } from "react";
-import { Button, Spin, Empty, Tag, message, Tooltip } from "antd";
+import { useState, useMemo } from "react";
+import { Button, Spin, Empty, Tag, message, Tooltip, InputNumber, Table } from "antd";
+import type { ColumnsType } from "antd/es/table";
 import {
   FiArrowLeft,
   FiDownload,
-  FiRefreshCw,
   FiSend,
   FiUser,
   FiFileText,
@@ -14,15 +14,15 @@ import {
   LuFlame,
   LuChartColumnIncreasing,
   LuLeaf,
-  LuShieldCheck,
+  LuPackageSearch,
 } from "react-icons/lu";
 import { useNavigate, useParams } from "react-router";
 import {
   useGetBillByIdAdminQuery,
-  useReanalyzeBillMutation,
-  useSendOffersToUserMutation,
+  useGetAllOffersForBillQuery,
+  useSendSelectedOffersMutation,
   type IBill,
-  type IBillAnalysis,
+  type IOfferWithSavings,
 } from "../../redux/features/Bills/billApi";
 
 const statusConfig: Record<string, { color: string; label: string }> = {
@@ -30,6 +30,8 @@ const statusConfig: Record<string, { color: string; label: string }> = {
   analyzing: { color: "orange", label: "Analyzing" },
   analyzed: { color: "green", label: "Analyzed" },
   error: { color: "red", label: "Error" },
+  offer_sent: { color: "cyan", label: "Offer Sent" },
+  case_created: { color: "purple", label: "Case Created" },
 };
 
 const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
@@ -59,9 +61,13 @@ const BillDetailsView = () => {
   const { data: bill, isLoading, refetch } = useGetBillByIdAdminQuery(billId!, {
     skip: !billId,
   });
-  const [reanalyzeBill, { isLoading: isReanalyzing }] = useReanalyzeBillMutation();
-  const [sendOffers, { isLoading: isSending }] = useSendOffersToUserMutation();
+  const { data: allOffers, isLoading: offersLoading } = useGetAllOffersForBillQuery(billId!, {
+    skip: !billId,
+  });
+  const [sendSelectedOffers, { isLoading: isSending }] = useSendSelectedOffersMutation();
   const [showRawJson, setShowRawJson] = useState(false);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [savingsOverrides, setSavingsOverrides] = useState<Record<string, number>>({});
 
   if (isLoading) {
     return (
@@ -83,25 +89,27 @@ const BillDetailsView = () => {
   }
 
   const status = statusConfig[bill.status] || statusConfig.uploaded;
-  const analysis = bill.analysis;
   const ocrData = bill.rawAnalysisData as Record<string, unknown> | null;
   const isElectricity = bill.billType === "electricity";
-  const offers = (analysis?.recommendedOffers || []) as IRecommendedOffer[];
-
-  const handleReanalyze = async () => {
-    try {
-      await reanalyzeBill(bill.id).unwrap();
-      message.success("Re-analysis started");
-      refetch();
-    } catch {
-      message.error("Failed to start re-analysis");
-    }
-  };
 
   const handleSendOffers = async () => {
+    if (selectedRowKeys.length === 0) {
+      message.warning("Please select at least one offer");
+      return;
+    }
+
+    const offersPayload = selectedRowKeys.map((key) => {
+      const id = String(key);
+      const override = savingsOverrides[id];
+      return override != null
+        ? { offerId: id, estimatedSavings: override }
+        : { offerId: id };
+    });
+
     try {
-      await sendOffers(bill.id).unwrap();
-      message.success("Offers sent to user");
+      await sendSelectedOffers({ billId: bill.id, offers: offersPayload }).unwrap();
+      message.success(`${selectedRowKeys.length} offer(s) sent to user`);
+      setSelectedRowKeys([]);
       refetch();
     } catch {
       message.error("Failed to send offers");
@@ -248,19 +256,21 @@ const BillDetailsView = () => {
             </Card>
           )}
 
-          {/* Analysis Results */}
-          {analysis && <AnalysisCard analysis={analysis} />}
-
-          {/* Recommended Offers */}
-          {offers.length > 0 && (
-            <Card title={`Recommended Offers (${offers.length})`} icon={<FiZap className="h-4 w-4 text-amber-500" />}>
-              <div className="space-y-3">
-                {offers.map((offer, i) => (
-                  <OfferRow key={offer.id || i} offer={offer} isElectricity={isElectricity} />
-                ))}
-              </div>
-            </Card>
-          )}
+          {/* Available Offers */}
+          <AvailableOffersCard
+            offers={allOffers || []}
+            isLoading={offersLoading}
+            isElectricity={isElectricity}
+            selectedRowKeys={selectedRowKeys}
+            onSelectionChange={setSelectedRowKeys}
+            savingsOverrides={savingsOverrides}
+            onSavingsChange={(offerId, value) =>
+              setSavingsOverrides((prev) => ({ ...prev, [offerId]: value }))
+            }
+            onSendOffers={handleSendOffers}
+            isSending={isSending}
+            billStatus={bill.status}
+          />
         </div>
 
         {/* Right Column / Sidebar */}
@@ -270,25 +280,21 @@ const BillDetailsView = () => {
             <div className="space-y-3">
               <Button
                 block
-                icon={<FiRefreshCw />}
-                loading={isReanalyzing}
-                onClick={handleReanalyze}
-                disabled={bill.status === "analyzing"}
+                type="primary"
+                icon={<FiSend />}
+                loading={isSending}
+                onClick={handleSendOffers}
+                disabled={selectedRowKeys.length === 0}
+                className="!bg-emerald-500 hover:!bg-emerald-600"
               >
-                {isReanalyzing ? "Analyzing..." : "Re-analyze Bill"}
+                {selectedRowKeys.length > 0
+                  ? `Send ${selectedRowKeys.length} Offer${selectedRowKeys.length > 1 ? "s" : ""} to User`
+                  : "Select Offers to Send"}
               </Button>
-              {bill.status === "analyzed" && offers.length > 0 && (
-                <Button
-                  block
-                  type="primary"
-                  icon={<FiSend />}
-                  loading={isSending}
-                  onClick={handleSendOffers}
-                  disabled={analysis?.offersSentToUser}
-                  className="!bg-emerald-500 hover:!bg-emerald-600"
-                >
-                  {analysis?.offersSentToUser ? "Offers Already Sent" : "Send Offers to User"}
-                </Button>
+              {bill.status === "offer_sent" && (
+                <p className="text-xs text-center text-slate-400">
+                  Offers have been sent. You can still send additional offers.
+                </p>
               )}
             </div>
           </Card>
@@ -391,110 +397,195 @@ const InfoRow = ({ label, value, mono }: InfoRowProps) => (
   </div>
 );
 
-const AnalysisCard = ({ analysis }: { analysis: IBillAnalysis }) => (
-  <Card title="Analysis Results" icon={<LuShieldCheck className="h-4 w-4 text-emerald-500" />}>
-    {/* Savings highlight */}
-    <div className="mb-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 p-5 text-white">
-      <p className="text-xs font-medium text-emerald-100">Potential Savings</p>
-      <p className="mt-1 text-3xl font-extrabold">
-        € {Number(analysis.potentialSavings).toFixed(2)}
-      </p>
-      <p className="mt-1 text-xs text-emerald-100">per billing period</p>
-    </div>
+// ─── Available Offers Card ──────────────────────────────
 
-    <div className="grid gap-4 sm:grid-cols-2">
-      <InfoRow label="Current Monthly Average" value={fmt(analysis.currentMonthlyAvg)} />
-      <InfoRow label="Recommended Market" value={analysis.recommendedMarketType} />
-      {analysis.confidenceScore != null && (
-        <div>
-          <p className="text-xs text-slate-400">Analysis Confidence</p>
-          <div className="mt-1 flex items-center gap-2">
-            <div className="h-2 flex-1 rounded-full bg-slate-100">
-              <div
-                className="h-2 rounded-full bg-emerald-500"
-                style={{ width: `${Number(analysis.confidenceScore) * 100}%` }}
-              />
-            </div>
-            <span className="text-xs font-semibold text-slate-600">
-              {(Number(analysis.confidenceScore) * 100).toFixed(0)}%
-            </span>
-          </div>
-        </div>
-      )}
-      <InfoRow
-        label="Offers Sent"
-        value={analysis.offersSentToUser ? "Yes" : "Not yet"}
-      />
-    </div>
-
-    {analysis.analysisSummary && (
-      <div className="mt-4 rounded-lg bg-slate-50 p-3">
-        <p className="text-xs font-medium text-slate-500">Summary</p>
-        <p className="mt-1 text-sm text-slate-700">{analysis.analysisSummary}</p>
-      </div>
-    )}
-  </Card>
-);
-
-interface IRecommendedOffer {
-  id?: string;
-  name?: string;
-  supplierName?: string;
-  pricePerKwh?: number;
-  pricePerSmc?: number;
-  fixedMonthlyFee?: number;
-  energyType?: string;
-  marketType?: string;
-  contractDurationMonths?: number;
-  isGreenEnergy?: boolean;
-  estimatedSavings?: number;
+interface AvailableOffersCardProps {
+  offers: IOfferWithSavings[];
+  isLoading: boolean;
+  isElectricity: boolean;
+  selectedRowKeys: React.Key[];
+  onSelectionChange: (keys: React.Key[]) => void;
+  savingsOverrides: Record<string, number>;
+  onSavingsChange: (offerId: string, value: number) => void;
+  onSendOffers: () => void;
+  isSending: boolean;
+  billStatus: string;
 }
 
-const OfferRow = ({
-  offer,
+const AvailableOffersCard = ({
+  offers,
+  isLoading,
   isElectricity,
-}: {
-  offer: IRecommendedOffer;
-  isElectricity: boolean;
-}) => {
-  const price = isElectricity ? offer.pricePerKwh : offer.pricePerSmc;
+  selectedRowKeys,
+  onSelectionChange,
+  savingsOverrides,
+  onSavingsChange,
+  onSendOffers,
+  isSending,
+  billStatus,
+}: AvailableOffersCardProps) => {
   const unit = isElectricity ? "kWh" : "Smc";
 
-  return (
-    <div className="flex items-center gap-4 rounded-xl border border-slate-100 bg-slate-50/50 p-4 transition hover:border-slate-200">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-50">
-        <FiZap className="h-5 w-5 text-amber-500" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-bold text-slate-800 truncate">
-          {offer.name || "Unnamed Offer"}
-        </p>
-        <p className="text-xs text-slate-400 truncate">
-          {offer.supplierName || "Unknown"} · {offer.marketType || "—"} ·{" "}
-          {offer.contractDurationMonths ? `${offer.contractDurationMonths} months` : "—"}
-        </p>
-      </div>
-      <div className="flex items-center gap-3">
-        {offer.isGreenEnergy && (
+  const columns: ColumnsType<IOfferWithSavings> = [
+    {
+      title: "OFFER",
+      key: "name",
+      width: 200,
+      render: (_, record) => (
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-slate-800 truncate">{record.name}</p>
+          <p className="text-xs text-slate-400 truncate">{record.supplier?.name || "—"}</p>
+        </div>
+      ),
+    },
+    {
+      title: "TYPE",
+      key: "energyType",
+      width: 100,
+      render: (_, record) => (
+        <Tag
+          color={record.energyType === "electricity" ? "blue" : record.energyType === "gas" ? "orange" : "purple"}
+          className="border-0 rounded text-[10px] font-bold uppercase"
+        >
+          {record.energyType}
+        </Tag>
+      ),
+      align: "center",
+    },
+    {
+      title: "MARKET",
+      key: "marketType",
+      width: 90,
+      render: (_, record) => (
+        <span className="text-xs font-medium text-slate-600 capitalize">{record.marketType}</span>
+      ),
+      align: "center",
+    },
+    {
+      title: `PRICE/${unit.toUpperCase()}`,
+      key: "price",
+      width: 110,
+      render: (_, record) => {
+        const price = isElectricity ? record.pricePerKwh : record.pricePerSmc;
+        return (
+          <span className="text-sm font-bold text-slate-700">
+            {price != null ? `€ ${Number(price).toFixed(4)}` : "—"}
+          </span>
+        );
+      },
+      sorter: (a, b) => {
+        const pa = isElectricity ? (a.pricePerKwh ?? 999) : (a.pricePerSmc ?? 999);
+        const pb = isElectricity ? (b.pricePerKwh ?? 999) : (b.pricePerSmc ?? 999);
+        return pa - pb;
+      },
+      align: "right",
+    },
+    {
+      title: "FIXED FEE",
+      key: "fixedFee",
+      width: 90,
+      render: (_, record) => (
+        <span className="text-xs text-slate-600">€ {Number(record.fixedMonthlyFee).toFixed(2)}</span>
+      ),
+      align: "right",
+    },
+    {
+      title: "DURATION",
+      key: "duration",
+      width: 80,
+      render: (_, record) => (
+        <span className="text-xs text-slate-600">{record.contractDurationMonths} mo</span>
+      ),
+      align: "center",
+    },
+    {
+      title: "",
+      key: "green",
+      width: 40,
+      render: (_, record) =>
+        record.isGreenEnergy ? (
           <Tooltip title="Green energy">
             <LuLeaf className="h-4 w-4 text-emerald-500" />
           </Tooltip>
-        )}
-        <div className="text-right">
-          <p className="text-xs text-slate-400">Price/{unit}</p>
-          <p className="text-sm font-bold text-slate-700">
-            {price != null ? `€ ${Number(price).toFixed(4)}` : "—"}
+        ) : null,
+      align: "center",
+    },
+    {
+      title: "EST. SAVINGS",
+      key: "savings",
+      width: 140,
+      render: (_, record) => (
+        <InputNumber
+          size="small"
+          min={0}
+          step={0.01}
+          precision={2}
+          prefix="€"
+          value={savingsOverrides[record.id] ?? record.estimatedSavings}
+          onChange={(val) => onSavingsChange(record.id, val ?? 0)}
+          className="w-full [&_input]:text-right"
+          onClick={(e) => e.stopPropagation()}
+        />
+      ),
+      sorter: (a, b) => {
+        const sa = savingsOverrides[a.id] ?? a.estimatedSavings;
+        const sb = savingsOverrides[b.id] ?? b.estimatedSavings;
+        return sa - sb;
+      },
+      align: "right",
+    },
+  ];
+
+  return (
+    <Card title={`Available Offers (${offers.length})`} icon={<LuPackageSearch className="h-4 w-4 text-amber-500" />}>
+      {/* Send action bar */}
+      {selectedRowKeys.length > 0 && (
+        <div className="mb-4 flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50/50 p-3">
+          <p className="text-sm font-semibold text-emerald-800">
+            {selectedRowKeys.length} offer{selectedRowKeys.length > 1 ? "s" : ""} selected
+          </p>
+          <Button
+            type="primary"
+            icon={<FiSend className="h-3.5 w-3.5" />}
+            loading={isSending}
+            onClick={onSendOffers}
+            className="!bg-emerald-500 hover:!bg-emerald-600 border-0 rounded-lg h-9 px-5 font-semibold"
+          >
+            Send Selected Offers
+          </Button>
+        </div>
+      )}
+
+      {billStatus === "offer_sent" && (
+        <div className="mb-4 rounded-lg bg-cyan-50 px-3 py-2">
+          <p className="text-xs text-cyan-700">
+            Offers have already been sent for this bill. You can still select and send additional offers.
           </p>
         </div>
-        {offer.estimatedSavings != null && offer.estimatedSavings > 0 && (
-          <div className="rounded-lg bg-emerald-50 px-2.5 py-1 text-right">
-            <p className="text-[10px] text-emerald-600">Save</p>
-            <p className="text-xs font-bold text-emerald-700">
-              € {Number(offer.estimatedSavings).toFixed(2)}
-            </p>
-          </div>
-        )}
-      </div>
-    </div>
+      )}
+
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Spin size="large" />
+        </div>
+      ) : offers.length === 0 ? (
+        <Empty description="No active offers available for this bill type" />
+      ) : (
+        <Table<IOfferWithSavings>
+          rowKey="id"
+          columns={columns}
+          dataSource={offers}
+          size="small"
+          pagination={offers.length > 20 ? { pageSize: 20, showSizeChanger: false } : false}
+          scroll={{ x: 900 }}
+          rowSelection={{
+            type: "checkbox",
+            selectedRowKeys,
+            onChange: onSelectionChange,
+          }}
+          className="[&_.ant-table-thead_th]:bg-slate-50/50 [&_.ant-table-thead_th]:text-slate-500 [&_.ant-table-thead_th]:text-[10px] [&_.ant-table-thead_th]:font-bold [&_.ant-table-thead_th]:uppercase [&_.ant-table-thead_th]:tracking-widest [&_.ant-table-row]:hover:bg-slate-50/30 [&_.ant-table-cell]:py-3"
+        />
+      )}
+    </Card>
   );
 };
