@@ -25,13 +25,16 @@ import {
   LuBadgeDollarSign,
   LuClock3,
   LuDownload,
+  LuBrain,
 } from "react-icons/lu";
+import { FiDownload } from "react-icons/fi";
 import { useNavigate, useParams } from "react-router";
 import {
   useGetBillByIdAdminQuery,
   useGetAllOffersForBillQuery,
   useSendSelectedOffersMutation,
   type IOfferWithSavings,
+  type IBill,
 } from "../../redux/features/Bills/billApi";
 import {
   useGetCaseByIdQuery,
@@ -666,10 +669,58 @@ function AvailableOffersTab({
 
 /* ── Bill Data Tab ──────────────────────────────────────── */
 
-function BillDataTab({ bill }: { bill: { totalAmount: number | null; costPerUnit: number | null; fixedCharges: number | null; taxes: number | null; consumptionKwh: number | null; consumptionSmc: number | null; billingPeriodStart: string | null; billingPeriodEnd: string | null; billType: string; customerName: string | null; supplyAddress: string | null; codiceFiscale: string | null; partitaIva: string | null; contractNumber: string | null; meterNumber: string | null; podNumber: string | null; pdrNumber: string | null; user?: { firstName: string; lastName: string; email: string }; supplier?: { name: string } | null } }) {
+function BillDataTab({ bill }: { bill: IBill }) {
   const isElectricity = bill.billType === "electricity";
+  const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
+  const analysis = bill.analysis;
+
+  const marketTypeLabel: Record<string, string> = {
+    fixed: "Fixed",
+    variable: "Variable",
+    indexed: "Indexed",
+  };
 
   const groups = [
+    {
+      title: "Bill Overview",
+      rows: [
+        {
+          label: "Bill Type",
+          value: (
+            <Tag color={isElectricity ? "blue" : "orange"} className="m-0!">
+              <span className="flex items-center gap-1">
+                {isElectricity ? <LuZap className="h-3 w-3" /> : <LuFlame className="h-3 w-3" />}
+                {isElectricity ? "Electricity" : "Gas"}
+              </span>
+            </Tag>
+          ),
+        },
+        {
+          label: "Status",
+          value: (
+            <Tag color={statusTagColor[bill.status] || "default"} className="m-0!">
+              {statusLabel[bill.status] || bill.status}
+            </Tag>
+          ),
+        },
+        { label: "Upload Date", value: fmtDate(bill.createdAt) },
+        { label: "Last Updated", value: fmtDate(bill.updatedAt) },
+        {
+          label: "Uploaded Bill",
+          value: bill.fileUrl ? (
+            <a
+              href={`${serverUrl}/${bill.fileUrl}`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
+            >
+              <FiDownload className="h-3.5 w-3.5" />
+              {bill.fileUrl.endsWith(".pdf") ? "View PDF" : "View File"}
+            </a>
+          ) : "—",
+        },
+      ],
+    },
     {
       title: "Financial Breakdown",
       rows: [
@@ -716,8 +767,11 @@ function BillDataTab({ bill }: { bill: { totalAmount: number | null; costPerUnit
       rows: [
         { label: "Supplier", value: bill.supplier?.name || "Not matched" },
         { label: isElectricity ? "POD Number" : "PDR Number", value: (isElectricity ? bill.podNumber : bill.pdrNumber) || "—" },
+        ...(isElectricity && bill.pdrNumber ? [{ label: "PDR Number", value: bill.pdrNumber }] : []),
+        ...(!isElectricity && bill.podNumber ? [{ label: "POD Number", value: bill.podNumber }] : []),
         { label: "Contract Number", value: bill.contractNumber || "—" },
         { label: "Meter Number", value: bill.meterNumber || "—" },
+        ...(bill.meterId ? [{ label: "Meter ID", value: bill.meterId }] : []),
       ],
     },
   ];
@@ -731,12 +785,109 @@ function BillDataTab({ bill }: { bill: { totalAmount: number | null; costPerUnit
             {g.rows.map((r) => (
               <div key={r.label}>
                 <span className="text-xs text-slate-400">{r.label}</span>
-                <p className="text-sm font-medium text-slate-700">{r.value}</p>
+                <div className="text-sm font-medium text-slate-700 mt-0.5">{r.value}</div>
               </div>
             ))}
           </div>
         </div>
       ))}
+
+      {/* Analysis Results */}
+      {analysis && (
+        <div>
+          <h4 className="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
+            <LuBrain className="h-4 w-4 text-indigo-500" />
+            Analysis Results
+          </h4>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-4">
+            <div>
+              <span className="text-xs text-slate-400">Potential Savings</span>
+              <p className="text-sm font-semibold text-emerald-600">{fmt(analysis.potentialSavings)}/year</p>
+            </div>
+            <div>
+              <span className="text-xs text-slate-400">Current Monthly Average</span>
+              <p className="text-sm font-medium text-slate-700">{fmt(analysis.currentMonthlyAvg)}</p>
+            </div>
+            <div>
+              <span className="text-xs text-slate-400">Recommended Market Type</span>
+              <p className="text-sm font-medium text-slate-700">
+                <Tag color="purple" className="m-0!">
+                  {marketTypeLabel[analysis.recommendedMarketType] || analysis.recommendedMarketType}
+                </Tag>
+              </p>
+            </div>
+            {analysis.confidenceScore != null && (
+              <div>
+                <span className="text-xs text-slate-400">Confidence Score</span>
+                <p className="text-sm font-medium text-slate-700">{Number(analysis.confidenceScore).toFixed(0)}%</p>
+              </div>
+            )}
+            <div>
+              <span className="text-xs text-slate-400">Offers Sent</span>
+              <p className="text-sm font-medium text-slate-700">
+                <Tag color={analysis.offersSentToUser ? "green" : "default"} className="m-0!">
+                  {analysis.offersSentToUser ? "Yes" : "No"}
+                </Tag>
+              </p>
+            </div>
+            <div>
+              <span className="text-xs text-slate-400">Analysis Date</span>
+              <p className="text-sm font-medium text-slate-700">{fmtDate(analysis.createdAt)}</p>
+            </div>
+          </div>
+          {analysis.analysisSummary && (
+            <div className="mt-2">
+              <span className="text-xs text-slate-400">Analysis Summary</span>
+              <p className="text-sm text-slate-600 mt-1 bg-slate-50 rounded-lg p-3 leading-relaxed">{analysis.analysisSummary}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Raw Analysis Data */}
+      {bill.rawAnalysisData && Object.keys(bill.rawAnalysisData).length > 0 && (
+        <RawAnalysisSection data={bill.rawAnalysisData} />
+      )}
+    </div>
+  );
+}
+
+function RawAnalysisSection({ data }: { data: Record<string, unknown> }) {
+  const [expanded, setExpanded] = useState(false);
+
+  const formatKey = (key: string) =>
+    key.replace(/([A-Z])/g, " $1").replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
+
+  const displayEntries = Object.entries(data).filter(
+    ([, v]) => v != null && v !== "" && (typeof v !== "object" || (Array.isArray(v) ? v.length > 0 : Object.keys(v as object).length > 0)),
+  );
+
+  if (displayEntries.length === 0) return null;
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2 hover:text-indigo-600 transition-colors"
+      >
+        <LuScanLine className="h-4 w-4 text-amber-500" />
+        Raw Extracted Data
+        <span className="text-xs font-normal text-slate-400">({displayEntries.length} fields)</span>
+        <span className="text-xs text-slate-400">{expanded ? "▲" : "▼"}</span>
+      </button>
+      {expanded && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {displayEntries.map(([key, value]) => (
+            <div key={key}>
+              <span className="text-xs text-slate-400">{formatKey(key)}</span>
+              <p className="text-sm font-medium text-slate-700 break-words">
+                {typeof value === "object" ? JSON.stringify(value, null, 2) : String(value)}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
