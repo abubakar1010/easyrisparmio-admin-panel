@@ -17,7 +17,6 @@ import {
   LuPercent,
   LuBuilding2,
   LuFileSpreadsheet,
-  LuGitCompareArrows,
   LuCircleHelp,
   LuBookOpen,
 } from "react-icons/lu";
@@ -28,7 +27,6 @@ import CaseDetailsView from "../app/CaseManagement/CaseDetailsView";
 import BillRequestDetailView from "../app/CaseManagement/BillRequestDetailView";
 import MeterReading from "../app/MetterReading";
 import MeterDetails from "../app/MetterReading/MeterDetails";
-import Comparator from "../app/Comparators";
 import OCRBills from "../app/OCR";
 import BillDetailsView from "../app/OCR/BillDetailsView";
 import Suppliers from "../app/Suppliers";
@@ -124,13 +122,6 @@ export const dashboardItems: DashboardItem[] = [
   {
     path: "meter-reading/:meterId",
     element: <MeterDetails />,
-  },
-  {
-    name: "Comparator",
-    path: "comparators",
-    icon: LuGitCompareArrows,
-    role: [ROLE.ADMIN],
-    element: <Comparator />,
   },
   {
     name: "OCR",

@@ -24,7 +24,6 @@ const sidebarI18nKeys: Record<string, string> = {
   "Case Management": "sidebar.case_management",
   "Utilities / Services": "sidebar.utilities_services",
   "Meter Reading": "sidebar.meter_reading",
-  "Comparator": "sidebar.comparator",
   "OCR": "sidebar.ocr",
   "Suppliers": "sidebar.suppliers",
   "Offers / Market": "sidebar.offers_market",

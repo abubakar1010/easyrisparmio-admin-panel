@@ -138,6 +138,7 @@ const offerApi = baseApi.injectEndpoints({
 export const {
   useGetOffersAdminQuery,
   useGetOfferByIdQuery,
+  useLazyGetOfferByIdQuery,
   useCreateOfferMutation,
   useUpdateOfferMutation,
   useUpdateOfferStatusMutation,

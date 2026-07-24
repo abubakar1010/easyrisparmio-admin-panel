@@ -1,9 +1,12 @@
-import { Table, Button, Tag, Space, Input, Select, Card, Spin, Empty, Modal, message } from "antd";
-import { FiPlus, FiSearch, FiEdit2, FiTrash2, FiFilter } from "react-icons/fi";
+import { Table, Button, Tag, Space, Input, Select, Card, Spin, Empty, Modal, Dropdown, Tooltip, message } from "antd";
+import { FiPlus, FiSearch, FiEdit2, FiEye, FiMoreVertical } from "react-icons/fi";
 import { LuTrendingUp, LuTag, LuLeaf } from "react-icons/lu";
 import type { ColumnsType } from "antd/es/table";
-import { useState, useEffect } from "react";
+import type { MenuProps } from "antd";
+import { useState } from "react";
+import dayjs from "dayjs";
 import { CreateOfferModal } from "./components/CreateOfferModal";
+import { OfferDetailsModal } from "./components/OfferDetailsModal";
 import {
   useGetOffersAdminQuery,
   useDeleteOfferMutation,
@@ -22,8 +25,28 @@ const statusDot: Record<string, string> = {
   archived: "bg-slate-400",
 };
 
+const STATUS_TRANSITIONS: Record<string, { value: string; label: string }[]> = {
+  draft: [
+    { value: "active", label: "Activate" },
+    { value: "archived", label: "Archive" },
+  ],
+  active: [
+    { value: "expiring", label: "Mark Expiring" },
+    { value: "archived", label: "Archive" },
+  ],
+  expiring: [
+    { value: "expired", label: "Mark Expired" },
+    { value: "archived", label: "Archive" },
+  ],
+  expired: [{ value: "archived", label: "Archive" }],
+  archived: [],
+};
+
 const OffersMarket = () => {
   const [createOfferOpen, setCreateOfferOpen] = useState(false);
+  const [editOfferOpen, setEditOfferOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [selectedOffer, setSelectedOffer] = useState<IOffer | null>(null);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [energyType, setEnergyType] = useState<string | undefined>();
@@ -50,6 +73,37 @@ const OffersMarket = () => {
     setPage(1);
   }, 400);
 
+  const handleViewDetails = (offer: IOffer) => {
+    setSelectedOffer(offer);
+    setDetailsOpen(true);
+  };
+
+  const handleEdit = (offer: IOffer) => {
+    setSelectedOffer(offer);
+    setEditOfferOpen(true);
+  };
+
+  const getEditInitialValues = (offer: IOffer): Record<string, unknown> => ({
+    offerName: offer.name,
+    offerCode: offer.offerCode,
+    supplier: offer.supplierId,
+    commodity: offer.energyType,
+    priceType: offer.marketType,
+    status: offer.offerStatus,
+    commission: offer.activationCost,
+    fixedMonthlyFee: offer.fixedMonthlyFee,
+    pricePerKwh: offer.pricePerKwh,
+    pricePerSmc: offer.pricePerSmc,
+    durationMonths: offer.contractDurationMonths,
+    isGreenEnergy: offer.isGreenEnergy,
+    validFrom: offer.validFrom ? dayjs(offer.validFrom) : undefined,
+    validity: offer.validUntil ? dayjs(offer.validUntil) : undefined,
+    target: offer.target,
+    highlights: offer.highlights,
+    termsUrl: offer.termsUrl,
+    notes: offer.description,
+  });
+
   const handleDelete = (offer: IOffer) => {
     Modal.confirm({
       title: "Delete offer?",
@@ -68,13 +122,23 @@ const OffersMarket = () => {
     });
   };
 
-  const handleArchive = async (offer: IOffer) => {
-    try {
-      await updateStatus({ id: offer.id, offerStatus: "archived" }).unwrap();
-      message.success("Offer archived");
-    } catch {
-      message.error("Failed to archive offer");
-    }
+  const handleStatusChange = (offer: IOffer, newStatus: string) => {
+    const label =
+      STATUS_TRANSITIONS[offer.offerStatus]?.find((t) => t.value === newStatus)?.label || newStatus;
+    Modal.confirm({
+      title: `${label} offer?`,
+      content: `Change "${offer.name}" status from "${offer.offerStatus}" to "${newStatus}".`,
+      okText: label,
+      centered: true,
+      onOk: async () => {
+        try {
+          await updateStatus({ id: offer.id, offerStatus: newStatus }).unwrap();
+          message.success(`Offer status changed to ${newStatus}`);
+        } catch {
+          message.error("Failed to update offer status");
+        }
+      },
+    });
   };
 
   const columns: ColumnsType<IOffer> = [
@@ -130,7 +194,7 @@ const OffersMarket = () => {
       key: "activationCost",
       render: (val) => (
         <span className="text-emerald-600 font-bold">
-          {val != null ? `€ ${Number(val).toFixed(2)}` : "—"}
+          {val != null ? `\u20AC ${Number(val).toFixed(2)}` : "—"}
         </span>
       ),
     },
@@ -156,23 +220,52 @@ const OffersMarket = () => {
     {
       title: "ACTIONS",
       key: "action",
-      render: (_, record) => (
-        <Space size="middle">
-          <Button type="text" size="small" icon={<FiEdit2 className="text-slate-400" />} />
-          <Button
-            type="text"
-            size="small"
-            icon={<FiTrash2 className="text-slate-400" />}
-            onClick={() => handleDelete(record)}
-          />
-          <Button
-            type="text"
-            size="small"
-            icon={<FiFilter className="text-slate-400" />}
-            onClick={() => handleArchive(record)}
-          />
-        </Space>
-      ),
+      width: 140,
+      render: (_, record) => {
+        const transitions = STATUS_TRANSITIONS[record.offerStatus] || [];
+        const menuItems: MenuProps["items"] = [
+          ...transitions.map((t) => ({
+            key: t.value,
+            label: t.label,
+            onClick: () => handleStatusChange(record, t.value),
+          })),
+          ...(transitions.length > 0 ? [{ type: "divider" as const }] : []),
+          {
+            key: "delete",
+            label: "Delete",
+            danger: true,
+            onClick: () => handleDelete(record),
+          },
+        ];
+
+        return (
+          <Space size={2}>
+            <Tooltip title="View details">
+              <Button
+                type="text"
+                size="small"
+                icon={<FiEye className="h-4 w-4" />}
+                onClick={() => handleViewDetails(record)}
+              />
+            </Tooltip>
+            <Tooltip title="Edit">
+              <Button
+                type="text"
+                size="small"
+                icon={<FiEdit2 className="text-slate-400" />}
+                onClick={() => handleEdit(record)}
+              />
+            </Tooltip>
+            <Dropdown menu={{ items: menuItems }} trigger={["click"]} placement="bottomRight">
+              <Button
+                type="text"
+                size="small"
+                icon={<FiMoreVertical className="text-slate-400" />}
+              />
+            </Dropdown>
+          </Space>
+        );
+      },
       align: "center",
     },
   ];
@@ -283,7 +376,30 @@ const OffersMarket = () => {
         )}
       </div>
 
-      <CreateOfferModal open={createOfferOpen} onClose={() => setCreateOfferOpen(false)} />
+      {/* Create modal */}
+      <CreateOfferModal open={createOfferOpen} onClose={() => setCreateOfferOpen(false)} mode="add" />
+
+      {/* Edit modal */}
+      <CreateOfferModal
+        open={editOfferOpen}
+        onClose={() => {
+          setEditOfferOpen(false);
+          setSelectedOffer(null);
+        }}
+        mode="edit"
+        offerId={selectedOffer?.id}
+        initialValues={selectedOffer ? getEditInitialValues(selectedOffer) : undefined}
+      />
+
+      {/* Details modal */}
+      <OfferDetailsModal
+        open={detailsOpen}
+        onClose={() => {
+          setDetailsOpen(false);
+          setSelectedOffer(null);
+        }}
+        offer={selectedOffer}
+      />
     </div>
   );
 };
