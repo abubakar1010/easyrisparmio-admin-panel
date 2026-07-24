@@ -28,7 +28,6 @@ const sidebarI18nKeys: Record<string, string> = {
   "Suppliers": "sidebar.suppliers",
   "Offers / Market": "sidebar.offers_market",
   "Agreement Section": "sidebar.agreement_section",
-  "CSV Reconciliation": "sidebar.csv_reconciliation",
   "Referrals": "sidebar.referrals",
   "Support": "sidebar.support",
   "Commission": "sidebar.commission",

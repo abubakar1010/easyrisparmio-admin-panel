@@ -16,7 +16,6 @@ import {
   LuMessageCircle,
   LuPercent,
   LuBuilding2,
-  LuFileSpreadsheet,
   LuCircleHelp,
   LuBookOpen,
 } from "react-icons/lu";
@@ -34,7 +33,6 @@ import SupplierDetails from "../app/Suppliers/SupplierDetails";
 import OffersMarket from "../app/OffersMarket";
 import Agreements from "../app/Agreements";
 import AgreementDetailsView from "../app/Agreements/AgreementDetailsView";
-import CSVReconciliation from "../app/CSVReconciliation";
 import Referrals from "../app/Referrals";
 import SupportTicket from "../app/SupportTicket";
 import SupportTopics from "../app/SupportTopics";
@@ -162,13 +160,6 @@ export const dashboardItems: DashboardItem[] = [
   {
     path: "agreements/:agreementId",
     element: <AgreementDetailsView />,
-  },
-  {
-    name: "CSV Reconciliation",
-    path: "csv-reconciliation",
-    icon: LuFileSpreadsheet,
-    role: [ROLE.ADMIN],
-    element: <CSVReconciliation />,
   },
   {
     name: "Referrals",
