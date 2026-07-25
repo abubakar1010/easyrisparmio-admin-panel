@@ -7,3 +7,5 @@ const config = {
 };
 
 export const { server_url } = config;
+// Base server origin without API path prefix (for static files like /uploads/)
+export const server_origin = server_url.replace(/\/api\/v1\/?$/, '');

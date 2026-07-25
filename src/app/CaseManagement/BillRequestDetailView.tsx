@@ -52,7 +52,7 @@ import {
   type IContract,
 } from "../../redux/features/Contracts/contractApi";
 import { useAppSelector } from "../../redux/hooks";
-import { server_url } from "../../config";
+import { server_url, server_origin } from "../../config";
 
 /* ── Status & Step Configuration ─────────────────────────── */
 
@@ -690,7 +690,7 @@ function BillDataTab({ bill }: { bill: IBill }) {
 
   const isPdf = bill.fileUrl?.endsWith(".pdf");
   const isImage = bill.fileUrl ? /\.(jpg|jpeg|png)$/i.test(bill.fileUrl) : false;
-  const fileApiUrl = `${server_url}/api/v1/bills/${bill.id}/file`;
+  const fileApiUrl = `${server_url}bills/${bill.id}/file`;
 
   const fetchFileBlob = useCallback(async () => {
     const res = await fetch(fileApiUrl, {
@@ -1411,7 +1411,7 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
   const [loadingId, setLoadingId] = useState<string | null>(null);
 
   const fetchDocBlob = useCallback(async (doc: ICaseDocument) => {
-    const url = `${server_url}/api/v1/cases/${caseId}/documents/${doc.id}/file`;
+    const url = `${server_url}cases/${caseId}/documents/${doc.id}/file`;
     const res = await fetch(url, {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -1915,7 +1915,7 @@ function CaseContractSection({ caseData }: { caseData: ICase }) {
           <div className="space-y-3">
             {contract.documentUrl && (
               <a
-                href={contract.documentUrl.startsWith("http") ? contract.documentUrl : `${server_url}/${contract.documentUrl.replace(/^\//, "")}`}
+                href={contract.documentUrl.startsWith("http") ? contract.documentUrl : `${server_origin}/${contract.documentUrl.replace(/^\//, "")}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-3 rounded-lg border border-slate-100 p-3 hover:bg-slate-50 transition-colors"
@@ -1931,7 +1931,7 @@ function CaseContractSection({ caseData }: { caseData: ICase }) {
             )}
             {contract.signedDocumentUrl && (
               <a
-                href={contract.signedDocumentUrl.startsWith("http") ? contract.signedDocumentUrl : `${server_url}/${contract.signedDocumentUrl.replace(/^\//, "")}`}
+                href={contract.signedDocumentUrl.startsWith("http") ? contract.signedDocumentUrl : `${server_origin}/${contract.signedDocumentUrl.replace(/^\//, "")}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-3 rounded-lg border border-emerald-100 p-3 hover:bg-emerald-50 transition-colors"

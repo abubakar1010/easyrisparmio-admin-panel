@@ -34,7 +34,7 @@ import {
   useUpdateContractMutation,
   type IContract,
 } from "../../redux/features/Contracts/contractApi";
-import { server_url } from "../../config";
+import { server_origin } from "../../config";
 
 /* ── Status & Step Configuration ─────────────────────────── */
 
@@ -560,7 +560,7 @@ const IDENTITY_DOC_TYPES = ["id_card", "codice_fiscale", "partita_iva"];
 
 function DocumentsTab({ documents, caseId }: { documents: ICaseDocument[]; caseId: string }) {
   const [verifyDocument, { isLoading: isVerifying }] = useVerifyDocumentMutation();
-  const baseUrl = import.meta.env.VITE_SERVER_URL || "";
+  const baseUrl = server_origin;
 
   const identityDocs = documents.filter((d) => IDENTITY_DOC_TYPES.includes(d.documentType));
   const otherDocs = documents.filter((d) => !IDENTITY_DOC_TYPES.includes(d.documentType));
@@ -1000,7 +1000,7 @@ function ContractTab({ caseData }: { caseData: ICase }) {
           <div className="space-y-3">
             {contract.documentUrl && (
               <a
-                href={contract.documentUrl.startsWith("http") ? contract.documentUrl : `${server_url}/${contract.documentUrl.replace(/^\//, "")}`}
+                href={contract.documentUrl.startsWith("http") ? contract.documentUrl : `${server_origin}/${contract.documentUrl.replace(/^\//, "")}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-3 rounded-lg border border-slate-100 p-3 hover:bg-slate-50 transition-colors"
@@ -1016,7 +1016,7 @@ function ContractTab({ caseData }: { caseData: ICase }) {
             )}
             {contract.signedDocumentUrl && (
               <a
-                href={contract.signedDocumentUrl.startsWith("http") ? contract.signedDocumentUrl : `${server_url}/${contract.signedDocumentUrl.replace(/^\//, "")}`}
+                href={contract.signedDocumentUrl.startsWith("http") ? contract.signedDocumentUrl : `${server_origin}/${contract.signedDocumentUrl.replace(/^\//, "")}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-3 rounded-lg border border-emerald-100 p-3 hover:bg-emerald-50 transition-colors"

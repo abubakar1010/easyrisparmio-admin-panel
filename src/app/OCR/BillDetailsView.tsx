@@ -106,7 +106,7 @@ const BillDetailsView = () => {
     (c) => !["cancelled", "rejected"].includes(c.status),
   ) ?? false;
 
-  const fileApiUrl = `${server_url}/api/v1/bills/${bill.id}/file`;
+  const fileApiUrl = `${server_url}bills/${bill.id}/file`;
   const isPdf = bill.fileUrl?.endsWith(".pdf");
   const isImage = bill.fileUrl ? /\.(jpg|jpeg|png)$/i.test(bill.fileUrl) : false;
 
