@@ -79,6 +79,7 @@ const contractApi = baseApi.injectEndpoints({
       invalidatesTags: [
         { type: "contract", id: "LIST" },
         { type: "case", id: "LIST" },
+        { type: "bill" },
       ],
     }),
 
@@ -103,6 +104,7 @@ const contractApi = baseApi.injectEndpoints({
         { type: "contract", id },
         { type: "contract", id: "LIST" },
         { type: "case", id: "LIST" },
+        { type: "bill" },
       ],
     }),
 

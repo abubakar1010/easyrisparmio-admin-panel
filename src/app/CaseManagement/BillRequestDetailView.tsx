@@ -67,7 +67,7 @@ const billStatusOrder = [
 const stepConfig = [
   { label: "Uploaded", statuses: ["uploaded", "analyzing"] },
   { label: "Offer Sent", statuses: ["analyzed", "offer_sent"] },
-  { label: "Case Created", statuses: ["case_created", "new", "in_progress", "documents_pending"] },
+  { label: "Case Processing", statuses: ["case_created", "new", "in_progress", "documents_pending"] },
   { label: "Contract", statuses: ["contract_sent", "contract_signed"] },
   { label: "Activated", statuses: ["activated"] },
 ];
@@ -109,7 +109,8 @@ const statusTagColor: Record<string, string> = {
 /* ── Helpers ──────────────────────────────────────────────── */
 
 function getStepIndex(billStatus: string, caseStatus?: string | null): number {
-  const status = (billStatus === "case_created" && caseStatus) ? caseStatus : billStatus;
+  // Always prefer case status when available — it reflects the true progression
+  const status = caseStatus || billStatus;
   for (let i = 0; i < stepConfig.length; i++) {
     if (stepConfig[i].statuses.includes(status)) return i;
   }
@@ -193,7 +194,9 @@ const BillRequestDetailView = () => {
   }
 
   const isElectricity = bill.billType === "electricity";
-  const activeCase = bill.switchCases?.[0] ?? null;
+  const activeCase = bill.switchCases?.length
+    ? [...bill.switchCases].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]
+    : null;
   const stepStates = getStepStates(bill.status, activeCase?.status);
   const currentStepIdx = stepStates.indexOf("current");
   const doneCount = stepStates.filter((s) => s === "done").length;

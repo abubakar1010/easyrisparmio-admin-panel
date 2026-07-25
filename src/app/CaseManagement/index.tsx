@@ -35,8 +35,11 @@ const billStatusConfig: Record<string, { color: string; label: string }> = {
 };
 
 function getEffectiveStatus(bill: IBill): string {
-  if (bill.status === "case_created" && bill.switchCases?.length) {
-    return bill.switchCases[0].status;
+  if (bill.switchCases?.length) {
+    const latestCase = [...bill.switchCases].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    )[0];
+    return latestCase.status;
   }
   return bill.status;
 }

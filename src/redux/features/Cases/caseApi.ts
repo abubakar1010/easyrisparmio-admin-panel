@@ -128,9 +128,13 @@ const caseApi = baseApi.injectEndpoints({
     updateCase: builder.mutation<ICase, { id: string; data: IUpdateCase }>({
       query: ({ id, data }) => ({ url: `cases/${id}`, method: "PATCH", body: data }),
       transformResponse: (response: { success: boolean; data: ICase }) => response.data,
-      invalidatesTags: (_r, _e, { id }) => [
+      invalidatesTags: (result, _e, { id }) => [
         { type: "case", id },
         { type: "case", id: "LIST" },
+        ...(result?.billId
+          ? [{ type: "bill" as const, id: result.billId }]
+          : []),
+        { type: "bill" as const, id: "LIST" },
       ],
     }),
 
