@@ -34,6 +34,7 @@ import {
   useUpdateContractMutation,
   type IContract,
 } from "../../redux/features/Contracts/contractApi";
+import { server_url } from "../../config";
 
 /* ── Status & Step Configuration ─────────────────────────── */
 
@@ -999,7 +1000,7 @@ function ContractTab({ caseData }: { caseData: ICase }) {
           <div className="space-y-3">
             {contract.documentUrl && (
               <a
-                href={contract.documentUrl}
+                href={contract.documentUrl.startsWith("http") ? contract.documentUrl : `${server_url}/${contract.documentUrl.replace(/^\//, "")}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-3 rounded-lg border border-slate-100 p-3 hover:bg-slate-50 transition-colors"
@@ -1015,7 +1016,7 @@ function ContractTab({ caseData }: { caseData: ICase }) {
             )}
             {contract.signedDocumentUrl && (
               <a
-                href={contract.signedDocumentUrl}
+                href={contract.signedDocumentUrl.startsWith("http") ? contract.signedDocumentUrl : `${server_url}/${contract.signedDocumentUrl.replace(/^\//, "")}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-3 rounded-lg border border-emerald-100 p-3 hover:bg-emerald-50 transition-colors"
