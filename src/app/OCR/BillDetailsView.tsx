@@ -1,9 +1,10 @@
-import { useState, useMemo } from "react";
-import { Button, Spin, Empty, Tag, message, Tooltip, InputNumber, Table } from "antd";
+import { useState, useCallback } from "react";
+import { Button, Spin, Empty, Tag, message, Tooltip, InputNumber, Table, Modal } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import {
   FiArrowLeft,
   FiDownload,
+  FiEye,
   FiSend,
   FiUser,
   FiFileText,
@@ -25,6 +26,8 @@ import {
   type IBill,
   type IOfferWithSavings,
 } from "../../redux/features/Bills/billApi";
+import { useAppSelector } from "../../redux/hooks";
+import { server_url } from "../../config";
 
 const statusConfig: Record<string, { color: string; label: string }> = {
   pending_email: { color: "purple", label: "Pending (Email)" },
@@ -39,8 +42,6 @@ const statusConfig: Record<string, { color: string; label: string }> = {
   activated: { color: "green", label: "Activated" },
   cancelled: { color: "default", label: "Cancelled" },
 };
-
-const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
 
 const fmt = (val: number | null | undefined, decimals = 2) =>
   val != null ? `€ ${Number(val).toFixed(decimals)}` : "—";
@@ -71,9 +72,13 @@ const BillDetailsView = () => {
     skip: !billId || bill?.status === "pending_email",
   });
   const [sendSelectedOffers, { isLoading: isSending }] = useSendSelectedOffersMutation();
+  const token = useAppSelector((state) => state.auth.token);
   const [showRawJson, setShowRawJson] = useState(false);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [savingsOverrides, setSavingsOverrides] = useState<Record<string, number>>({});
+  const [docPreviewOpen, setDocPreviewOpen] = useState(false);
+  const [docPreviewUrl, setDocPreviewUrl] = useState<string | null>(null);
+  const [docPreviewLoading, setDocPreviewLoading] = useState(false);
 
   if (isLoading) {
     return (
@@ -100,6 +105,57 @@ const BillDetailsView = () => {
   const hasActiveCase = bill.switchCases?.some(
     (c) => !["cancelled", "rejected"].includes(c.status),
   ) ?? false;
+
+  const fileApiUrl = `${server_url}/api/v1/bills/${bill.id}/file`;
+  const isPdf = bill.fileUrl?.endsWith(".pdf");
+  const isImage = bill.fileUrl ? /\.(jpg|jpeg|png)$/i.test(bill.fileUrl) : false;
+
+  const fetchFileBlob = useCallback(async () => {
+    const res = await fetch(fileApiUrl, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error("Failed to fetch file");
+    return res.blob();
+  }, [fileApiUrl, token]);
+
+  const handleDocView = async () => {
+    setDocPreviewLoading(true);
+    try {
+      const blob = await fetchFileBlob();
+      const url = URL.createObjectURL(blob);
+      setDocPreviewUrl(url);
+      setDocPreviewOpen(true);
+    } catch {
+      message.error("Failed to load document");
+    } finally {
+      setDocPreviewLoading(false);
+    }
+  };
+
+  const handleDocDownload = async () => {
+    try {
+      const blob = await fetchFileBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const ext = bill.fileUrl?.split(".").pop() || "pdf";
+      a.download = `bill-${bill.id.slice(0, 8)}.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      message.error("Failed to download document");
+    }
+  };
+
+  const handleCloseDocPreview = () => {
+    setDocPreviewOpen(false);
+    if (docPreviewUrl) {
+      URL.revokeObjectURL(docPreviewUrl);
+      setDocPreviewUrl(null);
+    }
+  };
 
   const handleSendOffers = async () => {
     if (selectedRowKeys.length === 0) {
@@ -365,15 +421,24 @@ const BillDetailsView = () => {
                     {bill.fileUrl.endsWith(".pdf") ? "PDF" : "Image"}
                   </p>
                 </div>
+                <Tooltip title="View document">
+                  <button
+                    type="button"
+                    onClick={handleDocView}
+                    disabled={docPreviewLoading}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-500 transition hover:bg-indigo-100 disabled:opacity-50"
+                  >
+                    <FiEye className="h-4 w-4" />
+                  </button>
+                </Tooltip>
                 <Tooltip title="Download file">
-                  <a
-                    href={`${serverUrl}/${bill.fileUrl}`}
-                    target="_blank"
-                    rel="noreferrer"
+                  <button
+                    type="button"
+                    onClick={handleDocDownload}
                     className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-500 transition hover:bg-slate-200"
                   >
                     <FiDownload className="h-4 w-4" />
-                  </a>
+                  </button>
                 </Tooltip>
               </div>
             ) : (
@@ -397,6 +462,60 @@ const BillDetailsView = () => {
           </Card>
         </div>
       </div>
+
+      {/* Document Preview Modal */}
+      <Modal
+        open={docPreviewOpen}
+        onCancel={handleCloseDocPreview}
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button onClick={handleCloseDocPreview}>Close</Button>
+            <Button
+              type="primary"
+              icon={<FiDownload className="h-3.5 w-3.5" />}
+              onClick={handleDocDownload}
+              className="bg-emerald-500! hover:bg-emerald-600! border-0!"
+            >
+              Download
+            </Button>
+          </div>
+        }
+        title={
+          <span className="flex items-center gap-2">
+            <FiFileText className="h-4 w-4 text-indigo-500" />
+            Uploaded Bill Document
+          </span>
+        }
+        width={900}
+        centered
+        destroyOnClose
+      >
+        {docPreviewUrl && (
+          <div className="flex items-center justify-center bg-slate-50 rounded-lg overflow-hidden" style={{ minHeight: 500 }}>
+            {isPdf ? (
+              <iframe
+                src={docPreviewUrl}
+                title="Bill Document"
+                className="w-full border-0 rounded-lg"
+                style={{ height: 600 }}
+              />
+            ) : isImage ? (
+              <img
+                src={docPreviewUrl}
+                alt="Bill Document"
+                className="max-w-full max-h-[600px] object-contain"
+              />
+            ) : (
+              <div className="flex flex-col items-center gap-3 py-12">
+                <FiFileText className="h-12 w-12 text-slate-300" />
+                <p className="text-sm text-slate-500">
+                  Preview not available for this file type. Please download the file to view it.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };
