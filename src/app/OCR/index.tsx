@@ -4,7 +4,6 @@ import type { ColumnsType } from "antd/es/table";
 import type { UploadFile } from "antd/es/upload/interface";
 import {
   FiCheckCircle,
-  FiUpload,
   FiAlertCircle,
   FiSearch,
   FiSend,
@@ -15,7 +14,6 @@ import { LuZap, LuFlame } from "react-icons/lu";
 import { useNavigate } from "react-router";
 import {
   useGetBillsAdminQuery,
-  useUploadBillMutation,
   useAdminUploadEmailBillMutation,
   type IBill,
   type IBillQuery,
@@ -45,7 +43,6 @@ const OCRBills = () => {
   const [search, setSearch] = useState("");
   const [billTypeFilter, setBillTypeFilter] = useState<string | undefined>();
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
-  const [uploadBillType, setUploadBillType] = useState<"electricity" | "gas">("electricity");
   const [sourceFilter, setSourceFilter] = useState<string | undefined>();
 
   // Email bill upload state
@@ -54,7 +51,6 @@ const OCRBills = () => {
   const [selectedUserId, setSelectedUserId] = useState<string | undefined>();
 
   const { data, isLoading, isFetching } = useGetBillsAdminQuery(queryParams);
-  const [uploadBill, { isLoading: isUploading }] = useUploadBillMutation();
   const [adminUploadEmailBill, { isLoading: isUploadingEmail }] = useAdminUploadEmailBillMutation();
   const { data: searchedUsers } = useSearchUsersQuery(emailUserSearch, {
     skip: emailUserSearch.length < 2,
@@ -119,19 +115,6 @@ const OCRBills = () => {
       setEmailUserSearch("");
     } catch {
       message.error("Failed to upload email bill");
-    }
-  };
-
-  const handleUpload = async (file: UploadFile) => {
-    const originFile = file as unknown as File;
-    const formData = new FormData();
-    formData.append("file", originFile);
-    formData.append("billType", uploadBillType);
-    try {
-      await uploadBill(formData).unwrap();
-      message.success("Bill uploaded successfully");
-    } catch {
-      message.error("Failed to upload bill");
     }
   };
 
@@ -331,61 +314,6 @@ const OCRBills = () => {
             </div>
           </div>
         ))}
-      </div>
-
-      {/* Upload Section */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-        <div className="flex flex-col sm:flex-row sm:items-end gap-4 mb-4">
-          <div>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-              Bill type for upload
-            </p>
-            <Select
-              value={uploadBillType}
-              onChange={(v) => setUploadBillType(v)}
-              className="w-44 [&_.ant-select-selector]:rounded-lg"
-              options={[
-                { value: "electricity", label: "Electricity" },
-                { value: "gas", label: "Gas" },
-              ]}
-            />
-          </div>
-        </div>
-        <Dragger
-          multiple={false}
-          showUploadList={false}
-          disabled={isUploading}
-          beforeUpload={(file) => {
-            handleUpload(file as unknown as UploadFile);
-            return false;
-          }}
-          accept=".pdf,.jpg,.jpeg,.png"
-          className="flex-1 bg-white! border-2! border-dashed! border-slate-300! hover:border-[#34d399]! transition-colors rounded-xl"
-        >
-          <div className="flex flex-col items-center justify-center h-full py-12">
-            {isUploading ? (
-              <Spin size="large" />
-            ) : (
-              <>
-                <div className="h-16 w-16 bg-slate-100 text-slate-500 rounded-full flex items-center justify-center mb-6">
-                  <FiUpload className="h-8 w-8" />
-                </div>
-                <h3 className="text-xl font-bold text-slate-800 mb-2">
-                  Drag bills here
-                </h3>
-                <p className="text-sm text-slate-500 mb-8">
-                  PDF, JPG, PNG — including smartphone photos
-                </p>
-                <Button
-                  type="primary"
-                  className="bg-[#34d399] hover:bg-[#10b981] border-0 rounded-lg px-8 h-10 font-medium shadow-sm"
-                >
-                  Or select file
-                </Button>
-              </>
-            )}
-          </div>
-        </Dragger>
       </div>
 
       {/* Upload Email Bill Section */}
