@@ -15,9 +15,10 @@ export interface IBillAnalysis {
 
 export interface IBill {
   id: string;
-  fileUrl: string;
+  fileUrl: string | null;
   billType: "electricity" | "gas";
-  status: "uploaded" | "analyzing" | "analyzed" | "error" | "offer_sent" | "case_created" | "contract_sent" | "contract_signed" | "activated" | "cancelled";
+  status: "pending_email" | "uploaded" | "analyzing" | "analyzed" | "error" | "offer_sent" | "case_created" | "contract_sent" | "contract_signed" | "activated" | "cancelled";
+  source?: "upload" | "email";
   podNumber: string | null;
   pdrNumber: string | null;
   billingPeriodStart: string | null;
@@ -63,6 +64,7 @@ export interface IBillQuery {
   caseStatus?: string;
   dateFrom?: string;
   dateTo?: string;
+  source?: string;
 }
 
 export interface IOfferWithSavings {
@@ -104,6 +106,7 @@ const billApi = baseApi.injectEndpoints({
           if (params.caseStatus) qp.set("caseStatus", params.caseStatus);
           if (params.dateFrom) qp.set("dateFrom", params.dateFrom);
           if (params.dateTo) qp.set("dateTo", params.dateTo);
+          if (params.source) qp.set("source", params.source);
         }
         return { url: `bills/admin?${qp.toString()}`, method: "GET" };
       },
@@ -170,6 +173,30 @@ const billApi = baseApi.injectEndpoints({
         { type: "offer", id: `bill-offers-${billId}` },
       ],
     }),
+
+    adminUploadEmailBill: builder.mutation<IBill, FormData>({
+      query: (formData) => ({
+        url: "bills/admin/upload-email",
+        method: "POST",
+        body: formData,
+      }),
+      invalidatesTags: [{ type: "bill", id: "LIST" }],
+    }),
+
+    associateBillWithUser: builder.mutation<
+      IBill,
+      { billId: string; userId: string; pendingBillId?: string }
+    >({
+      query: ({ billId, ...body }) => ({
+        url: `bills/admin/${billId}/associate-user`,
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: (_r, _e, { billId }) => [
+        { type: "bill" as const, id: billId },
+        { type: "bill" as const, id: "LIST" },
+      ],
+    }),
   }),
 });
 
@@ -182,4 +209,6 @@ export const {
   useSendOffersToUserMutation,
   useGetAllOffersForBillQuery,
   useSendSelectedOffersMutation,
+  useAdminUploadEmailBillMutation,
+  useAssociateBillWithUserMutation,
 } = billApi;

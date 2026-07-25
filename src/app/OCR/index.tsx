@@ -8,6 +8,7 @@ import {
   FiAlertCircle,
   FiSearch,
   FiSend,
+  FiMail,
 } from "react-icons/fi";
 import { HiOutlineDocumentText } from "react-icons/hi2";
 import { LuZap, LuFlame } from "react-icons/lu";
@@ -15,14 +16,17 @@ import { useNavigate } from "react-router";
 import {
   useGetBillsAdminQuery,
   useUploadBillMutation,
+  useAdminUploadEmailBillMutation,
   type IBill,
   type IBillQuery,
 } from "../../redux/features/Bills/billApi";
+import { useSearchUsersQuery } from "../../redux/features/Users/clientApi";
 import { debounce } from "../../utils/debounce";
 
 const { Dragger } = Upload;
 
 const statusConfig: Record<string, { color: string; label: string }> = {
+  pending_email: { color: "purple", label: "Pending (Email)" },
   uploaded: { color: "blue", label: "Uploaded" },
   analyzing: { color: "orange", label: "Analyzing" },
   analyzed: { color: "green", label: "Analyzed" },
@@ -42,9 +46,19 @@ const OCRBills = () => {
   const [billTypeFilter, setBillTypeFilter] = useState<string | undefined>();
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
   const [uploadBillType, setUploadBillType] = useState<"electricity" | "gas">("electricity");
+  const [sourceFilter, setSourceFilter] = useState<string | undefined>();
+
+  // Email bill upload state
+  const [emailBillType, setEmailBillType] = useState<"electricity" | "gas">("electricity");
+  const [emailUserSearch, setEmailUserSearch] = useState("");
+  const [selectedUserId, setSelectedUserId] = useState<string | undefined>();
 
   const { data, isLoading, isFetching } = useGetBillsAdminQuery(queryParams);
   const [uploadBill, { isLoading: isUploading }] = useUploadBillMutation();
+  const [adminUploadEmailBill, { isLoading: isUploadingEmail }] = useAdminUploadEmailBillMutation();
+  const { data: searchedUsers } = useSearchUsersQuery(emailUserSearch, {
+    skip: emailUserSearch.length < 2,
+  });
 
   const bills = data?.data || [];
   const meta = data?.meta;
@@ -52,10 +66,11 @@ const OCRBills = () => {
   // KPI computed values
   const kpis = useMemo(() => {
     const uploaded = bills.filter((b) => b.status === "uploaded").length;
+    const pendingEmail = bills.filter((b) => b.status === "pending_email").length;
     const offerSent = bills.filter((b) => b.status === "offer_sent").length;
     const analyzed = bills.filter((b) => b.status === "analyzed").length;
     const errors = bills.filter((b) => b.status === "error").length;
-    return { uploaded, offerSent, analyzed, errors };
+    return { uploaded, pendingEmail, offerSent, analyzed, errors };
   }, [bills]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -82,6 +97,31 @@ const OCRBills = () => {
     setQueryParams((prev) => ({ ...prev, page: 1, status: value }));
   };
 
+  const handleSourceFilter = (value: string | undefined) => {
+    setSourceFilter(value);
+    setQueryParams((prev) => ({ ...prev, page: 1, source: value }));
+  };
+
+  const handleEmailBillUpload = async (file: UploadFile) => {
+    if (!selectedUserId) {
+      message.warning("Please select a user first");
+      return;
+    }
+    const originFile = file as unknown as File;
+    const formData = new FormData();
+    formData.append("file", originFile);
+    formData.append("billType", emailBillType);
+    formData.append("userId", selectedUserId);
+    try {
+      await adminUploadEmailBill(formData).unwrap();
+      message.success("Email bill uploaded and associated successfully");
+      setSelectedUserId(undefined);
+      setEmailUserSearch("");
+    } catch {
+      message.error("Failed to upload email bill");
+    }
+  };
+
   const handleUpload = async (file: UploadFile) => {
     const originFile = file as unknown as File;
     const formData = new FormData();
@@ -104,22 +144,29 @@ const OCRBills = () => {
       key: "billType",
       width: 100,
       render: (_, record) => (
-        <Tag
-          className={`border-0 rounded font-bold text-[10px] px-2 py-0 uppercase ${
-            record.billType === "electricity"
-              ? "bg-emerald-50 text-emerald-600"
-              : "bg-blue-50 text-blue-600"
-          }`}
-          icon={
-            record.billType === "electricity" ? (
-              <LuZap className="inline mr-1 h-3 w-3" />
-            ) : (
-              <LuFlame className="inline mr-1 h-3 w-3" />
-            )
-          }
-        >
-          {record.billType}
-        </Tag>
+        <div className="flex flex-col items-center gap-1">
+          <Tag
+            className={`border-0 rounded font-bold text-[10px] px-2 py-0 uppercase ${
+              record.billType === "electricity"
+                ? "bg-emerald-50 text-emerald-600"
+                : "bg-blue-50 text-blue-600"
+            }`}
+            icon={
+              record.billType === "electricity" ? (
+                <LuZap className="inline mr-1 h-3 w-3" />
+              ) : (
+                <LuFlame className="inline mr-1 h-3 w-3" />
+              )
+            }
+          >
+            {record.billType}
+          </Tag>
+          {record.source === "email" && (
+            <Tag className="border-0 rounded font-bold text-[9px] px-1.5 py-0 bg-purple-50 text-purple-600" icon={<FiMail className="inline mr-0.5 h-2.5 w-2.5" />}>
+              Email
+            </Tag>
+          )}
+        </div>
       ),
       align: "center",
     },
@@ -236,13 +283,19 @@ const OCRBills = () => {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         {[
           {
             label: "Uploaded",
             value: kpis.uploaded,
             icon: <HiOutlineDocumentText className="h-5 w-5" />,
             bg: "bg-amber-100 text-amber-600",
+          },
+          {
+            label: "Pending Email",
+            value: kpis.pendingEmail,
+            icon: <FiMail className="h-5 w-5" />,
+            bg: "bg-purple-100 text-purple-600",
           },
           {
             label: "Offer Sent",
@@ -335,6 +388,86 @@ const OCRBills = () => {
         </Dragger>
       </div>
 
+      {/* Upload Email Bill Section */}
+      <div className="bg-white rounded-xl border border-purple-200 shadow-sm p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <FiMail className="h-5 w-5 text-purple-600" />
+          <h3 className="text-base font-bold text-slate-800">Upload Email Bill</h3>
+          <span className="text-xs text-slate-400">— For bills received via email from users</span>
+        </div>
+        <div className="flex flex-col sm:flex-row sm:items-end gap-4 mb-4">
+          <div>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+              Bill Type
+            </p>
+            <Select
+              value={emailBillType}
+              onChange={(v) => setEmailBillType(v)}
+              className="w-44 [&_.ant-select-selector]:rounded-lg"
+              options={[
+                { value: "electricity", label: "Electricity" },
+                { value: "gas", label: "Gas" },
+              ]}
+            />
+          </div>
+          <div className="flex-1">
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+              Associate with User
+            </p>
+            <Select
+              showSearch
+              allowClear
+              placeholder="Search user by email..."
+              value={selectedUserId}
+              onSearch={(v) => setEmailUserSearch(v)}
+              onChange={(v) => setSelectedUserId(v)}
+              filterOption={false}
+              className="w-full sm:w-80 [&_.ant-select-selector]:rounded-lg"
+              options={(searchedUsers || []).map((u) => ({
+                value: u.id,
+                label: `${u.firstName} ${u.lastName} (${u.email})`,
+              }))}
+              notFoundContent={
+                emailUserSearch.length < 2
+                  ? <span className="text-slate-400 text-xs">Type at least 2 characters...</span>
+                  : <span className="text-slate-400 text-xs">No users found</span>
+              }
+            />
+          </div>
+        </div>
+        <Dragger
+          multiple={false}
+          showUploadList={false}
+          disabled={isUploadingEmail || !selectedUserId}
+          beforeUpload={(file) => {
+            handleEmailBillUpload(file as unknown as UploadFile);
+            return false;
+          }}
+          accept=".pdf,.jpg,.jpeg,.png"
+          className={`flex-1 bg-white! border-2! border-dashed! ${
+            selectedUserId ? "border-purple-300! hover:border-purple-500!" : "border-slate-200! opacity-60"
+          } transition-colors rounded-xl`}
+        >
+          <div className="flex flex-col items-center justify-center h-full py-8">
+            {isUploadingEmail ? (
+              <Spin size="large" />
+            ) : (
+              <>
+                <div className="h-12 w-12 bg-purple-50 text-purple-500 rounded-full flex items-center justify-center mb-4">
+                  <FiMail className="h-6 w-6" />
+                </div>
+                <h3 className="text-base font-bold text-slate-700 mb-1">
+                  {selectedUserId ? "Drop email bill here" : "Select a user first"}
+                </h3>
+                <p className="text-xs text-slate-400">
+                  PDF, JPG, PNG — bill received via email from user
+                </p>
+              </>
+            )}
+          </div>
+        </Dragger>
+      </div>
+
       {/* Filters & Table */}
       <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-white p-4">
@@ -348,7 +481,7 @@ const OCRBills = () => {
               className="h-11 rounded-xl border-slate-200 hover:border-indigo-400 focus:border-indigo-400 shadow-sm"
             />
           </div>
-          <div className="grid w-full grid-cols-1 gap-2 sm:w-auto sm:grid-cols-[auto_auto] sm:gap-3">
+          <div className="grid w-full grid-cols-1 gap-2 sm:w-auto sm:grid-cols-[auto_auto_auto] sm:gap-3">
             <Select
               allowClear
               placeholder="Bill type"
@@ -369,6 +502,7 @@ const OCRBills = () => {
               style={{ height: "44px" }}
               className="w-full sm:w-36 [&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-xl [&_.ant-select-selector]:border-slate-200"
               options={[
+                { value: "pending_email", label: "Pending (Email)" },
                 { value: "uploaded", label: "Uploaded" },
                 { value: "analyzing", label: "Analyzing" },
                 { value: "analyzed", label: "Analyzed" },
@@ -379,6 +513,18 @@ const OCRBills = () => {
                 { value: "contract_signed", label: "Contract Signed" },
                 { value: "activated", label: "Activated" },
                 { value: "cancelled", label: "Cancelled" },
+              ]}
+            />
+            <Select
+              allowClear
+              placeholder="Source"
+              value={sourceFilter}
+              onChange={handleSourceFilter}
+              style={{ height: "44px" }}
+              className="w-full sm:w-32 [&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-xl [&_.ant-select-selector]:border-slate-200"
+              options={[
+                { value: "upload", label: "Upload" },
+                { value: "email", label: "Email" },
               ]}
             />
           </div>

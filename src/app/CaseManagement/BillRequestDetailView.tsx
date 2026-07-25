@@ -53,6 +53,7 @@ import {
 /* ── Status & Step Configuration ─────────────────────────── */
 
 const billStatusOrder = [
+  "pending_email",
   "uploaded",
   "analyzing",
   "analyzed",
@@ -65,7 +66,7 @@ const billStatusOrder = [
 ];
 
 const stepConfig = [
-  { label: "Uploaded", statuses: ["uploaded", "analyzing"] },
+  { label: "Uploaded", statuses: ["pending_email", "uploaded", "analyzing"] },
   { label: "Offer Sent", statuses: ["analyzed", "offer_sent"] },
   { label: "Case Processing", statuses: ["case_created", "new", "in_progress", "documents_pending"] },
   { label: "Contract", statuses: ["contract_sent", "contract_signed"] },
@@ -73,6 +74,7 @@ const stepConfig = [
 ];
 
 const statusLabel: Record<string, string> = {
+  pending_email: "Pending (Email)",
   uploaded: "Uploaded",
   analyzing: "Analyzing",
   analyzed: "Analyzed",
@@ -90,6 +92,7 @@ const statusLabel: Record<string, string> = {
 };
 
 const statusTagColor: Record<string, string> = {
+  pending_email: "purple",
   uploaded: "blue",
   analyzing: "orange",
   analyzed: "green",

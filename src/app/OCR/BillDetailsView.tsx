@@ -8,6 +8,7 @@ import {
   FiUser,
   FiFileText,
   FiZap,
+  FiMail,
 } from "react-icons/fi";
 import {
   LuZap,
@@ -26,6 +27,7 @@ import {
 } from "../../redux/features/Bills/billApi";
 
 const statusConfig: Record<string, { color: string; label: string }> = {
+  pending_email: { color: "purple", label: "Pending (Email)" },
   uploaded: { color: "blue", label: "Uploaded" },
   analyzing: { color: "orange", label: "Analyzing" },
   analyzed: { color: "green", label: "Analyzed" },
@@ -153,6 +155,11 @@ const BillDetailsView = () => {
                   <span className="flex items-center gap-1"><LuFlame className="h-3 w-3" /> Gas</span>
                 )}
               </Tag>
+              {bill.source === "email" && (
+                <Tag color="purple" className="rounded-full border-0 px-2.5 py-0.5 text-xs font-semibold">
+                  <span className="flex items-center gap-1"><FiMail className="h-3 w-3" /> Via Email</span>
+                </Tag>
+              )}
             </div>
             <p className="mt-0.5 text-xs text-slate-400">
               Uploaded {fmtDate(bill.createdAt)} · Updated {fmtDate(bill.updatedAt)}
@@ -323,29 +330,39 @@ const BillDetailsView = () => {
 
           {/* Document */}
           <Card title="Document" icon={<FiFileText className="h-4 w-4 text-slate-500" />}>
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-50">
-                <FiFileText className="h-5 w-5 text-red-500" />
+            {bill.fileUrl ? (
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-50">
+                  <FiFileText className="h-5 w-5 text-red-500" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-slate-700">
+                    {bill.fileUrl.split("/").pop()}
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    {bill.fileUrl.endsWith(".pdf") ? "PDF" : "Image"}
+                  </p>
+                </div>
+                <Tooltip title="Download file">
+                  <a
+                    href={`${serverUrl}/${bill.fileUrl}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-500 transition hover:bg-slate-200"
+                  >
+                    <FiDownload className="h-4 w-4" />
+                  </a>
+                </Tooltip>
               </div>
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-slate-700">
-                  {bill.fileUrl.split("/").pop()}
-                </p>
-                <p className="text-xs text-slate-400">
-                  {bill.fileUrl.endsWith(".pdf") ? "PDF" : "Image"}
-                </p>
+            ) : (
+              <div className="flex items-center gap-3 rounded-lg bg-purple-50 p-3">
+                <FiMail className="h-5 w-5 text-purple-500" />
+                <div>
+                  <p className="text-sm font-medium text-purple-700">No document attached yet</p>
+                  <p className="text-xs text-purple-500">Waiting for admin to upload the bill received via email</p>
+                </div>
               </div>
-              <Tooltip title="Download file">
-                <a
-                  href={`${serverUrl}/${bill.fileUrl}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-500 transition hover:bg-slate-200"
-                >
-                  <FiDownload className="h-4 w-4" />
-                </a>
-              </Tooltip>
-            </div>
+            )}
           </Card>
 
           {/* IDs */}

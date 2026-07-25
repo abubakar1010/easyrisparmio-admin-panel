@@ -17,6 +17,7 @@ import { debounce } from "../../utils/debounce";
 
 const billStatusConfig: Record<string, { color: string; label: string }> = {
   // Bill statuses
+  pending_email: { color: "purple", label: "Pending (Email)" },
   uploaded: { color: "blue", label: "Uploaded" },
   analyzing: { color: "orange", label: "Analyzing" },
   analyzed: { color: "green", label: "Analyzed" },
