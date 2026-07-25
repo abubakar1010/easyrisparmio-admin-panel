@@ -170,7 +170,7 @@ const BillRequestDetailView = () => {
     refetch,
   } = useGetBillByIdAdminQuery(billId!, { skip: !billId });
   const { data: allOffers, isLoading: offersLoading } = useGetAllOffersForBillQuery(billId!, {
-    skip: !billId,
+    skip: !billId || bill?.status === "pending_email",
   });
   const [sendSelectedOffers, { isLoading: isSending }] = useSendSelectedOffersMutation();
   const [activeTab, setActiveTab] = useState("available_offers");
@@ -568,6 +568,18 @@ function AvailableOffersTab({
 
   return (
     <div className="space-y-4">
+      {/* Pending email banner */}
+      {billStatus === "pending_email" && (
+        <div className="rounded-lg bg-purple-50 border border-purple-200 px-4 py-3">
+          <p className="text-sm font-semibold text-purple-800">
+            This bill was submitted via email and is awaiting document upload.
+          </p>
+          <p className="text-xs text-purple-600 mt-0.5">
+            Upload the bill document through the OCR tab before sending offers.
+          </p>
+        </div>
+      )}
+
       {/* Case created banner */}
       {caseCreated && (
         <div className="rounded-lg bg-purple-50 border border-purple-200 px-4 py-3">
@@ -581,7 +593,7 @@ function AvailableOffersTab({
       )}
 
       {/* Send action bar */}
-      {!caseCreated && selectedRowKeys.length > 0 && (
+      {!caseCreated && billStatus !== "pending_email" && selectedRowKeys.length > 0 && (
         <div className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50/50 p-3">
           <p className="text-sm font-semibold text-emerald-800">
             {selectedRowKeys.length} offer{selectedRowKeys.length > 1 ? "s" : ""} selected
@@ -643,7 +655,7 @@ function AvailableOffersTab({
             size="small"
             pagination={offers.length > 20 ? { pageSize: 20, showSizeChanger: false } : false}
             scroll={{ x: 900 }}
-            rowSelection={caseCreated ? undefined : {
+            rowSelection={caseCreated || billStatus === "pending_email" ? undefined : {
               type: "checkbox",
               selectedRowKeys,
               onChange: onSelectionChange,

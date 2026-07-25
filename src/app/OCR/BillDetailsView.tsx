@@ -68,7 +68,7 @@ const BillDetailsView = () => {
     skip: !billId,
   });
   const { data: allOffers, isLoading: offersLoading } = useGetAllOffersForBillQuery(billId!, {
-    skip: !billId,
+    skip: !billId || bill?.status === "pending_email",
   });
   const [sendSelectedOffers, { isLoading: isSending }] = useSendSelectedOffersMutation();
   const [showRawJson, setShowRawJson] = useState(false);
@@ -268,20 +268,22 @@ const BillDetailsView = () => {
           )}
 
           {/* Available Offers */}
-          <AvailableOffersCard
-            offers={allOffers || []}
-            isLoading={offersLoading}
-            isElectricity={isElectricity}
-            selectedRowKeys={selectedRowKeys}
-            onSelectionChange={setSelectedRowKeys}
-            savingsOverrides={savingsOverrides}
-            onSavingsChange={(offerId, value) =>
-              setSavingsOverrides((prev) => ({ ...prev, [offerId]: value }))
-            }
-            onSendOffers={handleSendOffers}
-            isSending={isSending}
-            billStatus={bill.status}
-          />
+          {bill.status !== "pending_email" && (
+            <AvailableOffersCard
+              offers={allOffers || []}
+              isLoading={offersLoading}
+              isElectricity={isElectricity}
+              selectedRowKeys={selectedRowKeys}
+              onSelectionChange={setSelectedRowKeys}
+              savingsOverrides={savingsOverrides}
+              onSavingsChange={(offerId, value) =>
+                setSavingsOverrides((prev) => ({ ...prev, [offerId]: value }))
+              }
+              onSendOffers={handleSendOffers}
+              isSending={isSending}
+              billStatus={bill.status}
+            />
+          )}
         </div>
 
         {/* Right Column / Sidebar */}
@@ -289,6 +291,14 @@ const BillDetailsView = () => {
           {/* Actions */}
           <Card title="Actions">
             <div className="space-y-3">
+              {bill.status === "pending_email" ? (
+                <div className="rounded-lg bg-purple-50 border border-purple-200 px-3 py-2.5">
+                  <p className="text-xs font-semibold text-purple-800">Pending email bill</p>
+                  <p className="text-xs text-purple-600 mt-0.5">
+                    Upload the document via OCR before sending offers.
+                  </p>
+                </div>
+              ) : (
               <Button
                 block
                 type="primary"
@@ -302,6 +312,7 @@ const BillDetailsView = () => {
                   ? `Send ${selectedRowKeys.length} Offer${selectedRowKeys.length > 1 ? "s" : ""} to User`
                   : "Select Offers to Send"}
               </Button>
+              )}
               {bill.status === "offer_sent" && (
                 <p className="text-xs text-center text-slate-400">
                   Offers have been sent. You can still send additional offers.
