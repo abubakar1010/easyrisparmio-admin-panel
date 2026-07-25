@@ -97,6 +97,9 @@ const BillDetailsView = () => {
   const status = statusConfig[bill.status] || statusConfig.uploaded;
   const ocrData = bill.rawAnalysisData as Record<string, unknown> | null;
   const isElectricity = bill.billType === "electricity";
+  const hasActiveCase = bill.switchCases?.some(
+    (c) => !["cancelled", "rejected"].includes(c.status),
+  ) ?? false;
 
   const handleSendOffers = async () => {
     if (selectedRowKeys.length === 0) {
@@ -282,6 +285,7 @@ const BillDetailsView = () => {
               onSendOffers={handleSendOffers}
               isSending={isSending}
               billStatus={bill.status}
+              caseCreated={hasActiveCase}
             />
           )}
         </div>
@@ -296,6 +300,13 @@ const BillDetailsView = () => {
                   <p className="text-xs font-semibold text-purple-800">Pending email bill</p>
                   <p className="text-xs text-purple-600 mt-0.5">
                     Upload the document via OCR before sending offers.
+                  </p>
+                </div>
+              ) : hasActiveCase ? (
+                <div className="rounded-lg bg-purple-50 border border-purple-200 px-3 py-2.5">
+                  <p className="text-xs font-semibold text-purple-800">Case in progress</p>
+                  <p className="text-xs text-purple-600 mt-0.5">
+                    User has accepted an offer. Manage the case from Case Management.
                   </p>
                 </div>
               ) : (
@@ -313,7 +324,7 @@ const BillDetailsView = () => {
                   : "Select Offers to Send"}
               </Button>
               )}
-              {bill.status === "offer_sent" && (
+              {bill.status === "offer_sent" && !hasActiveCase && (
                 <p className="text-xs text-center text-slate-400">
                   Offers have been sent. You can still send additional offers.
                 </p>
@@ -442,6 +453,7 @@ interface AvailableOffersCardProps {
   onSendOffers: () => void;
   isSending: boolean;
   billStatus: string;
+  caseCreated?: boolean;
 }
 
 const AvailableOffersCard = ({
@@ -455,6 +467,7 @@ const AvailableOffersCard = ({
   onSendOffers,
   isSending,
   billStatus,
+  caseCreated,
 }: AvailableOffersCardProps) => {
   const unit = isElectricity ? "kWh" : "Smc";
 
@@ -570,8 +583,20 @@ const AvailableOffersCard = ({
 
   return (
     <Card title={`Available Offers (${offers.length})`} icon={<LuPackageSearch className="h-4 w-4 text-amber-500" />}>
+      {/* Case created banner */}
+      {caseCreated && (
+        <div className="mb-4 rounded-lg bg-purple-50 border border-purple-200 px-4 py-3">
+          <p className="text-sm font-semibold text-purple-800">
+            User has accepted an offer and a case has been created.
+          </p>
+          <p className="text-xs text-purple-600 mt-0.5">
+            No more offers can be sent for this bill.
+          </p>
+        </div>
+      )}
+
       {/* Send action bar */}
-      {selectedRowKeys.length > 0 && (
+      {!caseCreated && selectedRowKeys.length > 0 && (
         <div className="mb-4 flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50/50 p-3">
           <p className="text-sm font-semibold text-emerald-800">
             {selectedRowKeys.length} offer{selectedRowKeys.length > 1 ? "s" : ""} selected
@@ -610,7 +635,7 @@ const AvailableOffersCard = ({
           size="small"
           pagination={offers.length > 20 ? { pageSize: 20, showSizeChanger: false } : false}
           scroll={{ x: 900 }}
-          rowSelection={{
+          rowSelection={caseCreated ? undefined : {
             type: "checkbox",
             selectedRowKeys,
             onChange: onSelectionChange,

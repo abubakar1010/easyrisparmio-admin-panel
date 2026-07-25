@@ -916,12 +916,17 @@ function ContractTab({ caseData }: { caseData: ICase }) {
             />
             <Button
               type="primary"
-              onClick={() => {
+              onClick={async () => {
                 if (!deliveryMethod) return;
-                updateContract({
-                  id: contract.id,
-                  data: { status: "sent", deliveryMethod },
-                });
+                try {
+                  await updateContract({
+                    id: contract.id,
+                    data: { status: "sent", deliveryMethod },
+                  }).unwrap();
+                  message.success("Contract sent to customer");
+                } catch {
+                  message.error("Failed to send contract");
+                }
               }}
               loading={isUpdatingContract}
               disabled={!deliveryMethod}

@@ -76,9 +76,11 @@ const contractApi = baseApi.injectEndpoints({
     >({
       query: (data) => ({ url: "contracts", method: "POST", body: data }),
       transformResponse: (response: { success: boolean; data: IContract }) => response.data,
-      invalidatesTags: [
+      invalidatesTags: (_result, _error, { caseId }) => [
         { type: "contract", id: "LIST" },
+        { type: "contract", id: `case-${caseId}` },
         { type: "case", id: "LIST" },
+        { type: "case", id: caseId },
         { type: "bill" },
       ],
     }),
@@ -100,9 +102,15 @@ const contractApi = baseApi.injectEndpoints({
     >({
       query: ({ id, data }) => ({ url: `contracts/${id}`, method: "PATCH", body: data }),
       transformResponse: (response: { success: boolean; data: IContract }) => response.data,
-      invalidatesTags: (_r, _e, { id }) => [
+      invalidatesTags: (result, _e, { id }) => [
         { type: "contract", id },
         { type: "contract", id: "LIST" },
+        ...(result?.caseId
+          ? [
+              { type: "contract" as const, id: `case-${result.caseId}` },
+              { type: "case" as const, id: result.caseId },
+            ]
+          : []),
         { type: "case", id: "LIST" },
         { type: "bill" },
       ],
