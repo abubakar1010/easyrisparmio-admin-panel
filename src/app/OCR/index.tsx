@@ -1,22 +1,26 @@
 import { useCallback, useMemo, useState } from "react";
 import { Button, Input, Pagination, Select, Spin, Empty, Table, Tag, Upload, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import type { UploadFile } from "antd/es/upload/interface";
 import {
   FiCheckCircle,
   FiAlertCircle,
   FiSearch,
   FiSend,
   FiMail,
+  FiFileText,
+  FiX,
+  FiUpload,
 } from "react-icons/fi";
 import { HiOutlineDocumentText } from "react-icons/hi2";
 import { LuZap, LuFlame } from "react-icons/lu";
 import { useNavigate } from "react-router";
 import {
   useGetBillsAdminQuery,
+  useExtractBillDataMutation,
   useAdminUploadEmailBillMutation,
   type IBill,
   type IBillQuery,
+  type IBillExtractionResult,
 } from "../../redux/features/Bills/billApi";
 import { useSearchUsersQuery } from "../../redux/features/Users/clientApi";
 import { debounce } from "../../utils/debounce";
@@ -37,6 +41,18 @@ const statusConfig: Record<string, { color: string; label: string }> = {
   cancelled: { color: "default", label: "Cancelled" },
 };
 
+const confidenceColor: Record<string, string> = {
+  high: "bg-emerald-500",
+  medium: "bg-amber-500",
+  low: "bg-red-500",
+};
+
+const confidenceTagColor: Record<string, string> = {
+  high: "green",
+  medium: "orange",
+  low: "red",
+};
+
 const OCRBills = () => {
   const navigate = useNavigate();
   const [queryParams, setQueryParams] = useState<IBillQuery>({ page: 1, limit: 20 });
@@ -50,7 +66,13 @@ const OCRBills = () => {
   const [emailUserSearch, setEmailUserSearch] = useState("");
   const [selectedUserId, setSelectedUserId] = useState<string | undefined>();
 
+  // Two-phase OCR extraction state
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [extractedData, setExtractedData] = useState<IBillExtractionResult | null>(null);
+  const [isExtracting, setIsExtracting] = useState(false);
+
   const { data, isLoading, isFetching } = useGetBillsAdminQuery(queryParams);
+  const [extractBillData] = useExtractBillDataMutation();
   const [adminUploadEmailBill, { isLoading: isUploadingEmail }] = useAdminUploadEmailBillMutation();
   const { data: searchedUsers } = useSearchUsersQuery(emailUserSearch, {
     skip: emailUserSearch.length < 2,
@@ -98,24 +120,53 @@ const OCRBills = () => {
     setQueryParams((prev) => ({ ...prev, page: 1, source: value }));
   };
 
-  const handleEmailBillUpload = async (file: UploadFile) => {
+  // Phase A: Extract OCR data and show preview
+  const handleExtract = async (file: File) => {
     if (!selectedUserId) {
       message.warning("Please select a user first");
       return;
     }
-    const originFile = file as unknown as File;
+    setPendingFile(file);
+    setIsExtracting(true);
     const formData = new FormData();
-    formData.append("file", originFile);
+    formData.append("file", file);
+    formData.append("billType", emailBillType);
+    try {
+      const result = await extractBillData(formData).unwrap();
+      setExtractedData(result);
+    } catch {
+      message.error("OCR extraction failed. Please try again.");
+      setPendingFile(null);
+    } finally {
+      setIsExtracting(false);
+    }
+  };
+
+  // Phase B: Upload with confirmed extracted data
+  const handleConfirmUpload = async () => {
+    if (!pendingFile || !selectedUserId) return;
+    const formData = new FormData();
+    formData.append("file", pendingFile);
     formData.append("billType", emailBillType);
     formData.append("userId", selectedUserId);
+    if (extractedData) {
+      formData.append("extractedData", JSON.stringify(extractedData));
+    }
     try {
       await adminUploadEmailBill(formData).unwrap();
-      message.success("Email bill uploaded and associated successfully");
+      message.success("Bill uploaded with OCR data successfully");
+      setExtractedData(null);
+      setPendingFile(null);
       setSelectedUserId(undefined);
       setEmailUserSearch("");
     } catch {
-      message.error("Failed to upload email bill");
+      message.error("Failed to upload bill");
     }
+  };
+
+  const handleCancelExtraction = () => {
+    setExtractedData(null);
+    setPendingFile(null);
   };
 
   const formatCurrency = (val: number | null) =>
@@ -255,6 +306,8 @@ const OCRBills = () => {
     },
   ];
 
+  const isElectricity = emailBillType === "electricity";
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
       {/* Header */}
@@ -331,6 +384,7 @@ const OCRBills = () => {
             <Select
               value={emailBillType}
               onChange={(v) => setEmailBillType(v)}
+              disabled={!!extractedData || isExtracting}
               className="w-44 [&_.ant-select-selector]:rounded-lg"
               options={[
                 { value: "electricity", label: "Electricity" },
@@ -349,6 +403,7 @@ const OCRBills = () => {
               value={selectedUserId}
               onSearch={(v) => setEmailUserSearch(v)}
               onChange={(v) => setSelectedUserId(v)}
+              disabled={!!extractedData || isExtracting}
               filterOption={false}
               className="w-full sm:w-80 [&_.ant-select-selector]:rounded-lg"
               options={(searchedUsers || []).map((u) => ({
@@ -363,37 +418,131 @@ const OCRBills = () => {
             />
           </div>
         </div>
-        <Dragger
-          multiple={false}
-          showUploadList={false}
-          disabled={isUploadingEmail || !selectedUserId}
-          beforeUpload={(file) => {
-            handleEmailBillUpload(file as unknown as UploadFile);
-            return false;
-          }}
-          accept=".pdf,.jpg,.jpeg,.png"
-          className={`flex-1 bg-white! border-2! border-dashed! ${
-            selectedUserId ? "border-purple-300! hover:border-purple-500!" : "border-slate-200! opacity-60"
-          } transition-colors rounded-xl`}
-        >
-          <div className="flex flex-col items-center justify-center h-full py-8">
-            {isUploadingEmail ? (
-              <Spin size="large" />
-            ) : (
-              <>
-                <div className="h-12 w-12 bg-purple-50 text-purple-500 rounded-full flex items-center justify-center mb-4">
-                  <FiMail className="h-6 w-6" />
+
+        {/* File Drop Zone - hidden when preview is showing */}
+        {!extractedData && (
+          <Dragger
+            multiple={false}
+            showUploadList={false}
+            disabled={isExtracting || isUploadingEmail || !selectedUserId}
+            beforeUpload={(file) => {
+              handleExtract(file as unknown as File);
+              return false;
+            }}
+            accept=".pdf,.jpg,.jpeg,.png"
+            className={`flex-1 bg-white! border-2! border-dashed! ${
+              selectedUserId ? "border-purple-300! hover:border-purple-500!" : "border-slate-200! opacity-60"
+            } transition-colors rounded-xl`}
+          >
+            <div className="flex flex-col items-center justify-center h-full py-8">
+              {isExtracting ? (
+                <div className="flex flex-col items-center gap-3">
+                  <Spin size="large" />
+                  <p className="text-sm font-semibold text-indigo-600">Extracting OCR data...</p>
+                  <p className="text-xs text-slate-400">Analyzing bill with AI Vision. This may take a moment.</p>
                 </div>
-                <h3 className="text-base font-bold text-slate-700 mb-1">
-                  {selectedUserId ? "Drop email bill here" : "Select a user first"}
-                </h3>
-                <p className="text-xs text-slate-400">
-                  PDF, JPG, PNG — bill received via email from user
-                </p>
-              </>
-            )}
+              ) : (
+                <>
+                  <div className="h-12 w-12 bg-purple-50 text-purple-500 rounded-full flex items-center justify-center mb-4">
+                    <FiMail className="h-6 w-6" />
+                  </div>
+                  <h3 className="text-base font-bold text-slate-700 mb-1">
+                    {selectedUserId ? "Drop email bill here" : "Select a user first"}
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    PDF, JPG, PNG — bill received via email from user
+                  </p>
+                </>
+              )}
+            </div>
+          </Dragger>
+        )}
+
+        {/* OCR Extraction Preview */}
+        {extractedData && (
+          <div className="rounded-xl border border-indigo-200 bg-indigo-50/30 p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+              <div className="flex items-center gap-2">
+                <FiFileText className="h-5 w-5 text-indigo-600" />
+                <h4 className="text-sm font-bold text-slate-800">OCR Extraction Preview</h4>
+                <Tag color={confidenceTagColor[extractedData.overallConfidence] || "default"} className="rounded-full border-0 text-xs font-semibold">
+                  {extractedData.overallConfidence} confidence
+                </Tag>
+                {pendingFile && (
+                  <span className="text-xs text-slate-400 ml-2">{pendingFile.name}</span>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Button icon={<FiX className="h-3.5 w-3.5" />} onClick={handleCancelExtraction} disabled={isUploadingEmail}>
+                  Cancel
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<FiUpload className="h-3.5 w-3.5" />}
+                  onClick={handleConfirmUpload}
+                  loading={isUploadingEmail}
+                  className="!bg-[#7061ED] hover:!bg-[#5a4ed4]"
+                >
+                  Confirm Upload
+                </Button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              <PreviewField label="Supplier" value={extractedData.supplierName} confidence={extractedData.confidence?.supplierName} />
+              <PreviewField
+                label={isElectricity ? "POD Number" : "PDR Number"}
+                value={isElectricity ? extractedData.podNumber : extractedData.pdrNumber}
+                confidence={isElectricity ? extractedData.confidence?.podNumber : extractedData.confidence?.pdrNumber}
+                mono
+              />
+              <PreviewField
+                label="Total Amount"
+                value={extractedData.totalAmount != null ? `€ ${Number(extractedData.totalAmount).toFixed(2)}` : null}
+                confidence={extractedData.confidence?.totalAmount}
+              />
+              <PreviewField
+                label={isElectricity ? "Consumption (kWh)" : "Consumption (Smc)"}
+                value={
+                  isElectricity
+                    ? extractedData.consumptionKwh != null ? `${extractedData.consumptionKwh} kWh` : null
+                    : extractedData.consumptionSmc != null ? `${extractedData.consumptionSmc} Smc` : null
+                }
+                confidence={isElectricity ? extractedData.confidence?.consumptionKwh : extractedData.confidence?.consumptionSmc}
+              />
+              <PreviewField
+                label="Cost per Unit"
+                value={extractedData.costPerUnit != null ? `€ ${Number(extractedData.costPerUnit).toFixed(6)}` : null}
+                confidence={extractedData.confidence?.costPerUnit}
+              />
+              <PreviewField
+                label="Fixed Charges"
+                value={extractedData.fixedCharges != null ? `€ ${Number(extractedData.fixedCharges).toFixed(2)}` : null}
+                confidence={extractedData.confidence?.fixedCharges}
+              />
+              <PreviewField
+                label="Taxes"
+                value={extractedData.taxes != null ? `€ ${Number(extractedData.taxes).toFixed(2)}` : null}
+                confidence={extractedData.confidence?.taxes}
+              />
+              <PreviewField
+                label="Billing Period"
+                value={
+                  extractedData.billingPeriodStart
+                    ? `${extractedData.billingPeriodStart} — ${extractedData.billingPeriodEnd || "?"}`
+                    : null
+                }
+                confidence={extractedData.confidence?.billingPeriodStart}
+              />
+              <PreviewField label="Customer Name" value={extractedData.customerName} confidence={extractedData.confidence?.customerName} />
+              <PreviewField label="Supply Address" value={extractedData.supplyAddress} confidence={extractedData.confidence?.supplyAddress} />
+              <PreviewField label="Contract No." value={extractedData.contractNumber} confidence={extractedData.confidence?.contractNumber} mono />
+              <PreviewField label="Meter No." value={extractedData.meterNumber} confidence={extractedData.confidence?.meterNumber} mono />
+              <PreviewField label="Codice Fiscale" value={extractedData.codiceFiscale} confidence={extractedData.confidence?.codiceFiscale} mono />
+              <PreviewField label="Partita IVA" value={extractedData.partitaIva} confidence={extractedData.confidence?.partitaIva} mono />
+            </div>
           </div>
-        </Dragger>
+        )}
       </div>
 
       {/* Filters & Table */}
@@ -505,3 +654,29 @@ const OCRBills = () => {
 };
 
 export default OCRBills;
+
+// ─── Preview Field Component ─────────────────────────────
+
+interface PreviewFieldProps {
+  label: string;
+  value?: string | null;
+  confidence?: "high" | "medium" | "low" | null;
+  mono?: boolean;
+}
+
+const PreviewField = ({ label, value, confidence, mono }: PreviewFieldProps) => (
+  <div className="rounded-lg bg-white border border-slate-200/70 p-3">
+    <div className="flex items-center gap-1.5 mb-1">
+      {confidence && (
+        <span
+          className={`inline-block h-2 w-2 rounded-full ${confidenceColor[confidence] || "bg-slate-300"}`}
+          title={`${confidence} confidence`}
+        />
+      )}
+      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">{label}</span>
+    </div>
+    <p className={`text-sm font-semibold text-slate-700 truncate ${mono ? "font-mono" : ""}`}>
+      {value || <span className="text-slate-300">—</span>}
+    </p>
+  </div>
+);

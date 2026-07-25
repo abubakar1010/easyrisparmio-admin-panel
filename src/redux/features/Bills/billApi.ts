@@ -1,5 +1,47 @@
 import { baseApi } from "../../api/baseApi";
 
+export interface IBillFieldConfidence {
+  supplierName?: "high" | "medium" | "low" | null;
+  podNumber?: "high" | "medium" | "low" | null;
+  pdrNumber?: "high" | "medium" | "low" | null;
+  totalAmount?: "high" | "medium" | "low" | null;
+  consumptionKwh?: "high" | "medium" | "low" | null;
+  consumptionSmc?: "high" | "medium" | "low" | null;
+  costPerUnit?: "high" | "medium" | "low" | null;
+  fixedCharges?: "high" | "medium" | "low" | null;
+  taxes?: "high" | "medium" | "low" | null;
+  billingPeriodStart?: "high" | "medium" | "low" | null;
+  billingPeriodEnd?: "high" | "medium" | "low" | null;
+  supplyAddress?: "high" | "medium" | "low" | null;
+  codiceFiscale?: "high" | "medium" | "low" | null;
+  partitaIva?: "high" | "medium" | "low" | null;
+  contractNumber?: "high" | "medium" | "low" | null;
+  meterNumber?: "high" | "medium" | "low" | null;
+  customerName?: "high" | "medium" | "low" | null;
+}
+
+export interface IBillExtractionResult {
+  supplierName: string | null;
+  podNumber: string | null;
+  pdrNumber: string | null;
+  totalAmount: number | null;
+  consumptionKwh: number | null;
+  consumptionSmc: number | null;
+  costPerUnit: number | null;
+  fixedCharges: number | null;
+  taxes: number | null;
+  billingPeriodStart: string | null;
+  billingPeriodEnd: string | null;
+  supplyAddress: string | null;
+  codiceFiscale: string | null;
+  partitaIva: string | null;
+  contractNumber: string | null;
+  meterNumber: string | null;
+  customerName: string | null;
+  confidence: IBillFieldConfidence;
+  overallConfidence: "high" | "medium" | "low";
+}
+
 export interface IBillAnalysis {
   id: string;
   potentialSavings: number;
@@ -174,12 +216,23 @@ const billApi = baseApi.injectEndpoints({
       ],
     }),
 
+    extractBillData: builder.mutation<IBillExtractionResult, FormData>({
+      query: (formData) => ({
+        url: "bills/extract",
+        method: "POST",
+        body: formData,
+      }),
+      transformResponse: (response: { success: boolean; data: IBillExtractionResult }) =>
+        response.data,
+    }),
+
     adminUploadEmailBill: builder.mutation<IBill, FormData>({
       query: (formData) => ({
         url: "bills/admin/upload-email",
         method: "POST",
         body: formData,
       }),
+      transformResponse: (response: { success: boolean; data: IBill }) => response.data,
       invalidatesTags: [{ type: "bill", id: "LIST" }],
     }),
 
@@ -209,6 +262,7 @@ export const {
   useSendOffersToUserMutation,
   useGetAllOffersForBillQuery,
   useSendSelectedOffersMutation,
+  useExtractBillDataMutation,
   useAdminUploadEmailBillMutation,
   useAssociateBillWithUserMutation,
 } = billApi;
