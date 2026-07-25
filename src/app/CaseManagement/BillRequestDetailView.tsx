@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Button, Input, InputNumber, Spin, Empty, Tag, Select, Table, message, Tooltip, DatePicker } from "antd";
+import { useState, useCallback } from "react";
+import { Button, Input, InputNumber, Spin, Empty, Tag, Select, Table, message, Tooltip, DatePicker, Modal } from "antd";
 import type { Dayjs } from "dayjs";
 import type { ColumnsType } from "antd/es/table";
 import {
@@ -7,6 +7,7 @@ import {
   FiCheck,
   FiCheckCircle,
   FiEdit2,
+  FiEye,
   FiFileText,
   FiSend,
 } from "react-icons/fi";
@@ -39,6 +40,7 @@ import {
 import {
   useGetCaseByIdQuery,
   useUpdateCaseMutation,
+  useVerifyDocumentMutation,
   type ICase,
   type ICaseEvent,
   type ICaseDocument,
@@ -49,6 +51,8 @@ import {
   useUpdateContractMutation,
   type IContract,
 } from "../../redux/features/Contracts/contractApi";
+import { useAppSelector } from "../../redux/hooks";
+import { server_url } from "../../config";
 
 /* ── Status & Step Configuration ─────────────────────────── */
 
@@ -678,8 +682,62 @@ function AvailableOffersTab({
 
 function BillDataTab({ bill }: { bill: IBill }) {
   const isElectricity = bill.billType === "electricity";
-  const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
+  const token = useAppSelector((state) => state.auth.token);
   const analysis = bill.analysis;
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+
+  const isPdf = bill.fileUrl?.endsWith(".pdf");
+  const isImage = bill.fileUrl ? /\.(jpg|jpeg|png)$/i.test(bill.fileUrl) : false;
+  const fileApiUrl = `${server_url}/api/v1/bills/${bill.id}/file`;
+
+  const fetchFileBlob = useCallback(async () => {
+    const res = await fetch(fileApiUrl, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error("Failed to fetch file");
+    return res.blob();
+  }, [fileApiUrl, token]);
+
+  const handleView = async () => {
+    setPreviewLoading(true);
+    try {
+      const blob = await fetchFileBlob();
+      const url = URL.createObjectURL(blob);
+      setPreviewUrl(url);
+      setPreviewOpen(true);
+    } catch {
+      message.error("Failed to load document");
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const handleDownload = async () => {
+    try {
+      const blob = await fetchFileBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const ext = bill.fileUrl?.split(".").pop() || "pdf";
+      a.download = `bill-${bill.id.slice(0, 8)}.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      message.error("Failed to download document");
+    }
+  };
+
+  const handleClosePreview = () => {
+    setPreviewOpen(false);
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
+    }
+  };
 
   const marketTypeLabel: Record<string, string> = {
     fixed: "Fixed",
@@ -715,15 +773,25 @@ function BillDataTab({ bill }: { bill: IBill }) {
         {
           label: "Uploaded Bill",
           value: bill.fileUrl ? (
-            <a
-              href={`${serverUrl}/${bill.fileUrl}`}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
-            >
-              <FiDownload className="h-3.5 w-3.5" />
-              {bill.fileUrl.endsWith(".pdf") ? "View PDF" : "View File"}
-            </a>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleView}
+                disabled={previewLoading}
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors disabled:opacity-50"
+              >
+                <FiEye className="h-3.5 w-3.5" />
+                {previewLoading ? "Loading..." : "View"}
+              </button>
+              <button
+                type="button"
+                onClick={handleDownload}
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-600 hover:text-emerald-800 transition-colors"
+              >
+                <FiDownload className="h-3.5 w-3.5" />
+                Download
+              </button>
+            </div>
           ) : "—",
         },
       ],
@@ -855,6 +923,60 @@ function BillDataTab({ bill }: { bill: IBill }) {
       {bill.rawAnalysisData && Object.keys(bill.rawAnalysisData).length > 0 && (
         <RawAnalysisSection data={bill.rawAnalysisData} />
       )}
+
+      {/* Document Preview Modal */}
+      <Modal
+        open={previewOpen}
+        onCancel={handleClosePreview}
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button onClick={handleClosePreview}>Close</Button>
+            <Button
+              type="primary"
+              icon={<FiDownload className="h-3.5 w-3.5" />}
+              onClick={handleDownload}
+              className="bg-emerald-500! hover:bg-emerald-600! border-0!"
+            >
+              Download
+            </Button>
+          </div>
+        }
+        title={
+          <span className="flex items-center gap-2">
+            <FiFileText className="h-4 w-4 text-indigo-500" />
+            Uploaded Bill Document
+          </span>
+        }
+        width={900}
+        centered
+        destroyOnClose
+      >
+        {previewUrl && (
+          <div className="flex items-center justify-center bg-slate-50 rounded-lg overflow-hidden" style={{ minHeight: 500 }}>
+            {isPdf ? (
+              <iframe
+                src={previewUrl}
+                title="Bill Document"
+                className="w-full border-0 rounded-lg"
+                style={{ height: 600 }}
+              />
+            ) : isImage ? (
+              <img
+                src={previewUrl}
+                alt="Bill Document"
+                className="max-w-full max-h-[600px] object-contain"
+              />
+            ) : (
+              <div className="flex flex-col items-center gap-3 py-12">
+                <FiFileText className="h-12 w-12 text-slate-300" />
+                <p className="text-sm text-slate-500">
+                  Preview not available for this file type. Please download the file to view it.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
@@ -1036,7 +1158,7 @@ function CaseDetailsTab({ caseId }: { caseId: string | null }) {
           />
         );
       case "documents":
-        return <CaseDocumentsSection documents={caseData.documents || []} />;
+        return <CaseDocumentsSection documents={caseData.documents || []} caseId={caseData.id} />;
       case "contract":
         return <CaseContractSection caseData={caseData} />;
       case "commission":
@@ -1278,7 +1400,76 @@ function CaseDataSection({
   );
 }
 
-function CaseDocumentsSection({ documents }: { documents: ICaseDocument[] }) {
+const IDENTITY_DOC_TYPES = ["id_card", "codice_fiscale", "partita_iva"];
+
+function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[]; caseId: string }) {
+  const token = useAppSelector((state) => state.auth.token);
+  const [verifyDocument, { isLoading: isVerifying }] = useVerifyDocumentMutation();
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewDoc, setPreviewDoc] = useState<ICaseDocument | null>(null);
+  const [loadingId, setLoadingId] = useState<string | null>(null);
+
+  const fetchDocBlob = useCallback(async (doc: ICaseDocument) => {
+    const url = doc.fileUrl.startsWith("http")
+      ? doc.fileUrl
+      : `${server_url}${doc.fileUrl.startsWith("/") ? "" : "/"}${doc.fileUrl}`;
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error("Failed to fetch document");
+    return res.blob();
+  }, [token]);
+
+  const handleView = async (doc: ICaseDocument) => {
+    setLoadingId(doc.id);
+    try {
+      const blob = await fetchDocBlob(doc);
+      const url = URL.createObjectURL(blob);
+      setPreviewUrl(url);
+      setPreviewDoc(doc);
+      setPreviewOpen(true);
+    } catch {
+      message.error("Failed to load document");
+    } finally {
+      setLoadingId(null);
+    }
+  };
+
+  const handleDownload = async (doc: ICaseDocument) => {
+    try {
+      const blob = await fetchDocBlob(doc);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = doc.fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      message.error("Failed to download document");
+    }
+  };
+
+  const handleClosePreview = () => {
+    setPreviewOpen(false);
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
+    }
+    setPreviewDoc(null);
+  };
+
+  const handleVerify = async (docId: string) => {
+    try {
+      await verifyDocument({ caseId, docId }).unwrap();
+      message.success("Document verified");
+    } catch {
+      message.error("Failed to verify document");
+    }
+  };
+
   if (documents.length === 0) {
     return (
       <div className="py-8">
@@ -1287,35 +1478,178 @@ function CaseDocumentsSection({ documents }: { documents: ICaseDocument[] }) {
     );
   }
 
-  return (
-    <div className="space-y-3">
-      {documents.map((doc) => (
-        <div
-          key={doc.id}
-          className="flex items-center justify-between rounded-xl border border-slate-100 p-4 transition-colors hover:bg-slate-50/50"
+  const isPdf = (doc: ICaseDocument) => doc.mimeType === "application/pdf" || doc.fileName.endsWith(".pdf");
+  const isImage = (doc: ICaseDocument) => doc.mimeType?.startsWith("image/") || /\.(jpg|jpeg|png)$/i.test(doc.fileName);
+
+  const identityDocs = documents.filter((d) => IDENTITY_DOC_TYPES.includes(d.documentType));
+  const otherDocs = documents.filter((d) => !IDENTITY_DOC_TYPES.includes(d.documentType));
+  const allVerified = identityDocs.length > 0 && identityDocs.every((d) => d.verified);
+
+  const renderDocRow = (doc: ICaseDocument, isIdentity: boolean) => (
+    <div
+      key={doc.id}
+      className="flex items-center justify-between rounded-xl border border-slate-100 p-4 transition-colors hover:bg-slate-50/50"
+    >
+      <div className="flex items-center gap-3 min-w-0">
+        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${isIdentity ? (doc.verified ? "bg-emerald-50 text-emerald-500" : "bg-amber-50 text-amber-500") : "bg-blue-50 text-blue-500"}`}>
+          <FiFileText className="h-5 w-5" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-slate-700 truncate">{doc.fileName}</p>
+          <p className="text-xs text-slate-400 capitalize">
+            {doc.documentType?.replace("_", " ")}
+            {doc.fileSizeBytes != null && ` • ${(doc.fileSizeBytes / 1024 / 1024).toFixed(1)} MB`}
+            {doc.uploadedBy && ` • by ${doc.uploadedBy.firstName} ${doc.uploadedBy.lastName}`}
+          </p>
+          {doc.verified && doc.verifiedAt && (
+            <p className="text-[10px] text-emerald-500 mt-0.5">
+              Verified on {new Date(doc.verifiedAt).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })}
+            </p>
+          )}
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => handleView(doc)}
+          disabled={loadingId === doc.id}
+          className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors disabled:opacity-50"
         >
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-500">
-              <FiFileText className="h-5 w-5" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-slate-700 truncate">{doc.fileName}</p>
-              <p className="text-xs text-slate-400 capitalize">
-                {doc.documentType?.replace("_", " ")}
-                {doc.fileSizeBytes != null &&
-                  ` • ${(doc.fileSizeBytes / 1024 / 1024).toFixed(1)} MB`}
-              </p>
-            </div>
-          </div>
+          <FiEye className="h-3.5 w-3.5" />
+          {loadingId === doc.id ? "..." : "View"}
+        </button>
+        <button
+          type="button"
+          onClick={() => handleDownload(doc)}
+          className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-800 transition-colors"
+        >
+          <FiDownload className="h-3.5 w-3.5" />
+          Download
+        </button>
+        {isIdentity && !doc.verified ? (
+          <Button
+            size="small"
+            type="primary"
+            loading={isVerifying}
+            onClick={() => handleVerify(doc.id)}
+            className="h-7 rounded-lg bg-emerald-500! hover:bg-emerald-600! border-0! text-xs! font-semibold!"
+            icon={<FiCheck className="h-3 w-3" />}
+          >
+            Verify
+          </Button>
+        ) : (
           <Tag
             color={doc.verified ? "green" : "default"}
             className="m-0! rounded-full! border-0! text-xs!"
           >
             {doc.verified ? "Verified" : "Pending"}
           </Tag>
-        </div>
-      ))}
+        )}
+      </div>
     </div>
+  );
+
+  return (
+    <>
+      <div className="space-y-6">
+        {/* Identity Verification Section */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <h4 className="text-sm font-semibold text-slate-800">Identity Verification</h4>
+              <Tag
+                color={identityDocs.length === 0 ? "red" : allVerified ? "green" : "orange"}
+                className="m-0! rounded-full! border-0! text-xs! font-semibold!"
+              >
+                {identityDocs.length === 0 ? "Not Uploaded" : allVerified ? "Verified" : "Pending Review"}
+              </Tag>
+            </div>
+            {identityDocs.length > 0 && (
+              <span className="text-xs text-slate-400">
+                {identityDocs.filter((d) => d.verified).length}/{identityDocs.length} verified
+              </span>
+            )}
+          </div>
+
+          {identityDocs.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-red-200 bg-red-50/50 p-6 text-center">
+              <p className="text-sm text-red-500 font-medium">No identity documents uploaded</p>
+              <p className="text-xs text-red-400 mt-1">User has not uploaded ID card or tax code document.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {identityDocs.map((doc) => renderDocRow(doc, true))}
+            </div>
+          )}
+        </div>
+
+        {/* Other Documents Section */}
+        {otherDocs.length > 0 && (
+          <div>
+            <h4 className="text-sm font-semibold text-slate-800 mb-3">Other Documents</h4>
+            <div className="space-y-3">
+              {otherDocs.map((doc) => renderDocRow(doc, false))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Document Preview Modal */}
+      <Modal
+        open={previewOpen}
+        onCancel={handleClosePreview}
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button onClick={handleClosePreview}>Close</Button>
+            {previewDoc && (
+              <Button
+                type="primary"
+                icon={<FiDownload className="h-3.5 w-3.5" />}
+                onClick={() => handleDownload(previewDoc)}
+                className="bg-emerald-500! hover:bg-emerald-600! border-0!"
+              >
+                Download
+              </Button>
+            )}
+          </div>
+        }
+        title={
+          <span className="flex items-center gap-2">
+            <FiFileText className="h-4 w-4 text-indigo-500" />
+            {previewDoc?.fileName || "Document"}
+          </span>
+        }
+        width={900}
+        centered
+        destroyOnClose
+      >
+        {previewUrl && previewDoc && (
+          <div className="flex items-center justify-center bg-slate-50 rounded-lg overflow-hidden" style={{ minHeight: 500 }}>
+            {isPdf(previewDoc) ? (
+              <iframe
+                src={previewUrl}
+                title="Document Preview"
+                className="w-full border-0 rounded-lg"
+                style={{ height: 600 }}
+              />
+            ) : isImage(previewDoc) ? (
+              <img
+                src={previewUrl}
+                alt={previewDoc.fileName}
+                className="max-w-full max-h-[600px] object-contain"
+              />
+            ) : (
+              <div className="flex flex-col items-center gap-3 py-12">
+                <FiFileText className="h-12 w-12 text-slate-300" />
+                <p className="text-sm text-slate-500">
+                  Preview not available for this file type. Please download the file to view it.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
+    </>
   );
 }
 
