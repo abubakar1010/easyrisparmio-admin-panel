@@ -1,7 +1,7 @@
-import { Avatar, Input, Select, Spin, Empty, Table, Tag, Switch, message } from "antd";
+import { Avatar, Input, Select, Spin, Empty, Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { FiEye, FiSearch, FiSend } from "react-icons/fi";
-import { LuZap, LuFlame, LuFilter } from "react-icons/lu";
+import { FiEye, FiSearch } from "react-icons/fi";
+import { LuZap, LuFlame } from "react-icons/lu";
 import { useNavigate } from "react-router";
 import { useCallback, useState } from "react";
 import {
@@ -9,10 +9,6 @@ import {
   type IBill,
   type IBillQuery,
 } from "../../redux/features/Bills/billApi";
-import {
-  useGetAdminSettingsQuery,
-  useUpdateAdminSettingsMutation,
-} from "../../redux/features/Dashboard/dashboardApi";
 import { debounce } from "../../utils/debounce";
 
 const billStatusConfig: Record<string, { color: string; label: string }> = {
@@ -53,8 +49,6 @@ const CaseManagement = () => {
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
 
   const { data, isLoading, isFetching } = useGetBillsAdminQuery(queryParams);
-  const { data: adminSettings } = useGetAdminSettingsQuery();
-  const [updateSettings] = useUpdateAdminSettingsMutation();
 
   const bills = data?.data || [];
   const meta = data?.meta;
@@ -85,15 +79,6 @@ const CaseManagement = () => {
       setQueryParams((prev) => ({ ...prev, page: 1, status: undefined, caseStatus }));
     } else {
       setQueryParams((prev) => ({ ...prev, page: 1, status: value, caseStatus: undefined }));
-    }
-  };
-
-  const handleToggleAutoSend = async (checked: boolean) => {
-    try {
-      await updateSettings({ autoSendOffers: checked }).unwrap();
-      message.success(checked ? "Auto-send offers enabled" : "Auto-send offers disabled");
-    } catch {
-      message.error("Failed to update setting");
     }
   };
 
@@ -231,26 +216,6 @@ const CaseManagement = () => {
         <p className="text-sm text-slate-500 mt-1">
           Manage bill requests and case workflow
         </p>
-      </div>
-
-      {/* Auto-Send Offers Setting */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center">
-            <FiSend className="h-5 w-5" />
-          </div>
-          <div>
-            <h3 className="text-sm font-bold text-slate-800">Auto-Send Offers</h3>
-            <p className="text-xs text-slate-500">
-              When enabled, recommended offers are automatically sent to users after bill analysis
-            </p>
-          </div>
-        </div>
-        <Switch
-          checked={adminSettings?.autoSendOffers ?? false}
-          onChange={handleToggleAutoSend}
-          className="ml-4"
-        />
       </div>
 
       {/* Table Card */}
