@@ -1,7 +1,8 @@
 import { Modal, Spin, Tag } from "antd";
 import { useEffect } from "react";
 import { FiExternalLink } from "react-icons/fi";
-import { LuLeaf } from "react-icons/lu";
+import { LuDownload, LuLeaf } from "react-icons/lu";
+import { server_origin } from "../../../config";
 import {
   useLazyGetOfferByIdQuery,
   type IOffer,
@@ -173,6 +174,27 @@ export const OfferDetailsModal = ({ open, onClose, offer }: OfferDetailsModalPro
                     className="inline-flex items-center gap-1 text-indigo-500 hover:text-indigo-600"
                   >
                     View <FiExternalLink className="h-3 w-3" />
+                  </a>
+                ) : (
+                  "—"
+                )
+              }
+            />
+            <InfoRow
+              label="Economic Conditions"
+              value={
+                detail.economicConditionsUrl ? (
+                  <a
+                    href={
+                      detail.economicConditionsUrl.startsWith("http")
+                        ? detail.economicConditionsUrl
+                        : `${server_origin}/${detail.economicConditionsUrl.replace(/^\//, "")}`
+                    }
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-indigo-500 hover:text-indigo-600"
+                  >
+                    View & Download <LuDownload className="h-3 w-3" />
                   </a>
                 ) : (
                   "—"

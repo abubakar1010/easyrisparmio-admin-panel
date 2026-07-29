@@ -1,8 +1,10 @@
-import { Button, DatePicker, Form, Input, InputNumber, Modal, Select, Switch, message } from "antd";
+import { Button, DatePicker, Form, Input, InputNumber, Modal, Select, Switch, Upload, message } from "antd";
 import dayjs from "dayjs";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { LuUpload, LuFile, LuTrash2 } from "react-icons/lu";
 import { useCreateOfferMutation, useUpdateOfferMutation } from "../../../redux/features/Offers/offerApi";
 import { useGetSuppliersQuery } from "../../../redux/features/Suppliers/supplierApi";
+import { server_origin } from "../../../config";
 
 type CreateOfferModalProps = {
   open: boolean;
@@ -28,14 +30,45 @@ export const CreateOfferModal = ({
 
   const commodity = Form.useWatch("commodity", form);
 
+  const [economicConditionsUrl, setEconomicConditionsUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+
   useEffect(() => {
     if (!open) return;
     if (isEdit && initialValues) {
       form.setFieldsValue(initialValues);
+      setEconomicConditionsUrl((initialValues.economicConditionsUrl as string) || null);
     } else {
       form.resetFields();
+      setEconomicConditionsUrl(null);
     }
   }, [open, isEdit, initialValues, form]);
+
+  const handleEconDocUpload = async (file: File) => {
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const token = localStorage.getItem("auth_token");
+      const res = await fetch(`${server_origin}/api/v1/upload`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      const result = await res.json();
+      if (res.ok && result?.url) {
+        setEconomicConditionsUrl(result.url);
+        message.success("Document uploaded successfully");
+      } else {
+        message.error(result?.message || "Upload failed");
+      }
+    } catch {
+      message.error("Upload failed");
+    } finally {
+      setUploading(false);
+    }
+    return false;
+  };
 
   const handleSubmit = async (values: Record<string, any>) => {
     const payload = {
@@ -60,6 +93,7 @@ export const CreateOfferModal = ({
       target: values.target || undefined,
       highlights: values.highlights?.length ? values.highlights : undefined,
       termsUrl: values.termsUrl || undefined,
+      economicConditionsUrl: economicConditionsUrl || undefined,
       description: values.notes || undefined,
     };
 
@@ -82,6 +116,7 @@ export const CreateOfferModal = ({
 
   const handleCancel = () => {
     form.resetFields();
+    setEconomicConditionsUrl(null);
     onClose();
   };
 
@@ -309,6 +344,49 @@ export const CreateOfferModal = ({
               open={false}
             />
           </Form.Item>
+        </div>
+
+        <div className="mb-3">
+          <p className="mb-1 text-sm text-slate-600">Economic Conditions Document</p>
+          <div className="flex items-center gap-3">
+            <Upload
+              accept=".pdf,.png,.jpg,.jpeg"
+              maxCount={1}
+              showUploadList={false}
+              beforeUpload={handleEconDocUpload}
+            >
+              <Button
+                icon={<LuUpload className="h-4 w-4" />}
+                loading={uploading}
+                className="h-10 rounded-lg"
+              >
+                {economicConditionsUrl ? "Replace Document" : "Upload Document"}
+              </Button>
+            </Upload>
+            {economicConditionsUrl && (
+              <div className="flex items-center gap-2">
+                <a
+                  href={
+                    economicConditionsUrl.startsWith("http")
+                      ? economicConditionsUrl
+                      : `${server_origin}/${economicConditionsUrl.replace(/^\//, "")}`
+                  }
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-sm text-indigo-500 hover:text-indigo-600"
+                >
+                  <LuFile className="h-3.5 w-3.5" /> View
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setEconomicConditionsUrl(null)}
+                  className="inline-flex items-center gap-1 text-sm text-red-400 hover:text-red-500"
+                >
+                  <LuTrash2 className="h-3.5 w-3.5" /> Remove
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         <Form.Item name="notes" label="Description">

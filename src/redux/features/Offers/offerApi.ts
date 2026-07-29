@@ -16,6 +16,7 @@ export interface IOffer {
   validFrom: string;
   validUntil: string | null;
   termsUrl: string | null;
+  economicConditionsUrl: string | null;
   target: "personal" | "business" | "both";
   highlights: string[] | null;
   offerCode: string | null;
@@ -53,6 +54,7 @@ export interface ICreateOffer {
   validFrom: string;
   validUntil?: string;
   termsUrl?: string;
+  economicConditionsUrl?: string;
   target?: string;
   highlights?: string[];
   offerCode?: string;

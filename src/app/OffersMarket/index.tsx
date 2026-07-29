@@ -101,6 +101,7 @@ const OffersMarket = () => {
     target: offer.target,
     highlights: offer.highlights,
     termsUrl: offer.termsUrl,
+    economicConditionsUrl: offer.economicConditionsUrl,
     notes: offer.description,
   });
 
