@@ -71,6 +71,11 @@ export const CreateOfferModal = ({
   };
 
   const handleSubmit = async (values: Record<string, any>) => {
+    if (!economicConditionsUrl) {
+      message.error("Please upload an Economic Conditions document");
+      return;
+    }
+
     const payload = {
       name: values.offerName,
       offerCode: values.offerCode || undefined,
@@ -347,7 +352,9 @@ export const CreateOfferModal = ({
         </div>
 
         <div className="mb-3">
-          <p className="mb-1 text-sm text-slate-600">Economic Conditions Document</p>
+          <p className="mb-1 text-sm text-slate-600">
+            <span className="mr-1 text-red-500">*</span>Economic Conditions Document
+          </p>
           <div className="flex items-center gap-3">
             <Upload
               accept=".pdf,.png,.jpg,.jpeg"
