@@ -361,7 +361,18 @@
     "referrer": "REFERENTE",
     "invited": "INVITATO",
     "reward": "PREMIO",
-    "marked_as_paid": "Segnato come pagato"
+    "marked_as_paid": "Segnato come pagato",
+    "search_placeholder": "Cerca per nome, email o codice referral...",
+    "status_filter": "Filtra per stato",
+    "actions": "Azioni",
+    "confirm_expire_title": "Scadenza referral",
+    "confirm_expire_text": "far scadere questo referral",
+    "set_reward_amount": "Imposta importo premio",
+    "reward_amount_label": "Importo premio (EUR)",
+    "confirm_payment_btn": "Conferma pagamento",
+    "status_updated": "Stato aggiornato",
+    "failed_to_update": "Aggiornamento fallito",
+    "default_reward_updated": "Premio predefinito aggiornato"
   },
   "support_ticket": {
     "title": "Ticket di supporto",

@@ -32,6 +32,8 @@ export interface IReferralQuery {
   limit?: number;
   search?: string;
   status?: string;
+  dateFrom?: string;
+  dateTo?: string;
 }
 
 interface IPaginatedResponse<T> {
@@ -55,6 +57,8 @@ const referralApi = baseApi.injectEndpoints({
           if (params.limit) qp.set("limit", String(params.limit));
           if (params.search) qp.set("search", params.search);
           if (params.status) qp.set("status", params.status);
+          if (params.dateFrom) qp.set("dateFrom", params.dateFrom);
+          if (params.dateTo) qp.set("dateTo", params.dateTo);
         }
         return { url: `referrals?${qp.toString()}`, method: "GET" };
       },

@@ -361,7 +361,18 @@
     "referrer": "REFERRER",
     "invited": "INVITED",
     "reward": "REWARD",
-    "marked_as_paid": "Marked as paid"
+    "marked_as_paid": "Marked as paid",
+    "search_placeholder": "Search by name, email, or referral code...",
+    "status_filter": "Filter by Status",
+    "actions": "Actions",
+    "confirm_expire_title": "Expire Referral",
+    "confirm_expire_text": "expire this referral",
+    "set_reward_amount": "Set Reward Amount",
+    "reward_amount_label": "Reward amount (EUR)",
+    "confirm_payment_btn": "Confirm Payment",
+    "status_updated": "Status updated",
+    "failed_to_update": "Failed to update",
+    "default_reward_updated": "Default reward updated"
   },
   "support_ticket": {
     "title": "Support Ticket",
