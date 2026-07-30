@@ -31,6 +31,7 @@ export const CreateOfferModal = ({
   const commodity = Form.useWatch("commodity", form);
 
   const [economicConditionsUrl, setEconomicConditionsUrl] = useState<string | null>(null);
+  const [econDocError, setEconDocError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
@@ -38,9 +39,11 @@ export const CreateOfferModal = ({
     if (isEdit && initialValues) {
       form.setFieldsValue(initialValues);
       setEconomicConditionsUrl((initialValues.economicConditionsUrl as string) || null);
+      setEconDocError(null);
     } else {
       form.resetFields();
       setEconomicConditionsUrl(null);
+      setEconDocError(null);
     }
   }, [open, isEdit, initialValues, form]);
 
@@ -58,6 +61,7 @@ export const CreateOfferModal = ({
       const result = await res.json();
       if (res.ok && result?.url) {
         setEconomicConditionsUrl(result.url);
+        setEconDocError(null);
         message.success("Document uploaded successfully");
       } else {
         message.error(result?.message || "Upload failed");
@@ -72,7 +76,7 @@ export const CreateOfferModal = ({
 
   const handleSubmit = async (values: Record<string, any>) => {
     if (!economicConditionsUrl) {
-      message.error("Please upload an Economic Conditions document");
+      setEconDocError("Please upload an Economic Conditions document");
       return;
     }
 
@@ -122,6 +126,7 @@ export const CreateOfferModal = ({
   const handleCancel = () => {
     form.resetFields();
     setEconomicConditionsUrl(null);
+    setEconDocError(null);
     onClose();
   };
 
@@ -394,6 +399,9 @@ export const CreateOfferModal = ({
               </div>
             )}
           </div>
+          {econDocError && (
+            <p className="mt-1 text-sm text-red-500">{econDocError}</p>
+          )}
         </div>
 
         <Form.Item name="notes" label="Description">
