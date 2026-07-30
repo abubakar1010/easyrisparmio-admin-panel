@@ -667,7 +667,7 @@ const AvailableOffersCard = ({
       key: "duration",
       width: 80,
       render: (_, record) => (
-        <span className="text-xs text-slate-600">{record.contractDurationDays} days</span>
+        <span className="text-xs text-slate-600">{record.contractDurationDays >= 30 ? `${Math.floor(record.contractDurationDays / 30)} mo` : `${record.contractDurationDays} days`}</span>
       ),
       align: "center",
     },
