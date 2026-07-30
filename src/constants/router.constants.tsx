@@ -31,6 +31,7 @@ import BillDetailsView from "../app/OCR/BillDetailsView";
 import Suppliers from "../app/Suppliers";
 import SupplierDetails from "../app/Suppliers/SupplierDetails";
 import OffersMarket from "../app/OffersMarket";
+import OfferDetailsPage from "../app/OffersMarket/OfferDetailsPage";
 import Agreements from "../app/Agreements";
 import AgreementDetailsView from "../app/Agreements/AgreementDetailsView";
 import Referrals from "../app/Referrals";
@@ -150,6 +151,10 @@ export const dashboardItems: DashboardItem[] = [
     icon: LuTag,
     role: [ROLE.ADMIN],
     element: <OffersMarket />,
+  },
+  {
+    path: "offers-market/:offerId",
+    element: <OfferDetailsPage />,
   },
   {
     name: "Agreement Section",

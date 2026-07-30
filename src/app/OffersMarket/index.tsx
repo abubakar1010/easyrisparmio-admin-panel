@@ -5,8 +5,8 @@ import type { ColumnsType } from "antd/es/table";
 import type { MenuProps } from "antd";
 import { useState } from "react";
 import dayjs from "dayjs";
+import { useNavigate } from "react-router";
 import { CreateOfferModal } from "./components/CreateOfferModal";
-import { OfferDetailsModal } from "./components/OfferDetailsModal";
 import {
   useGetOffersAdminQuery,
   useDeleteOfferMutation,
@@ -43,9 +43,9 @@ const STATUS_TRANSITIONS: Record<string, { value: string; label: string }[]> = {
 };
 
 const OffersMarket = () => {
+  const navigate = useNavigate();
   const [createOfferOpen, setCreateOfferOpen] = useState(false);
   const [editOfferOpen, setEditOfferOpen] = useState(false);
-  const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedOffer, setSelectedOffer] = useState<IOffer | null>(null);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -74,8 +74,7 @@ const OffersMarket = () => {
   }, 400);
 
   const handleViewDetails = (offer: IOffer) => {
-    setSelectedOffer(offer);
-    setDetailsOpen(true);
+    navigate(`/offers-market/${offer.id}`);
   };
 
   const handleEdit = (offer: IOffer) => {
@@ -240,7 +239,7 @@ const OffersMarket = () => {
         ];
 
         return (
-          <Space size={2}>
+          <Space size={2} onClick={(e) => e.stopPropagation()}>
             <Tooltip title="View details">
               <Button
                 type="text"
@@ -364,6 +363,10 @@ const OffersMarket = () => {
             columns={columns}
             dataSource={offers}
             scroll={{ x: 980 }}
+            onRow={(record) => ({
+              onClick: () => handleViewDetails(record),
+              className: "cursor-pointer",
+            })}
             pagination={{
               current: page,
               pageSize: meta?.limit || 20,
@@ -392,15 +395,6 @@ const OffersMarket = () => {
         initialValues={selectedOffer ? getEditInitialValues(selectedOffer) : undefined}
       />
 
-      {/* Details modal */}
-      <OfferDetailsModal
-        open={detailsOpen}
-        onClose={() => {
-          setDetailsOpen(false);
-          setSelectedOffer(null);
-        }}
-        offer={selectedOffer}
-      />
     </div>
   );
 };

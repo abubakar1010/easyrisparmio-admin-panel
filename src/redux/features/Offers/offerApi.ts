@@ -23,7 +23,17 @@ export interface IOffer {
   offerStatus: "draft" | "active" | "expiring" | "expired" | "archived";
   version: number;
   supplierId: string;
-  supplier?: { id: string; name: string };
+  supplier?: {
+    id: string;
+    name: string;
+    legalName?: string | null;
+    logoUrl?: string | null;
+    contactName?: string | null;
+    contactEmail?: string | null;
+    contactPhone?: string | null;
+    website?: string | null;
+    commodity?: string | null;
+  };
   createdAt: string;
   updatedAt: string;
 }
