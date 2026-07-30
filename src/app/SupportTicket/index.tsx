@@ -27,6 +27,20 @@ const statusLabel: Record<string, string> = {
   closed: "Closed",
 };
 
+const priorityStyles: Record<string, string> = {
+  low: "bg-green-100 text-green-700",
+  medium: "bg-blue-100 text-blue-700",
+  high: "bg-orange-100 text-orange-700",
+  urgent: "bg-red-100 text-red-700",
+};
+
+const priorityLabel: Record<string, string> = {
+  low: "Low",
+  medium: "Medium",
+  high: "High",
+  urgent: "Urgent",
+};
+
 const SupportTicket = () => {
   const navigate = useNavigate();
   const [newTicketOpen, setNewTicketOpen] = useState(false);
@@ -37,6 +51,7 @@ const SupportTicket = () => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
   const [topicFilter, setTopicFilter] = useState<string | undefined>();
+  const [priorityFilter, setPriorityFilter] = useState<string | undefined>();
 
   // API queries
   const { data: ticketsData, isLoading: ticketsLoading } = useGetTicketsQuery({
@@ -45,6 +60,7 @@ const SupportTicket = () => {
     search: search || undefined,
     status: statusFilter,
     topicId: topicFilter,
+    priority: priorityFilter,
   });
 
   const { data: activeTopics } = useGetActiveTopicsQuery();
@@ -129,6 +145,18 @@ const SupportTicket = () => {
           {record.topic?.name || "—"}
         </Tag>
       ),
+    },
+    {
+      title: "PRIORITY",
+      dataIndex: "priority",
+      key: "priority",
+      width: 110,
+      render: (value: string) => (
+        <Tag className={`m-0! rounded-full! border-0! px-2.5! py-0.5! text-[10px]! font-bold! ${priorityStyles[value] || ""}`}>
+          {priorityLabel[value] || value}
+        </Tag>
+      ),
+      align: "center",
     },
     {
       title: "STATUS",
@@ -249,6 +277,17 @@ const SupportTicket = () => {
             <Select.Option value="in_progress">In Progress</Select.Option>
             <Select.Option value="resolved">Resolved</Select.Option>
             <Select.Option value="closed">Closed</Select.Option>
+          </Select>
+          <Select
+            allowClear
+            placeholder="Priority"
+            onChange={(v) => { setPriorityFilter(v); setPage(1); }}
+            className="w-40 [&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-xl"
+          >
+            <Select.Option value="low">Low</Select.Option>
+            <Select.Option value="medium">Medium</Select.Option>
+            <Select.Option value="high">High</Select.Option>
+            <Select.Option value="urgent">Urgent</Select.Option>
           </Select>
           <Select
             allowClear

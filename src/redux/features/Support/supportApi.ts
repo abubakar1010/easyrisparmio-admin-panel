@@ -173,7 +173,7 @@ const supportApi = baseApi.injectEndpoints({
 
     updateTicket: builder.mutation<
       ISupportTicket,
-      { id: string; data: { status?: string; assignedAgentId?: string } }
+      { id: string; data: { status?: string; priority?: string; assignedAgentId?: string } }
     >({
       query: ({ id, data }) => ({ url: `support/tickets/${id}`, method: "PATCH", body: data }),
       transformResponse: (response: { success: boolean; data: ISupportTicket }) => response.data,

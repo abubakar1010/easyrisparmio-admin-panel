@@ -124,6 +124,16 @@ const TicketDetailsView = () => {
     }
   };
 
+  const handlePriorityChange = async (newPriority: string) => {
+    if (!ticket) return;
+    try {
+      await updateTicket({ id: ticket.id, data: { priority: newPriority } }).unwrap();
+      message.success(`Priority updated to ${priorityLabel[newPriority]}`);
+    } catch {
+      message.error("Failed to update priority");
+    }
+  };
+
   const handleCloseTicket = () => {
     Modal.confirm({
       title: "Close Ticket",
@@ -292,6 +302,10 @@ const TicketDetailsView = () => {
             <div>
               <h4 className="text-sm font-semibold text-slate-800 mb-4">Ticket Details</h4>
               <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <span className="text-xs text-slate-400">Subject</span>
+                  <p className="text-sm font-medium text-slate-700">{ticket.subject}</p>
+                </div>
                 <div>
                   <span className="text-xs text-slate-400">Topic</span>
                   <p className="text-sm font-medium text-slate-700">
@@ -299,10 +313,30 @@ const TicketDetailsView = () => {
                   </p>
                 </div>
                 <div>
-                  <span className="text-xs text-slate-400">Priority</span>
-                  <p className="text-sm font-medium text-slate-700 capitalize">
-                    {ticket.priority}
-                  </p>
+                  <span className="text-xs text-slate-400 block mb-1">Priority</span>
+                  <Select
+                    value={ticket.priority}
+                    size="small"
+                    onChange={handlePriorityChange}
+                    loading={isUpdating}
+                    className="w-full [&_.ant-select-selector]:rounded-lg!"
+                    options={[
+                      { value: "low", label: "Low" },
+                      { value: "medium", label: "Medium" },
+                      { value: "high", label: "High" },
+                      { value: "urgent", label: "Urgent" },
+                    ]}
+                    optionRender={(option) => (
+                      <Tag className={`m-0! rounded-full! border-0! px-2.5! py-0.5! text-[10px]! font-bold! ${priorityStyles[option.value as string] || ""}`}>
+                        {option.label}
+                      </Tag>
+                    )}
+                    labelRender={(props) => (
+                      <Tag className={`m-0! rounded-full! border-0! px-2.5! py-0.5! text-[10px]! font-bold! ${priorityStyles[props.value as string] || ""}`}>
+                        {priorityLabel[props.value as string] || props.label}
+                      </Tag>
+                    )}
+                  />
                 </div>
                 <div>
                   <span className="text-xs text-slate-400">Assigned Agent</span>
@@ -337,6 +371,43 @@ const TicketDetailsView = () => {
               </div>
             </div>
           </div>
+
+          {/* Original Message */}
+          {messages.length > 0 && messages[0].senderId === ticket.userId && (
+            <div className="mt-6">
+              <h4 className="text-sm font-semibold text-slate-800 mb-3">Original Message</h4>
+              <div className="rounded-xl bg-slate-50 border border-slate-100 p-4">
+                <p className="text-sm text-slate-600 whitespace-pre-wrap">
+                  {messages[0].message}
+                </p>
+                {messages[0].attachments && messages[0].attachments.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {messages[0].attachments.map((url, idx) => (
+                      <a
+                        key={idx}
+                        href={getFileUrl(url)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-colors"
+                      >
+                        {isImageUrl(url) ? (
+                          <img
+                            src={getFileUrl(url)}
+                            alt="attachment"
+                            className="h-12 w-12 rounded object-cover"
+                          />
+                        ) : (
+                          <FiPaperclip className="h-4 w-4 text-slate-400 shrink-0" />
+                        )}
+                        <span className="flex-1 truncate">{getFileName(url)}</span>
+                        <LuDownload className="h-4 w-4 text-slate-400 shrink-0" />
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ── Conversation ───────────────────────────────── */}
