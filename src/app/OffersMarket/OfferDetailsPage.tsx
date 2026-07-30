@@ -190,12 +190,16 @@ const OfferDetailsPage = () => {
               value={
                 detail.termsUrl ? (
                   <a
-                    href={detail.termsUrl}
+                    href={
+                      detail.termsUrl.startsWith("http")
+                        ? detail.termsUrl
+                        : `${server_origin}/${detail.termsUrl.replace(/^\//, "")}`
+                    }
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 text-indigo-500 hover:text-indigo-600"
                   >
-                    View <FiExternalLink className="h-3 w-3" />
+                    View & Download <LuDownload className="h-3 w-3" />
                   </a>
                 ) : null
               }
