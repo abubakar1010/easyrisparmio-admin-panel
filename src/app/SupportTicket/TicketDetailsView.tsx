@@ -90,6 +90,38 @@ const formatTime = (dateStr: string) =>
 
 const formatDateTime = (dateStr: string) => `${formatDate(dateStr)} ${formatTime(dateStr)}`;
 
+const cardClass = "bg-white rounded-2xl border border-slate-200/60 shadow-sm";
+
+/* ── Attachment Renderer ───────────────────────────────────── */
+
+function Attachments({ urls, variant }: { urls: string[]; variant: "light" | "dark" }) {
+  return (
+    <div className="mt-2 space-y-1.5">
+      {urls.map((url, idx) => (
+        <a
+          key={idx}
+          href={getFileUrl(url)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs transition-colors ${
+            variant === "dark"
+              ? "bg-white/15 text-white/90 hover:bg-white/25"
+              : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+          }`}
+        >
+          {isImageUrl(url) ? (
+            <img src={getFileUrl(url)} alt="" className="h-10 w-10 rounded object-cover" />
+          ) : (
+            <FiPaperclip className="h-3.5 w-3.5 shrink-0 opacity-60" />
+          )}
+          <span className="flex-1 truncate">{getFileName(url)}</span>
+          <LuDownload className="h-3.5 w-3.5 shrink-0 opacity-60" />
+        </a>
+      ))}
+    </div>
+  );
+}
+
 /* ── Main Component ────────────────────────────────────────── */
 
 const TicketDetailsView = () => {
@@ -187,11 +219,13 @@ const TicketDetailsView = () => {
     ? `${ticket.user.firstName} ${ticket.user.lastName}`
     : "Unknown";
   const transitions = validTransitions[ticket.status] || [];
+  const firstMessage =
+    messages.length > 0 && messages[0].senderId === ticket.userId ? messages[0] : null;
 
   /* ── Render ────────────────────────────────────────────── */
 
   return (
-    <div className="space-y-5 pb-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pb-8">
       {/* Back */}
       <button
         type="button"
@@ -202,353 +236,323 @@ const TicketDetailsView = () => {
         Back to Tickets
       </button>
 
-      <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
-        {/* ── Header ─────────────────────────────────────── */}
-        <div className="bg-slate-50/60 px-6 pt-6 pb-6">
-          <div className="flex flex-wrap items-center gap-2 mb-3">
-            <Tag className="m-0! rounded-md! border-0! bg-slate-800! px-2.5! py-0.5! text-xs! font-semibold! text-white!">
-              #{ticket.id.slice(0, 8)}
-            </Tag>
-            <Tag
-              className={`m-0! rounded-md! border-0! px-2.5! py-0.5! text-xs! font-semibold! ${statusStyles[ticket.status]}`}
-            >
-              {statusLabel[ticket.status] || ticket.status}
-            </Tag>
-            <Tag
-              className={`m-0! rounded-md! border-0! px-2.5! py-0.5! text-xs! font-semibold! ${priorityStyles[ticket.priority]}`}
-            >
-              {priorityLabel[ticket.priority] || ticket.priority} Priority
-            </Tag>
-            {ticket.assignedAgent && (
-              <Tag className="m-0! rounded-md! border-0! bg-purple-50! px-2.5! py-0.5! text-xs! font-semibold! text-purple-600!">
-                Assigned to {ticket.assignedAgent.firstName} {ticket.assignedAgent.lastName}
-              </Tag>
-            )}
-          </div>
-
-          <h2 className="text-xl font-bold text-slate-800">{ticket.subject}</h2>
-          <p className="mt-1 text-sm text-slate-500">
-            {ticket.topic?.name || "General"} &middot; Opened{" "}
-            {formatDateTime(ticket.createdAt)}
-          </p>
-
-          {/* Actions */}
-          {!isClosed && (
-            <div className="flex flex-wrap items-center gap-3 mt-4">
-              {transitions.filter((s) => s !== "closed").length > 0 && (
-                <Select
-                  placeholder="Change Status"
-                  onChange={handleStatusChange}
-                  loading={isUpdating}
-                  className="w-48 [&_.ant-select-selector]:h-10! [&_.ant-select-selector]:rounded-lg!"
-                  options={transitions
-                    .filter((s) => s !== "closed")
-                    .map((s) => ({ value: s, label: statusLabel[s] }))}
-                />
-              )}
-              <Button
-                danger
-                icon={<FiX className="h-3.5 w-3.5" />}
-                onClick={handleCloseTicket}
-                loading={isUpdating}
-                className="h-10 rounded-lg font-semibold"
-              >
-                Close Ticket
-              </Button>
-            </div>
-          )}
-
-          {isClosed && (
-            <div className="mt-4 rounded-lg bg-slate-100 px-4 py-2.5 text-sm text-slate-500 inline-flex items-center gap-2">
-              <FiClock className="h-4 w-4" />
-              Closed on{" "}
-              {ticket.closedAt ? formatDateTime(ticket.closedAt) : "unknown date"}
-            </div>
-          )}
-        </div>
-
-        {/* ── Info Section ───────────────────────────────── */}
-        <div className="px-6 py-6 border-b border-slate-100">
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            {/* Customer Info */}
-            <div>
-              <h4 className="text-sm font-semibold text-slate-800 mb-4">
-                Customer Information
-              </h4>
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#7061ED]/10 text-[#7061ED] text-sm font-bold">
-                    {getInitials(ticket.user?.firstName, ticket.user?.lastName)}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-slate-700">{customerName}</p>
-                    <p className="text-xs text-slate-400">Customer</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-slate-600">
-                  <FiMail className="h-4 w-4 text-slate-400 shrink-0" />
-                  {ticket.user?.email || "—"}
-                </div>
-                {ticket.user?.phone && (
-                  <div className="flex items-center gap-2 text-sm text-slate-600">
-                    <FiPhone className="h-4 w-4 text-slate-400 shrink-0" />
-                    {ticket.user.phone}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Ticket Details */}
-            <div>
-              <h4 className="text-sm font-semibold text-slate-800 mb-4">Ticket Details</h4>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
-                  <span className="text-xs text-slate-400">Subject</span>
-                  <p className="text-sm font-medium text-slate-700">{ticket.subject}</p>
-                </div>
-                <div>
-                  <span className="text-xs text-slate-400">Topic</span>
-                  <p className="text-sm font-medium text-slate-700">
-                    {ticket.topic?.name || "—"}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-xs text-slate-400 block mb-1">Priority</span>
-                  <Select
-                    value={ticket.priority}
-                    size="small"
-                    onChange={handlePriorityChange}
-                    loading={isUpdating}
-                    className="w-full [&_.ant-select-selector]:rounded-lg!"
-                    options={[
-                      { value: "low", label: "Low" },
-                      { value: "medium", label: "Medium" },
-                      { value: "high", label: "High" },
-                      { value: "urgent", label: "Urgent" },
-                    ]}
-                    optionRender={(option) => (
-                      <Tag className={`m-0! rounded-full! border-0! px-2.5! py-0.5! text-[10px]! font-bold! ${priorityStyles[option.value as string] || ""}`}>
-                        {option.label}
-                      </Tag>
-                    )}
-                    labelRender={(props) => (
-                      <Tag className={`m-0! rounded-full! border-0! px-2.5! py-0.5! text-[10px]! font-bold! ${priorityStyles[props.value as string] || ""}`}>
-                        {priorityLabel[props.value as string] || props.label}
-                      </Tag>
-                    )}
-                  />
-                </div>
-                <div>
-                  <span className="text-xs text-slate-400">Assigned Agent</span>
-                  <p className="text-sm font-medium text-slate-700">
-                    {ticket.assignedAgent
-                      ? `${ticket.assignedAgent.firstName} ${ticket.assignedAgent.lastName}`
-                      : "Unassigned"}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-xs text-slate-400">Last Updated</span>
-                  <p className="text-sm font-medium text-slate-700">
-                    {formatDateTime(ticket.updatedAt)}
-                  </p>
-                </div>
-                {ticket.resolvedAt && (
-                  <div>
-                    <span className="text-xs text-slate-400">Resolved At</span>
-                    <p className="text-sm font-medium text-slate-700">
-                      {formatDateTime(ticket.resolvedAt)}
-                    </p>
-                  </div>
-                )}
-                {ticket.closedAt && (
-                  <div>
-                    <span className="text-xs text-slate-400">Closed At</span>
-                    <p className="text-sm font-medium text-slate-700">
-                      {formatDateTime(ticket.closedAt)}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Original Message */}
-          {messages.length > 0 && messages[0].senderId === ticket.userId && (
-            <div className="mt-6">
-              <h4 className="text-sm font-semibold text-slate-800 mb-3">Original Message</h4>
-              <div className="rounded-xl bg-slate-50 border border-slate-100 p-4">
-                <p className="text-sm text-slate-600 whitespace-pre-wrap">
-                  {messages[0].message}
-                </p>
-                {messages[0].attachments && messages[0].attachments.length > 0 && (
-                  <div className="mt-3 space-y-2">
-                    {messages[0].attachments.map((url, idx) => (
-                      <a
-                        key={idx}
-                        href={getFileUrl(url)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-colors"
-                      >
-                        {isImageUrl(url) ? (
-                          <img
-                            src={getFileUrl(url)}
-                            alt="attachment"
-                            className="h-12 w-12 rounded object-cover"
-                          />
-                        ) : (
-                          <FiPaperclip className="h-4 w-4 text-slate-400 shrink-0" />
-                        )}
-                        <span className="flex-1 truncate">{getFileName(url)}</span>
-                        <LuDownload className="h-4 w-4 text-slate-400 shrink-0" />
-                      </a>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* ── Conversation ───────────────────────────────── */}
-        <div className="px-6 py-6">
-          <div className="flex items-center gap-2 mb-4">
-            <LuMessageCircle className="h-4 w-4 text-slate-600" />
-            <h4 className="text-sm font-semibold text-slate-800">Conversation</h4>
-            {messages.length > 0 && (
-              <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#7061ED] px-1.5 text-[10px] font-bold text-white">
-                {messages.length}
-              </span>
-            )}
-          </div>
-
-          {messages.length === 0 ? (
-            <div className="py-12">
-              <Empty description="No messages yet" />
-            </div>
-          ) : (
-            <div className="space-y-4 max-h-[500px] overflow-y-auto pr-1">
-              {messages.map((msg) => {
-                const isCustomer = msg.senderId === ticket.userId;
-                const senderName = msg.sender
-                  ? `${msg.sender.firstName} ${msg.sender.lastName}`
-                  : "Unknown";
-
-                return (
-                  <div
-                    key={msg.id}
-                    className={`rounded-xl p-4 ${
-                      isCustomer
-                        ? "bg-slate-50 border border-slate-100"
-                        : "bg-[#7061ED]/5 border border-[#7061ED]/10"
-                    }`}
-                  >
-                    {/* Sender row */}
-                    <div className="flex items-center gap-3 mb-2">
-                      <div
-                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${
-                          isCustomer ? "bg-slate-400" : "bg-[#7061ED]"
-                        }`}
-                      >
-                        {getInitials(msg.sender?.firstName, msg.sender?.lastName)}
-                      </div>
-                      <div className="flex-1 min-w-0 flex items-center gap-2">
-                        <span className="text-sm font-semibold text-slate-700">
-                          {senderName}
-                        </span>
-                        <Tag
-                          className={`m-0! rounded-full! border-0! px-2! py-0! text-[10px]! font-bold! ${
-                            isCustomer
-                              ? "bg-slate-200! text-slate-600!"
-                              : "bg-[#7061ED]/15! text-[#7061ED]!"
-                          }`}
-                        >
-                          {isCustomer ? "Customer" : "Admin"}
-                        </Tag>
-                      </div>
-                      <span className="text-xs text-slate-400 whitespace-nowrap">
-                        {formatDateTime(msg.createdAt)}
-                      </span>
-                    </div>
-
-                    {/* Message body */}
-                    <p className="text-sm text-slate-600 whitespace-pre-wrap ml-11">
-                      {msg.message}
-                    </p>
-
-                    {/* Attachments */}
-                    {msg.attachments && msg.attachments.length > 0 && (
-                      <div className="mt-3 ml-11 space-y-2">
-                        {msg.attachments.map((url, idx) => (
-                          <a
-                            key={idx}
-                            href={getFileUrl(url)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-colors"
-                          >
-                            {isImageUrl(url) ? (
-                              <img
-                                src={getFileUrl(url)}
-                                alt="attachment"
-                                className="h-12 w-12 rounded object-cover"
-                              />
-                            ) : (
-                              <FiPaperclip className="h-4 w-4 text-slate-400 shrink-0" />
-                            )}
-                            <span className="flex-1 truncate">{getFileName(url)}</span>
-                            <LuDownload className="h-4 w-4 text-slate-400 shrink-0" />
-                          </a>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-              <div ref={messagesEndRef} />
-            </div>
-          )}
-        </div>
-
-        {/* ── Reply Section ──────────────────────────────── */}
-        {!isClosed ? (
-          <div className="px-6 pb-6">
-            <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
-              <Input.TextArea
-                rows={3}
-                value={replyText}
-                onChange={(e) => setReplyText(e.target.value)}
-                placeholder="Type your reply..."
-                className="resize-none rounded-lg! border-slate-200! bg-white! mb-3"
-                onPressEnter={(e) => {
-                  if (e.ctrlKey || e.metaKey) {
-                    e.preventDefault();
-                    handleReply();
-                  }
-                }}
-              />
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-400">Press Ctrl+Enter to send</span>
-                <Button
-                  type="primary"
-                  icon={<FiSend className="h-3.5 w-3.5" />}
-                  onClick={handleReply}
-                  loading={isSending}
-                  disabled={!replyText.trim()}
-                  className="h-10 rounded-lg bg-[#7061ED]! hover:bg-[#5f52d4]! border-0! font-semibold px-6"
+      {/* ── Two-column grid ──────────────────────────────── */}
+      <div className="mt-4 grid grid-cols-1 gap-5 lg:grid-cols-12">
+        {/* ── LEFT COLUMN: Ticket Info ───────────────────── */}
+        <div className="lg:col-span-5 space-y-5">
+          {/* Card 1 — Header + Actions */}
+          <div className={`${cardClass} overflow-hidden`}>
+            <div className="bg-slate-50/60 p-5">
+              <div className="flex flex-wrap items-center gap-2 mb-3">
+                <Tag className="m-0! rounded-md! border-0! bg-slate-800! px-2.5! py-0.5! text-xs! font-semibold! text-white!">
+                  #{ticket.id.slice(0, 8)}
+                </Tag>
+                <Tag
+                  className={`m-0! rounded-md! border-0! px-2.5! py-0.5! text-xs! font-semibold! ${statusStyles[ticket.status]}`}
                 >
-                  Send Reply
-                </Button>
+                  {statusLabel[ticket.status] || ticket.status}
+                </Tag>
+                <Tag
+                  className={`m-0! rounded-md! border-0! px-2.5! py-0.5! text-xs! font-semibold! ${priorityStyles[ticket.priority]}`}
+                >
+                  {priorityLabel[ticket.priority] || ticket.priority} Priority
+                </Tag>
+              </div>
+
+              <h2 className="text-lg font-bold text-slate-800 leading-snug">
+                {ticket.subject}
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                {ticket.topic?.name || "General"} &middot; {formatDateTime(ticket.createdAt)}
+              </p>
+
+              {!isClosed && (
+                <div className="flex flex-wrap items-center gap-2.5 mt-4">
+                  {transitions.filter((s) => s !== "closed").length > 0 && (
+                    <Select
+                      placeholder="Change Status"
+                      onChange={handleStatusChange}
+                      loading={isUpdating}
+                      className="w-44 [&_.ant-select-selector]:h-9! [&_.ant-select-selector]:rounded-lg!"
+                      options={transitions
+                        .filter((s) => s !== "closed")
+                        .map((s) => ({ value: s, label: statusLabel[s] }))}
+                    />
+                  )}
+                  <Button
+                    danger
+                    size="small"
+                    icon={<FiX className="h-3 w-3" />}
+                    onClick={handleCloseTicket}
+                    loading={isUpdating}
+                    className="h-9 rounded-lg font-semibold px-4"
+                  >
+                    Close
+                  </Button>
+                </div>
+              )}
+
+              {isClosed && (
+                <div className="mt-3 rounded-lg bg-slate-100 px-3 py-2 text-xs text-slate-500 inline-flex items-center gap-1.5">
+                  <FiClock className="h-3.5 w-3.5" />
+                  Closed {ticket.closedAt ? formatDateTime(ticket.closedAt) : ""}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Card 2 — Customer Info */}
+          <div className={`${cardClass} p-5`}>
+            <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">
+              Customer
+            </h4>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#7061ED]/10 text-[#7061ED] text-sm font-bold">
+                {getInitials(ticket.user?.firstName, ticket.user?.lastName)}
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-800">{customerName}</p>
+                <p className="text-xs text-slate-400">Customer</p>
               </div>
             </div>
-          </div>
-        ) : (
-          <div className="px-6 pb-6">
-            <div className="rounded-xl bg-slate-100 p-4 text-center text-sm text-slate-500">
-              This ticket is closed. No further replies can be sent.
+            <div className="space-y-2.5 text-sm">
+              <div className="flex items-center gap-2 text-slate-600">
+                <FiMail className="h-4 w-4 text-slate-400 shrink-0" />
+                {ticket.user?.email || "—"}
+              </div>
+              {ticket.user?.phone && (
+                <div className="flex items-center gap-2 text-slate-600">
+                  <FiPhone className="h-4 w-4 text-slate-400 shrink-0" />
+                  {ticket.user.phone}
+                </div>
+              )}
             </div>
           </div>
-        )}
+
+          {/* Card 3 — Ticket Details */}
+          <div className={`${cardClass} p-5`}>
+            <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">
+              Ticket Details
+            </h4>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-4">
+              <div className="col-span-2">
+                <span className="text-xs text-slate-400">Subject</span>
+                <p className="text-sm font-medium text-slate-700">{ticket.subject}</p>
+              </div>
+              <div>
+                <span className="text-xs text-slate-400">Topic</span>
+                <p className="text-sm font-medium text-slate-700">{ticket.topic?.name || "—"}</p>
+              </div>
+              <div>
+                <span className="text-xs text-slate-400 block mb-1">Priority</span>
+                <Select
+                  value={ticket.priority}
+                  size="small"
+                  onChange={handlePriorityChange}
+                  loading={isUpdating}
+                  className="w-full [&_.ant-select-selector]:rounded-lg!"
+                  options={[
+                    { value: "low", label: "Low" },
+                    { value: "medium", label: "Medium" },
+                    { value: "high", label: "High" },
+                    { value: "urgent", label: "Urgent" },
+                  ]}
+                  optionRender={(option) => (
+                    <Tag
+                      className={`m-0! rounded-full! border-0! px-2.5! py-0.5! text-[10px]! font-bold! ${priorityStyles[option.value as string] || ""}`}
+                    >
+                      {option.label}
+                    </Tag>
+                  )}
+                  labelRender={(props) => (
+                    <Tag
+                      className={`m-0! rounded-full! border-0! px-2.5! py-0.5! text-[10px]! font-bold! ${priorityStyles[props.value as string] || ""}`}
+                    >
+                      {priorityLabel[props.value as string] || props.label}
+                    </Tag>
+                  )}
+                />
+              </div>
+              <div>
+                <span className="text-xs text-slate-400">Assigned Agent</span>
+                <p className="text-sm font-medium text-slate-700">
+                  {ticket.assignedAgent
+                    ? `${ticket.assignedAgent.firstName} ${ticket.assignedAgent.lastName}`
+                    : "Unassigned"}
+                </p>
+              </div>
+              <div>
+                <span className="text-xs text-slate-400">Last Updated</span>
+                <p className="text-sm font-medium text-slate-700">
+                  {formatDateTime(ticket.updatedAt)}
+                </p>
+              </div>
+              {ticket.resolvedAt && (
+                <div>
+                  <span className="text-xs text-slate-400">Resolved At</span>
+                  <p className="text-sm font-medium text-slate-700">
+                    {formatDateTime(ticket.resolvedAt)}
+                  </p>
+                </div>
+              )}
+              {ticket.closedAt && (
+                <div>
+                  <span className="text-xs text-slate-400">Closed At</span>
+                  <p className="text-sm font-medium text-slate-700">
+                    {formatDateTime(ticket.closedAt)}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Card 4 — Original Message */}
+          {firstMessage && (
+            <div className={`${cardClass} p-5`}>
+              <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+                Original Message
+              </h4>
+              <div className="rounded-xl bg-slate-50 border border-slate-100 p-4">
+                <p className="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed">
+                  {firstMessage.message}
+                </p>
+                {firstMessage.attachments && firstMessage.attachments.length > 0 && (
+                  <Attachments urls={firstMessage.attachments} variant="light" />
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── RIGHT COLUMN: Chat Panel ──────────────────── */}
+        <div className="lg:col-span-7">
+          <div
+            className={`${cardClass} flex flex-col overflow-hidden max-h-[600px] lg:max-h-none lg:h-[calc(100vh-160px)] lg:sticky lg:top-5`}
+          >
+            {/* Chat header */}
+            <div className="flex items-center gap-2 px-5 py-3.5 border-b border-slate-100 bg-slate-50/40">
+              <LuMessageCircle className="h-4 w-4 text-slate-500" />
+              <h4 className="text-sm font-semibold text-slate-700">Conversation</h4>
+              {messages.length > 0 && (
+                <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#7061ED] px-1.5 text-[10px] font-bold text-white">
+                  {messages.length}
+                </span>
+              )}
+            </div>
+
+            {/* Messages area */}
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 bg-slate-50/20">
+              {messages.length === 0 ? (
+                <div className="flex items-center justify-center h-full">
+                  <Empty description="No messages yet" />
+                </div>
+              ) : (
+                <>
+                  {messages.map((msg) => {
+                    const isCustomer = msg.senderId === ticket.userId;
+                    const senderName = msg.sender
+                      ? `${msg.sender.firstName} ${msg.sender.lastName}`
+                      : "Unknown";
+
+                    if (isCustomer) {
+                      /* ── Customer bubble (left) ───── */
+                      return (
+                        <div key={msg.id} className="flex gap-2.5 max-w-[85%]">
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-400 text-xs font-bold text-white mt-5">
+                            {getInitials(msg.sender?.firstName, msg.sender?.lastName)}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-xs font-semibold text-slate-600">
+                                {senderName}
+                              </span>
+                              <span className="text-[10px] text-slate-400">
+                                {formatDateTime(msg.createdAt)}
+                              </span>
+                            </div>
+                            <div className="rounded-2xl rounded-tl-sm bg-slate-100 px-4 py-2.5">
+                              <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
+                                {msg.message}
+                              </p>
+                            </div>
+                            {msg.attachments && msg.attachments.length > 0 && (
+                              <Attachments urls={msg.attachments} variant="light" />
+                            )}
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    /* ── Admin bubble (right) ─────── */
+                    return (
+                      <div key={msg.id} className="flex gap-2.5 max-w-[85%] ml-auto flex-row-reverse">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#7061ED] text-xs font-bold text-white mt-5">
+                          {getInitials(msg.sender?.firstName, msg.sender?.lastName)}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 mb-1 justify-end">
+                            <span className="text-[10px] text-slate-400">
+                              {formatDateTime(msg.createdAt)}
+                            </span>
+                            <span className="text-xs font-semibold text-[#7061ED]">
+                              {senderName}
+                            </span>
+                          </div>
+                          <div className="rounded-2xl rounded-tr-sm bg-[#7061ED] px-4 py-2.5">
+                            <p className="text-sm text-white whitespace-pre-wrap leading-relaxed">
+                              {msg.message}
+                            </p>
+                          </div>
+                          {msg.attachments && msg.attachments.length > 0 && (
+                            <Attachments urls={msg.attachments} variant="dark" />
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div ref={messagesEndRef} />
+                </>
+              )}
+            </div>
+
+            {/* Reply bar */}
+            <div className="border-t border-slate-100 px-5 py-3.5 bg-white">
+              {!isClosed ? (
+                <div className="flex items-end gap-3">
+                  <Input.TextArea
+                    autoSize={{ minRows: 1, maxRows: 4 }}
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    placeholder="Type your reply..."
+                    className="flex-1 rounded-2xl! border-slate-200! resize-none"
+                    onPressEnter={(e) => {
+                      if (e.ctrlKey || e.metaKey) {
+                        e.preventDefault();
+                        handleReply();
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleReply}
+                    disabled={!replyText.trim() || isSending}
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#7061ED] text-white hover:bg-[#5f52d4] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {isSending ? (
+                      <span className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <FiSend className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+              ) : (
+                <p className="text-center text-sm text-slate-400 py-1">
+                  This ticket is closed. No further replies can be sent.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
