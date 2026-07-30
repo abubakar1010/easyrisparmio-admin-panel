@@ -33,16 +33,20 @@ export const CreateOfferModal = ({
   const validUntil = Form.useWatch("validity", form);
 
   const [economicConditionsUrl, setEconomicConditionsUrl] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
+  const [termsDocUrl, setTermsDocUrl] = useState<string | null>(null);
+  const [uploadingEcon, setUploadingEcon] = useState(false);
+  const [uploadingTerms, setUploadingTerms] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     if (isEdit && initialValues) {
       form.setFieldsValue(initialValues);
       setEconomicConditionsUrl((initialValues.economicConditionsUrl as string) || null);
+      setTermsDocUrl((initialValues.termsUrl as string) || null);
     } else {
       form.resetFields();
       setEconomicConditionsUrl(null);
+      setTermsDocUrl(null);
     }
   }, [open, isEdit, initialValues, form]);
 
@@ -56,8 +60,13 @@ export const CreateOfferModal = ({
     }
   }, [validFrom, validUntil, form]);
 
-  const handleEconDocUpload = async (file: File) => {
-    setUploading(true);
+  const handleDocUpload = async (
+    file: File,
+    setUrl: (url: string | null) => void,
+    setLoading: (v: boolean) => void,
+    fieldName: string,
+  ) => {
+    setLoading(true);
     try {
       const formData = new FormData();
       formData.append("file", file);
@@ -68,18 +77,19 @@ export const CreateOfferModal = ({
         body: formData,
       });
       const result = await res.json();
-      if (res.ok && result?.url) {
-        setEconomicConditionsUrl(result.url);
-        form.setFieldsValue({ economicConditionsUrl: result.url });
-        form.validateFields(["economicConditionsUrl"]).catch(() => {});
+      const url = result?.data?.url || result?.url;
+      if (res.ok && url) {
+        setUrl(url);
+        form.setFieldsValue({ [fieldName]: url });
+        form.validateFields([fieldName]).catch(() => {});
         message.success("Document uploaded successfully");
       } else {
-        message.error(result?.message || "Upload failed");
+        message.error(result?.message || result?.data?.message || "Upload failed");
       }
     } catch {
       message.error("Upload failed");
     } finally {
-      setUploading(false);
+      setLoading(false);
     }
     return false;
   };
@@ -104,7 +114,7 @@ export const CreateOfferModal = ({
         : undefined,
       target: values.target || undefined,
       highlights: values.highlights?.length ? values.highlights : undefined,
-      termsUrl: values.termsUrl || undefined,
+      termsUrl: termsDocUrl || undefined,
       economicConditionsUrl: economicConditionsUrl || undefined,
       description: values.notes || undefined,
     };
@@ -129,6 +139,7 @@ export const CreateOfferModal = ({
   const handleCancel = () => {
     form.resetFields();
     setEconomicConditionsUrl(null);
+    setTermsDocUrl(null);
     onClose();
   };
 
@@ -345,69 +356,117 @@ export const CreateOfferModal = ({
         <p className="mb-2 mt-3 text-xs font-bold uppercase tracking-wider text-slate-400">
           Additional Details
         </p>
+
         <div className="grid grid-cols-1 gap-x-3 gap-y-1 sm:grid-cols-2">
-          <Form.Item name="termsUrl" label="Terms & Conditions URL" rules={[{ required: true, message: "Please enter terms & conditions URL" }, { type: "url", message: "Please enter a valid URL" }]}>
-            <Input placeholder="https://..." className="h-11 rounded-lg" />
+          <Form.Item
+            name="termsUrl"
+            label="Terms & Conditions Document"
+          >
+            <div>
+              <div className="flex items-center gap-3">
+                <Upload
+                  accept=".pdf,.png,.jpg,.jpeg"
+                  maxCount={1}
+                  showUploadList={false}
+                  beforeUpload={(file) => handleDocUpload(file, setTermsDocUrl, setUploadingTerms, "termsUrl")}
+                >
+                  <Button
+                    icon={<LuUpload className="h-4 w-4" />}
+                    loading={uploadingTerms}
+                    className="h-10 rounded-lg"
+                  >
+                    {termsDocUrl ? "Replace Document" : "Upload Document"}
+                  </Button>
+                </Upload>
+                {termsDocUrl && (
+                  <div className="flex items-center gap-2">
+                    <a
+                      href={
+                        termsDocUrl.startsWith("http")
+                          ? termsDocUrl
+                          : `${server_origin}/${termsDocUrl.replace(/^\//, "")}`
+                      }
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-sm text-indigo-500 hover:text-indigo-600"
+                    >
+                      <LuFile className="h-3.5 w-3.5" /> View
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTermsDocUrl(null);
+                        form.setFieldsValue({ termsUrl: null });
+                      }}
+                      className="inline-flex items-center gap-1 text-sm text-red-400 hover:text-red-500"
+                    >
+                      <LuTrash2 className="h-3.5 w-3.5" /> Remove
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
           </Form.Item>
-          <Form.Item name="highlights" label="Highlights" rules={[{ required: true, message: "Please add at least one highlight" }]}>
-            <Select
-              mode="tags"
-              placeholder="Type and press Enter to add"
-              className="[&_.ant-select-selector]:min-h-11 [&_.ant-select-selector]:rounded-lg"
-              open={false}
-            />
+
+          <Form.Item
+            name="economicConditionsUrl"
+            label="Economic Conditions Document"
+            rules={[{ required: true, message: "Please upload an Economic Conditions document" }]}
+          >
+            <div>
+              <div className="flex items-center gap-3">
+                <Upload
+                  accept=".pdf,.png,.jpg,.jpeg"
+                  maxCount={1}
+                  showUploadList={false}
+                  beforeUpload={(file) => handleDocUpload(file, setEconomicConditionsUrl, setUploadingEcon, "economicConditionsUrl")}
+                >
+                  <Button
+                    icon={<LuUpload className="h-4 w-4" />}
+                    loading={uploadingEcon}
+                    className="h-10 rounded-lg"
+                  >
+                    {economicConditionsUrl ? "Replace Document" : "Upload Document"}
+                  </Button>
+                </Upload>
+                {economicConditionsUrl && (
+                  <div className="flex items-center gap-2">
+                    <a
+                      href={
+                        economicConditionsUrl.startsWith("http")
+                          ? economicConditionsUrl
+                          : `${server_origin}/${economicConditionsUrl.replace(/^\//, "")}`
+                      }
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-sm text-indigo-500 hover:text-indigo-600"
+                    >
+                      <LuFile className="h-3.5 w-3.5" /> View
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEconomicConditionsUrl(null);
+                        form.setFieldsValue({ economicConditionsUrl: null });
+                      }}
+                      className="inline-flex items-center gap-1 text-sm text-red-400 hover:text-red-500"
+                    >
+                      <LuTrash2 className="h-3.5 w-3.5" /> Remove
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
           </Form.Item>
         </div>
 
-        <Form.Item
-          name="economicConditionsUrl"
-          label="Economic Conditions Document"
-          rules={[{ required: true, message: "Please upload an Economic Conditions document" }]}
-        >
-          <div>
-            <div className="flex items-center gap-3">
-              <Upload
-                accept=".pdf,.png,.jpg,.jpeg"
-                maxCount={1}
-                showUploadList={false}
-                beforeUpload={handleEconDocUpload}
-              >
-                <Button
-                  icon={<LuUpload className="h-4 w-4" />}
-                  loading={uploading}
-                  className="h-10 rounded-lg"
-                >
-                  {economicConditionsUrl ? "Replace Document" : "Upload Document"}
-                </Button>
-              </Upload>
-              {economicConditionsUrl && (
-                <div className="flex items-center gap-2">
-                  <a
-                    href={
-                      economicConditionsUrl.startsWith("http")
-                        ? economicConditionsUrl
-                        : `${server_origin}/${economicConditionsUrl.replace(/^\//, "")}`
-                    }
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-sm text-indigo-500 hover:text-indigo-600"
-                  >
-                    <LuFile className="h-3.5 w-3.5" /> View
-                  </a>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEconomicConditionsUrl(null);
-                      form.setFieldsValue({ economicConditionsUrl: null });
-                    }}
-                    className="inline-flex items-center gap-1 text-sm text-red-400 hover:text-red-500"
-                  >
-                    <LuTrash2 className="h-3.5 w-3.5" /> Remove
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
+        <Form.Item name="highlights" label="Highlights">
+          <Select
+            mode="tags"
+            placeholder="Type and press Enter to add"
+            className="[&_.ant-select-selector]:min-h-11 [&_.ant-select-selector]:rounded-lg"
+            open={false}
+          />
         </Form.Item>
 
         <Form.Item name="notes" label="Description" rules={[{ required: true, message: "Please enter a description" }]}>
