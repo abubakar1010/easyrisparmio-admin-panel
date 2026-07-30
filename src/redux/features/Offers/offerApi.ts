@@ -21,6 +21,7 @@ export interface IOffer {
   highlights: string[] | null;
   offerCode: string | null;
   offerStatus: "draft" | "active" | "expiring" | "expired" | "archived";
+  hasAcceptedCases?: boolean;
   version: number;
   supplierId: string;
   supplier?: {

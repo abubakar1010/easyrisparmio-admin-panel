@@ -1,4 +1,4 @@
-import { Button, DatePicker, Form, Input, InputNumber, Modal, Select, Switch, Upload, message } from "antd";
+import { Alert, Button, DatePicker, Form, Input, InputNumber, Modal, Select, Switch, Upload, message } from "antd";
 import dayjs from "dayjs";
 import { useEffect, useState } from "react";
 import { LuUpload, LuFile, LuTrash2 } from "react-icons/lu";
@@ -12,6 +12,7 @@ type CreateOfferModalProps = {
   mode?: "add" | "edit";
   offerId?: string;
   initialValues?: Record<string, unknown>;
+  isImmutable?: boolean;
 };
 
 export const CreateOfferModal = ({
@@ -20,6 +21,7 @@ export const CreateOfferModal = ({
   mode = "add",
   offerId,
   initialValues,
+  isImmutable = false,
 }: CreateOfferModalProps) => {
   const [form] = Form.useForm();
   const isEdit = mode === "edit";
@@ -158,7 +160,15 @@ export const CreateOfferModal = ({
       }
       className="[&_.ant-modal-content]:rounded-2xl [&_.ant-modal-content]:p-4 sm:[&_.ant-modal-content]:p-6 [&_.ant-modal-header]:rounded-t-2xl [&_.ant-modal-body]:pt-3"
     >
-      <Form form={form} layout="vertical" onFinish={handleSubmit} className="pt-1">
+      <Form form={form} layout="vertical" onFinish={handleSubmit} className="pt-1" disabled={isImmutable}>
+        {isImmutable && (
+          <Alert
+            type="warning"
+            showIcon
+            className="mb-4"
+            message="This offer has been accepted by users and cannot be modified. Only status changes are allowed from the offers list."
+          />
+        )}
         {/* General Information */}
         <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">
           General Information
@@ -330,6 +340,7 @@ export const CreateOfferModal = ({
             <Select
               size="large"
               placeholder="Select status"
+              disabled={isEdit}
               className="[&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-lg"
               options={
                 isEdit
@@ -479,16 +490,18 @@ export const CreateOfferModal = ({
 
         <div className="mt-2 flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 sm:mt-4 sm:flex-row sm:justify-end">
           <Button onClick={handleCancel} className="h-10 rounded-lg px-5 sm:min-w-[96px]">
-            Cancel
+            {isImmutable ? "Close" : "Cancel"}
           </Button>
-          <Button
-            type="primary"
-            htmlType="submit"
-            loading={isCreating || isUpdating}
-            className="h-10 rounded-lg bg-[#8b85f6] px-5 font-semibold hover:bg-[#7a74e5] sm:min-w-[136px]"
-          >
-            {isEdit ? "Save Changes" : "Create Offer"}
-          </Button>
+          {!isImmutable && (
+            <Button
+              type="primary"
+              htmlType="submit"
+              loading={isCreating || isUpdating}
+              className="h-10 rounded-lg bg-[#8b85f6] px-5 font-semibold hover:bg-[#7a74e5] sm:min-w-[136px]"
+            >
+              {isEdit ? "Save Changes" : "Create Offer"}
+            </Button>
+          )}
         </div>
       </Form>
     </Modal>

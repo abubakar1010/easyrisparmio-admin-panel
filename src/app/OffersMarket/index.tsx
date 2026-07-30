@@ -25,7 +25,7 @@ const statusDot: Record<string, string> = {
   archived: "bg-slate-400",
 };
 
-const STATUS_TRANSITIONS: Record<string, { value: string; label: string }[]> = {
+const BASE_STATUS_TRANSITIONS: Record<string, { value: string; label: string }[]> = {
   draft: [
     { value: "active", label: "Activate" },
     { value: "archived", label: "Archive" },
@@ -40,6 +40,16 @@ const STATUS_TRANSITIONS: Record<string, { value: string; label: string }[]> = {
   ],
   expired: [{ value: "archived", label: "Archive" }],
   archived: [],
+};
+
+/** Returns available status transitions for an offer, considering acceptance state. */
+const getStatusTransitions = (offer: IOffer) => {
+  const transitions = [...(BASE_STATUS_TRANSITIONS[offer.offerStatus] || [])];
+  // Allow reverting to DRAFT only for active offers that have not been accepted
+  if (offer.offerStatus === "active" && !offer.hasAcceptedCases) {
+    transitions.unshift({ value: "draft", label: "Back to Draft" });
+  }
+  return transitions;
 };
 
 const OffersMarket = () => {
@@ -124,7 +134,7 @@ const OffersMarket = () => {
 
   const handleStatusChange = (offer: IOffer, newStatus: string) => {
     const label =
-      STATUS_TRANSITIONS[offer.offerStatus]?.find((t) => t.value === newStatus)?.label || newStatus;
+      getStatusTransitions(offer).find((t) => t.value === newStatus)?.label || newStatus;
     Modal.confirm({
       title: `${label} offer?`,
       content: `Change "${offer.name}" status from "${offer.offerStatus}" to "${newStatus}".`,
@@ -222,7 +232,8 @@ const OffersMarket = () => {
       key: "action",
       width: 140,
       render: (_, record) => {
-        const transitions = STATUS_TRANSITIONS[record.offerStatus] || [];
+        const transitions = getStatusTransitions(record);
+        const isImmutable = record.offerStatus !== "draft" && !!record.hasAcceptedCases;
         const menuItems: MenuProps["items"] = [
           ...transitions.map((t) => ({
             key: t.value,
@@ -248,12 +259,13 @@ const OffersMarket = () => {
                 onClick={() => handleViewDetails(record)}
               />
             </Tooltip>
-            <Tooltip title="Edit">
+            <Tooltip title={isImmutable ? "Offer accepted by users — fields locked" : "Edit"}>
               <Button
                 type="text"
                 size="small"
-                icon={<FiEdit2 className="text-slate-400" />}
-                onClick={() => handleEdit(record)}
+                icon={<FiEdit2 className={isImmutable ? "text-slate-200" : "text-slate-400"} />}
+                onClick={() => !isImmutable && handleEdit(record)}
+                disabled={isImmutable}
               />
             </Tooltip>
             <Dropdown menu={{ items: menuItems }} trigger={["click"]} placement="bottomRight">
@@ -393,6 +405,7 @@ const OffersMarket = () => {
         mode="edit"
         offerId={selectedOffer?.id}
         initialValues={selectedOffer ? getEditInitialValues(selectedOffer) : undefined}
+        isImmutable={selectedOffer?.offerStatus !== "draft" && !!selectedOffer?.hasAcceptedCases}
       />
 
     </div>
