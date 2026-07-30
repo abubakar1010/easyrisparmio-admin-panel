@@ -14,10 +14,10 @@ import { debounce } from "../../utils/debounce";
 type TicketStatus = "open" | "in_progress" | "resolved" | "closed";
 
 const statusStyles: Record<string, string> = {
-  open: "bg-blue-500 text-white",
-  in_progress: "bg-amber-500 text-white",
-  resolved: "bg-emerald-500 text-white",
-  closed: "bg-slate-500 text-white",
+  open: "bg-blue-500! text-white!",
+  in_progress: "bg-amber-500! text-white!",
+  resolved: "bg-emerald-500! text-white!",
+  closed: "bg-slate-500! text-white!",
 };
 
 const statusLabel: Record<string, string> = {
@@ -28,10 +28,10 @@ const statusLabel: Record<string, string> = {
 };
 
 const priorityStyles: Record<string, string> = {
-  low: "bg-green-100 text-green-700",
-  medium: "bg-blue-100 text-blue-700",
-  high: "bg-orange-100 text-orange-700",
-  urgent: "bg-red-100 text-red-700",
+  low: "bg-green-100! text-green-700!",
+  medium: "bg-blue-100! text-blue-700!",
+  high: "bg-orange-100! text-orange-700!",
+  urgent: "bg-red-100! text-red-700!",
 };
 
 const priorityLabel: Record<string, string> = {
