@@ -119,7 +119,7 @@ export interface IOfferWithSavings {
   pricePerSmc: number | null;
   fixedMonthlyFee: number;
   activationCost: number;
-  contractDurationMonths: number;
+  contractDurationDays: number;
   isGreenEnergy: boolean;
   offerStatus: string;
   supplierId: string;

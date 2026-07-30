@@ -94,7 +94,7 @@ const OffersMarket = () => {
     fixedMonthlyFee: offer.fixedMonthlyFee,
     pricePerKwh: offer.pricePerKwh,
     pricePerSmc: offer.pricePerSmc,
-    durationMonths: offer.contractDurationMonths,
+    contractDurationDays: offer.contractDurationDays,
     isGreenEnergy: offer.isGreenEnergy,
     validFrom: offer.validFrom ? dayjs(offer.validFrom) : undefined,
     validity: offer.validUntil ? dayjs(offer.validUntil) : undefined,

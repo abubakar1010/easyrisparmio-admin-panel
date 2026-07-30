@@ -144,7 +144,7 @@ export const OfferDetailsModal = ({ open, onClose, offer }: OfferDetailsModalPro
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
             <InfoRow
               label="Contract Duration"
-              value={`${detail.contractDurationMonths} month${detail.contractDurationMonths !== 1 ? "s" : ""}`}
+              value={`${detail.contractDurationDays} day${detail.contractDurationDays !== 1 ? "s" : ""}`}
             />
             <InfoRow label="Valid From" value={formatDate(detail.validFrom)} />
             <InfoRow label="Valid Until" value={formatDate(detail.validUntil)} />

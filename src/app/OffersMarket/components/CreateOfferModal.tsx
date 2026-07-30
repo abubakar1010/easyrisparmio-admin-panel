@@ -29,6 +29,8 @@ export const CreateOfferModal = ({
   const suppliers = suppliersData?.data || [];
 
   const commodity = Form.useWatch("commodity", form);
+  const validFrom = Form.useWatch("validFrom", form);
+  const validUntil = Form.useWatch("validity", form);
 
   const [economicConditionsUrl, setEconomicConditionsUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -43,6 +45,16 @@ export const CreateOfferModal = ({
       setEconomicConditionsUrl(null);
     }
   }, [open, isEdit, initialValues, form]);
+
+  // Auto-calculate contract duration in days from date range
+  useEffect(() => {
+    if (validFrom && validUntil) {
+      const days = dayjs(validUntil).diff(dayjs(validFrom), "day");
+      form.setFieldsValue({ contractDurationDays: days > 0 ? days : undefined });
+    } else {
+      form.setFieldsValue({ contractDurationDays: undefined });
+    }
+  }, [validFrom, validUntil, form]);
 
   const handleEconDocUpload = async (file: File) => {
     setUploading(true);
@@ -84,11 +96,9 @@ export const CreateOfferModal = ({
       fixedMonthlyFee: values.fixedMonthlyFee ?? 0,
       pricePerKwh: values.pricePerKwh ?? undefined,
       pricePerSmc: values.pricePerSmc ?? undefined,
-      contractDurationMonths: values.durationMonths || 12,
+      contractDurationDays: values.contractDurationDays || 1,
       isGreenEnergy: values.isGreenEnergy ?? false,
-      validFrom: values.validFrom
-        ? dayjs(values.validFrom).format("YYYY-MM-DD")
-        : dayjs().format("YYYY-MM-DD"),
+      validFrom: dayjs(values.validFrom).format("YYYY-MM-DD"),
       validUntil: values.validity
         ? dayjs(values.validity).format("YYYY-MM-DD")
         : undefined,
@@ -213,7 +223,6 @@ export const CreateOfferModal = ({
             name="fixedMonthlyFee"
             label="Fixed Monthly Fee (EUR)"
             rules={[{ required: true, message: "Required" }]}
-            initialValue={0}
           >
             <InputNumber
               min={0}
@@ -227,7 +236,6 @@ export const CreateOfferModal = ({
             name="commission"
             label="Activation Cost (EUR)"
             rules={[{ required: true, message: "Required" }]}
-            initialValue={0}
           >
             <InputNumber
               min={0}
@@ -269,30 +277,41 @@ export const CreateOfferModal = ({
           Contract & Validity
         </p>
         <div className="grid grid-cols-1 gap-x-3 gap-y-1 sm:grid-cols-3">
-          <Form.Item
-            name="durationMonths"
-            label="Contract Duration (months)"
-            rules={[{ required: true, message: "Required" }]}
-            initialValue={12}
-          >
-            <InputNumber
-              min={1}
-              max={120}
-              className="w-full! rounded-lg [&_.ant-input-number-input]:h-11"
-              controls={false}
-              placeholder="e.g. 12"
+          <Form.Item name="validFrom" label="Valid From" rules={[{ required: true, message: "Please select valid from date" }]}>
+            <DatePicker
+              className="h-11! w-full rounded-lg"
+              format="DD/MM/YYYY"
+              inputReadOnly
+              disabledDate={(current) => current < dayjs().startOf("day")}
             />
           </Form.Item>
-          <Form.Item name="validFrom" label="Valid From" initialValue={dayjs()} rules={[{ required: true, message: "Please select valid from date" }]}>
-            <DatePicker className="h-11! w-full rounded-lg" format="DD/MM/YYYY" />
-          </Form.Item>
           <Form.Item name="validity" label="Valid Until" rules={[{ required: true, message: "Please select valid until date" }]}>
-            <DatePicker className="h-11! w-full rounded-lg" format="DD/MM/YYYY" />
+            <DatePicker
+              className="h-11! w-full rounded-lg"
+              format="DD/MM/YYYY"
+              inputReadOnly
+              disabledDate={(current) => {
+                const tomorrow = dayjs().add(1, "day").startOf("day");
+                if (validFrom) {
+                  const afterFrom = dayjs(validFrom).add(1, "day").startOf("day");
+                  return current < (afterFrom.isAfter(tomorrow) ? afterFrom : tomorrow);
+                }
+                return current < tomorrow;
+              }}
+            />
+          </Form.Item>
+          <Form.Item name="contractDurationDays" label="Contract Duration (days)">
+            <InputNumber
+              disabled
+              className="w-full! rounded-lg [&_.ant-input-number-input]:h-11"
+              controls={false}
+              placeholder="Auto-calculated"
+            />
           </Form.Item>
         </div>
 
         <div className="grid grid-cols-1 gap-x-3 gap-y-1 sm:grid-cols-3">
-          <Form.Item name="target" label="Target" initialValue="both" rules={[{ required: true, message: "Please select target" }]}>
+          <Form.Item name="target" label="Target" rules={[{ required: true, message: "Please select target" }]}>
             <Select
               size="large"
               placeholder="Select target"
@@ -304,7 +323,7 @@ export const CreateOfferModal = ({
               ]}
             />
           </Form.Item>
-          <Form.Item name="status" label="Status" initialValue="draft" rules={[{ required: true, message: "Please select status" }]}>
+          <Form.Item name="status" label="Status" rules={[{ required: true, message: "Please select status" }]}>
             <Select
               size="large"
               placeholder="Select status"
@@ -325,7 +344,7 @@ export const CreateOfferModal = ({
               }
             />
           </Form.Item>
-          <Form.Item name="isGreenEnergy" label="Green Energy" valuePropName="checked" initialValue={false} rules={[{ required: true, message: "Please select green energy" }]}>
+          <Form.Item name="isGreenEnergy" label="Green Energy" valuePropName="checked" rules={[{ required: true, message: "Please select green energy" }]}>
             <Switch />
           </Form.Item>
         </div>

@@ -508,7 +508,7 @@ function AvailableOffersTab({
       key: "duration",
       width: 80,
       render: (_, record) => (
-        <span className="text-xs text-slate-600">{record.contractDurationMonths} mo</span>
+        <span className="text-xs text-slate-600">{record.contractDurationDays} days</span>
       ),
       align: "center",
     },

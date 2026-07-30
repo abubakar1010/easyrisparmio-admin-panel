@@ -9,7 +9,7 @@ export interface SupplierOffer {
   pricePerSmc: number | null;
   fixedMonthlyFee: number;
   activationCost: number;
-  contractDurationMonths: number;
+  contractDurationDays: number;
   isGreenEnergy: boolean;
   isActive: boolean;
   validFrom: string;

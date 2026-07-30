@@ -10,7 +10,7 @@ export interface IOffer {
   pricePerSmc: number | null;
   fixedMonthlyFee: number;
   activationCost: number;
-  contractDurationMonths: number;
+  contractDurationDays: number;
   isGreenEnergy: boolean;
   isActive: boolean;
   validFrom: string;
@@ -49,7 +49,7 @@ export interface ICreateOffer {
   pricePerSmc?: number;
   fixedMonthlyFee?: number;
   activationCost?: number;
-  contractDurationMonths: number;
+  contractDurationDays: number;
   isGreenEnergy?: boolean;
   validFrom: string;
   validUntil?: string;
