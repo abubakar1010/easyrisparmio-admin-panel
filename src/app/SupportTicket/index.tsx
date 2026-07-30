@@ -1,7 +1,8 @@
 import { Button, Card, Form, Input, Modal, Select, Spin, Empty, Table, Tag, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { FiClock, FiFolder, FiPlus, FiSearch, FiUser } from "react-icons/fi";
+import { FiClock, FiEye, FiPlus, FiSearch, FiUser } from "react-icons/fi";
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router";
 import {
   useGetTicketsQuery,
   useUpdateTicketMutation,
@@ -27,6 +28,7 @@ const statusLabel: Record<string, string> = {
 };
 
 const SupportTicket = () => {
+  const navigate = useNavigate();
   const [newTicketOpen, setNewTicketOpen] = useState(false);
   const [ticketForm] = Form.useForm();
 
@@ -134,6 +136,7 @@ const SupportTicket = () => {
       key: "status",
       width: 140,
       render: (value: string, record: ISupportTicket) => (
+        <div onClick={(e) => e.stopPropagation()}>
         <Select
           value={value}
           size="small"
@@ -157,6 +160,7 @@ const SupportTicket = () => {
             </Tag>
           )}
         />
+        </div>
       ),
       align: "center",
     },
@@ -180,10 +184,13 @@ const SupportTicket = () => {
         <button
           type="button"
           className="inline-flex items-center gap-1.5 text-emerald-500 hover:text-emerald-600 font-medium text-sm"
-          onClick={() => handleUpdateTicketStatus(record.id, "resolved")}
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/support-ticket/${record.id}`);
+          }}
         >
-          <FiFolder className="h-4 w-4" />
-          Open
+          <FiEye className="h-4 w-4" />
+          View
         </button>
       ),
     },
@@ -270,6 +277,10 @@ const SupportTicket = () => {
             rowKey="id"
             columns={ticketColumns}
             dataSource={tickets}
+            onRow={(record) => ({
+              onClick: () => navigate(`/support-ticket/${record.id}`),
+              className: "cursor-pointer",
+            })}
             scroll={{ x: 1000 }}
             pagination={{
               current: page,

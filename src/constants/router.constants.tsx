@@ -35,6 +35,7 @@ import Agreements from "../app/Agreements";
 import AgreementDetailsView from "../app/Agreements/AgreementDetailsView";
 import Referrals from "../app/Referrals";
 import SupportTicket from "../app/SupportTicket";
+import TicketDetailsView from "../app/SupportTicket/TicketDetailsView";
 import SupportTopics from "../app/SupportTopics";
 import FAQManagement from "../app/FAQManagement";
 import StaticPages from "../app/StaticPages";
@@ -174,6 +175,10 @@ export const dashboardItems: DashboardItem[] = [
     icon: LuMessageCircle,
     role: [ROLE.ADMIN],
     element: <SupportTicket />,
+  },
+  {
+    path: "support-ticket/:ticketId",
+    element: <TicketDetailsView />,
   },
   {
     name: "Support Topics",

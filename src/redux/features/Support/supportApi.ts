@@ -24,7 +24,7 @@ export interface ISupportTicket {
   closedAt: string | null;
   createdAt: string;
   updatedAt: string;
-  user?: { id: string; firstName: string; lastName: string; email: string };
+  user?: { id: string; firstName: string; lastName: string; email: string; phone?: string | null };
   assignedAgent?: { id: string; firstName: string; lastName: string } | null;
   topic?: ISupportTopic;
   messages?: ITicketMessage[];
@@ -192,6 +192,7 @@ const supportApi = baseApi.injectEndpoints({
         method: "POST",
         body,
       }),
+      transformResponse: (response: { success: boolean; data: ITicketMessage }) => response.data,
       invalidatesTags: (_r, _e, { ticketId }) => [{ type: "support", id: ticketId }],
     }),
 
