@@ -158,7 +158,7 @@ export const CreateOfferModal = ({
           >
             <Input placeholder="e.g. Trend Home Electricity" className="h-11 rounded-lg" />
           </Form.Item>
-          <Form.Item name="offerCode" label="Offer Code">
+          <Form.Item name="offerCode" label="Offer Code" rules={[{ required: true, message: "Please enter offer code" }]}>
             <Input placeholder="e.g. OFF-007" className="h-11 rounded-lg" />
           </Form.Item>
         </div>
@@ -249,7 +249,7 @@ export const CreateOfferModal = ({
 
         <div className="grid grid-cols-1 gap-x-3 gap-y-1 sm:grid-cols-2">
           {(commodity === "electricity" || commodity === "dual" || !commodity) && (
-            <Form.Item name="pricePerKwh" label="Price per kWh (EUR)">
+            <Form.Item name="pricePerKwh" label="Price per kWh (EUR)" rules={[{ required: true, message: "Please enter price per kWh" }]}>
               <InputNumber
                 min={0}
                 step={0.001}
@@ -260,7 +260,7 @@ export const CreateOfferModal = ({
             </Form.Item>
           )}
           {(commodity === "gas" || commodity === "dual" || !commodity) && (
-            <Form.Item name="pricePerSmc" label="Price per SMc (EUR)">
+            <Form.Item name="pricePerSmc" label="Price per SMc (EUR)" rules={[{ required: true, message: "Please enter price per SMc" }]}>
               <InputNumber
                 min={0}
                 step={0.001}
@@ -291,16 +291,16 @@ export const CreateOfferModal = ({
               placeholder="e.g. 12"
             />
           </Form.Item>
-          <Form.Item name="validFrom" label="Valid From" initialValue={dayjs()}>
+          <Form.Item name="validFrom" label="Valid From" initialValue={dayjs()} rules={[{ required: true, message: "Please select valid from date" }]}>
             <DatePicker className="h-11! w-full rounded-lg" format="DD/MM/YYYY" />
           </Form.Item>
-          <Form.Item name="validity" label="Valid Until">
+          <Form.Item name="validity" label="Valid Until" rules={[{ required: true, message: "Please select valid until date" }]}>
             <DatePicker className="h-11! w-full rounded-lg" format="DD/MM/YYYY" />
           </Form.Item>
         </div>
 
         <div className="grid grid-cols-1 gap-x-3 gap-y-1 sm:grid-cols-3">
-          <Form.Item name="target" label="Target" initialValue="both">
+          <Form.Item name="target" label="Target" initialValue="both" rules={[{ required: true, message: "Please select target" }]}>
             <Select
               size="large"
               placeholder="Select target"
@@ -312,7 +312,7 @@ export const CreateOfferModal = ({
               ]}
             />
           </Form.Item>
-          <Form.Item name="status" label="Status" initialValue="draft">
+          <Form.Item name="status" label="Status" initialValue="draft" rules={[{ required: true, message: "Please select status" }]}>
             <Select
               size="large"
               placeholder="Select status"
@@ -333,7 +333,7 @@ export const CreateOfferModal = ({
               }
             />
           </Form.Item>
-          <Form.Item name="isGreenEnergy" label="Green Energy" valuePropName="checked" initialValue={false}>
+          <Form.Item name="isGreenEnergy" label="Green Energy" valuePropName="checked" initialValue={false} rules={[{ required: true, message: "Please select green energy" }]}>
             <Switch />
           </Form.Item>
         </div>
@@ -343,10 +343,10 @@ export const CreateOfferModal = ({
           Additional Details
         </p>
         <div className="grid grid-cols-1 gap-x-3 gap-y-1 sm:grid-cols-2">
-          <Form.Item name="termsUrl" label="Terms & Conditions URL" rules={[{ type: "url", message: "Please enter a valid URL" }]}>
+          <Form.Item name="termsUrl" label="Terms & Conditions URL" rules={[{ required: true, message: "Please enter terms & conditions URL" }, { type: "url", message: "Please enter a valid URL" }]}>
             <Input placeholder="https://..." className="h-11 rounded-lg" />
           </Form.Item>
-          <Form.Item name="highlights" label="Highlights">
+          <Form.Item name="highlights" label="Highlights" rules={[{ required: true, message: "Please add at least one highlight" }]}>
             <Select
               mode="tags"
               placeholder="Type and press Enter to add"
@@ -404,10 +404,10 @@ export const CreateOfferModal = ({
           )}
         </div>
 
-        <Form.Item name="notes" label="Description">
+        <Form.Item name="notes" label="Description" rules={[{ required: true, message: "Please enter a description" }]}>
           <Input.TextArea
             rows={3}
-            placeholder="Optional description about this offer..."
+            placeholder="Description about this offer..."
             className="rounded-lg"
           />
         </Form.Item>
