@@ -276,7 +276,7 @@ export const CreateOfferModal = ({
         <p className="mb-2 mt-3 text-xs font-bold uppercase tracking-wider text-slate-400">
           Contract & Validity
         </p>
-        <div className="grid grid-cols-1 gap-x-3 gap-y-1 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-x-3 gap-y-1 sm:grid-cols-2">
           <Form.Item name="validFrom" label="Valid From" rules={[{ required: true, message: "Please select valid from date" }]}>
             <DatePicker
               className="h-11! w-full rounded-lg"
@@ -298,14 +298,6 @@ export const CreateOfferModal = ({
                 }
                 return current < tomorrow;
               }}
-            />
-          </Form.Item>
-          <Form.Item name="contractDurationDays" label="Contract Duration (days)">
-            <InputNumber
-              disabled
-              className="w-full! rounded-lg [&_.ant-input-number-input]:h-11"
-              controls={false}
-              placeholder="Auto-calculated"
             />
           </Form.Item>
         </div>
