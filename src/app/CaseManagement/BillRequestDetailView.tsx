@@ -687,9 +687,8 @@ function BillDataTab({ bill }: { bill: IBill }) {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewType, setPreviewType] = useState<"pdf" | "image" | "other">("other");
 
-  const isPdf = bill.fileUrl?.endsWith(".pdf");
-  const isImage = bill.fileUrl ? /\.(jpg|jpeg|png)$/i.test(bill.fileUrl) : false;
   const fileApiUrl = `${server_url}bills/${bill.id}/file`;
 
   const fetchFileBlob = useCallback(async () => {
@@ -700,10 +699,21 @@ function BillDataTab({ bill }: { bill: IBill }) {
     return res.blob();
   }, [fileApiUrl, token]);
 
+  const detectFileType = (blob: Blob): "pdf" | "image" | "other" => {
+    const mime = blob.type.toLowerCase();
+    if (mime === "application/pdf") return "pdf";
+    if (mime.startsWith("image/")) return "image";
+    // Fallback: check fileUrl extension
+    if (bill.fileUrl?.toLowerCase().endsWith(".pdf")) return "pdf";
+    if (bill.fileUrl && /\.(jpg|jpeg|png)$/i.test(bill.fileUrl)) return "image";
+    return "other";
+  };
+
   const handleView = async () => {
     setPreviewLoading(true);
     try {
       const blob = await fetchFileBlob();
+      setPreviewType(detectFileType(blob));
       const url = URL.createObjectURL(blob);
       setPreviewUrl(url);
       setPreviewOpen(true);
@@ -953,14 +963,14 @@ function BillDataTab({ bill }: { bill: IBill }) {
       >
         {previewUrl && (
           <div className="flex items-center justify-center bg-slate-50 rounded-lg overflow-hidden" style={{ minHeight: 500 }}>
-            {isPdf ? (
+            {previewType === "pdf" ? (
               <iframe
                 src={previewUrl}
                 title="Bill Document"
                 className="w-full border-0 rounded-lg"
                 style={{ height: 600 }}
               />
-            ) : isImage ? (
+            ) : previewType === "image" ? (
               <img
                 src={previewUrl}
                 alt="Bill Document"

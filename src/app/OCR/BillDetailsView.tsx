@@ -79,6 +79,7 @@ const BillDetailsView = () => {
   const [docPreviewOpen, setDocPreviewOpen] = useState(false);
   const [docPreviewUrl, setDocPreviewUrl] = useState<string | null>(null);
   const [docPreviewLoading, setDocPreviewLoading] = useState(false);
+  const [docPreviewType, setDocPreviewType] = useState<"pdf" | "image" | "other">("other");
 
   if (isLoading) {
     return (
@@ -107,8 +108,6 @@ const BillDetailsView = () => {
   ) ?? false;
 
   const fileApiUrl = `${server_url}bills/${bill.id}/file`;
-  const isPdf = bill.fileUrl?.endsWith(".pdf");
-  const isImage = bill.fileUrl ? /\.(jpg|jpeg|png)$/i.test(bill.fileUrl) : false;
 
   const fetchFileBlob = useCallback(async () => {
     const res = await fetch(fileApiUrl, {
@@ -118,10 +117,20 @@ const BillDetailsView = () => {
     return res.blob();
   }, [fileApiUrl, token]);
 
+  const detectFileType = (blob: Blob): "pdf" | "image" | "other" => {
+    const mime = blob.type.toLowerCase();
+    if (mime === "application/pdf") return "pdf";
+    if (mime.startsWith("image/")) return "image";
+    if (bill.fileUrl?.toLowerCase().endsWith(".pdf")) return "pdf";
+    if (bill.fileUrl && /\.(jpg|jpeg|png)$/i.test(bill.fileUrl)) return "image";
+    return "other";
+  };
+
   const handleDocView = async () => {
     setDocPreviewLoading(true);
     try {
       const blob = await fetchFileBlob();
+      setDocPreviewType(detectFileType(blob));
       const url = URL.createObjectURL(blob);
       setDocPreviewUrl(url);
       setDocPreviewOpen(true);
@@ -492,14 +501,14 @@ const BillDetailsView = () => {
       >
         {docPreviewUrl && (
           <div className="flex items-center justify-center bg-slate-50 rounded-lg overflow-hidden" style={{ minHeight: 500 }}>
-            {isPdf ? (
+            {docPreviewType === "pdf" ? (
               <iframe
                 src={docPreviewUrl}
                 title="Bill Document"
                 className="w-full border-0 rounded-lg"
                 style={{ height: 600 }}
               />
-            ) : isImage ? (
+            ) : docPreviewType === "image" ? (
               <img
                 src={docPreviewUrl}
                 alt="Bill Document"
