@@ -469,7 +469,7 @@ export const CreateOfferModal = ({
           />
         </Form.Item>
 
-        <Form.Item name="notes" label="Description" rules={[{ required: true, message: "Please enter a description" }]}>
+        <Form.Item name="notes" label="Description">
           <Input.TextArea
             rows={3}
             placeholder="Description about this offer..."
