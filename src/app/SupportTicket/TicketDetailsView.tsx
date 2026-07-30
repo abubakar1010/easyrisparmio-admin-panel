@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from "react";
-import { Button, Input, Spin, Empty, Tag, Select, message, Modal } from "antd";
+import { Button, Input, Spin, Empty, Tag, Select, message } from "antd";
 import {
   FiArrowLeft,
   FiSend,
@@ -7,7 +7,6 @@ import {
   FiPhone,
   FiClock,
   FiPaperclip,
-  FiX,
 } from "react-icons/fi";
 import { LuDownload, LuMessageCircle } from "react-icons/lu";
 import { useNavigate, useParams } from "react-router";
@@ -25,6 +24,20 @@ const statusStyles: Record<string, string> = {
   in_progress: "bg-amber-500! text-white!",
   resolved: "bg-emerald-500! text-white!",
   closed: "bg-slate-500! text-white!",
+};
+
+const statusDot: Record<string, string> = {
+  open: "bg-blue-500",
+  in_progress: "bg-amber-500",
+  resolved: "bg-emerald-500",
+  closed: "bg-slate-500",
+};
+
+const priorityDot: Record<string, string> = {
+  low: "bg-green-500",
+  medium: "bg-blue-500",
+  high: "bg-orange-500",
+  urgent: "bg-red-500",
 };
 
 const statusLabel: Record<string, string> = {
@@ -166,17 +179,6 @@ const TicketDetailsView = () => {
     }
   };
 
-  const handleCloseTicket = () => {
-    Modal.confirm({
-      title: "Close Ticket",
-      content:
-        "Are you sure you want to close this ticket? No further replies can be sent after closing.",
-      okText: "Close Ticket",
-      okButtonProps: { danger: true },
-      onOk: () => handleStatusChange("closed"),
-    });
-  };
-
   const handleReply = async () => {
     if (!ticket || !replyText.trim()) return;
     try {
@@ -267,35 +269,32 @@ const TicketDetailsView = () => {
                   <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">
                     Status
                   </span>
-                  {!isClosed && transitions.length > 0 ? (
-                    <Select
-                      value={ticket.status}
-                      onChange={handleStatusChange}
-                      loading={isUpdating}
-                      className="w-full [&_.ant-select-selector]:h-9! [&_.ant-select-selector]:rounded-lg! [&_.ant-select-selector]:border-slate-200!"
-                      popupClassName="rounded-lg"
-                      options={[
-                        { value: ticket.status, label: statusLabel[ticket.status] },
-                        ...transitions
-                          .filter((s) => s !== ticket.status)
-                          .map((s) => ({ value: s, label: statusLabel[s] })),
-                      ]}
-                      optionRender={(option) => (
-                        <span className={`inline-block rounded-full border-0 px-3 py-0.5 text-[11px] font-bold ${statusStyles[option.value as string] || ""}`}>
-                          {option.label}
-                        </span>
-                      )}
-                      labelRender={(props) => (
-                        <span className={`inline-block rounded-full border-0 px-3 py-0.5 text-[11px] font-bold ${statusStyles[props.value as string] || ""}`}>
-                          {statusLabel[props.value as string] || props.label}
-                        </span>
-                      )}
-                    />
-                  ) : (
-                    <span className={`inline-block rounded-full px-3 py-1 text-[11px] font-bold ${statusStyles[ticket.status] || ""}`}>
-                      {statusLabel[ticket.status] || ticket.status}
-                    </span>
-                  )}
+                  <Select
+                    value={ticket.status}
+                    onChange={handleStatusChange}
+                    loading={isUpdating}
+                    disabled={isClosed}
+                    className="w-full [&_.ant-select-selector]:h-9! [&_.ant-select-selector]:rounded-lg! [&_.ant-select-selector]:border-slate-200! [&_.ant-select-selector]:bg-white!"
+                    popupClassName="rounded-lg"
+                    options={[
+                      { value: ticket.status, label: statusLabel[ticket.status] },
+                      ...transitions
+                        .filter((s) => s !== ticket.status)
+                        .map((s) => ({ value: s, label: statusLabel[s] })),
+                    ]}
+                    optionRender={(option) => (
+                      <span className="flex items-center gap-2 text-sm text-slate-700">
+                        <span className={`h-2 w-2 rounded-full ${statusDot[option.value as string] || ""}`} />
+                        {option.label}
+                      </span>
+                    )}
+                    labelRender={(props) => (
+                      <span className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                        <span className={`h-2 w-2 rounded-full ${statusDot[props.value as string] || ""}`} />
+                        {statusLabel[props.value as string] || props.label}
+                      </span>
+                    )}
+                  />
                 </div>
                 <div>
                   <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">
@@ -305,7 +304,7 @@ const TicketDetailsView = () => {
                     value={ticket.priority}
                     onChange={handlePriorityChange}
                     loading={isUpdating}
-                    className="w-full [&_.ant-select-selector]:h-9! [&_.ant-select-selector]:rounded-lg! [&_.ant-select-selector]:border-slate-200!"
+                    className="w-full [&_.ant-select-selector]:h-9! [&_.ant-select-selector]:rounded-lg! [&_.ant-select-selector]:border-slate-200! [&_.ant-select-selector]:bg-white!"
                     popupClassName="rounded-lg"
                     options={[
                       { value: "low", label: "Low" },
@@ -314,12 +313,14 @@ const TicketDetailsView = () => {
                       { value: "urgent", label: "Urgent" },
                     ]}
                     optionRender={(option) => (
-                      <span className={`inline-block rounded-full border-0 px-3 py-0.5 text-[11px] font-bold ${priorityStyles[option.value as string] || ""}`}>
+                      <span className="flex items-center gap-2 text-sm text-slate-700">
+                        <span className={`h-2 w-2 rounded-full ${priorityDot[option.value as string] || ""}`} />
                         {option.label}
                       </span>
                     )}
                     labelRender={(props) => (
-                      <span className={`inline-block rounded-full border-0 px-3 py-0.5 text-[11px] font-bold ${priorityStyles[props.value as string] || ""}`}>
+                      <span className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                        <span className={`h-2 w-2 rounded-full ${priorityDot[props.value as string] || ""}`} />
                         {priorityLabel[props.value as string] || props.label}
                       </span>
                     )}
@@ -327,18 +328,7 @@ const TicketDetailsView = () => {
                 </div>
               </div>
 
-              {/* Close button or closed banner */}
-              {!isClosed ? (
-                <Button
-                  danger
-                  icon={<FiX className="h-3.5 w-3.5" />}
-                  onClick={handleCloseTicket}
-                  loading={isUpdating}
-                  className="mt-4 h-9 rounded-lg font-semibold px-5 w-full"
-                >
-                  Close Ticket
-                </Button>
-              ) : (
+              {isClosed && (
                 <div className="mt-4 rounded-lg bg-slate-100 px-4 py-2.5 text-xs text-slate-500 flex items-center justify-center gap-1.5">
                   <FiClock className="h-3.5 w-3.5" />
                   Closed {ticket.closedAt ? formatDateTime(ticket.closedAt) : ""}
