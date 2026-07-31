@@ -36,6 +36,7 @@ import {
   useSendSelectedOffersMutation,
   type IOfferWithSavings,
   type IBill,
+  type IBillFile,
 } from "../../redux/features/Bills/billApi";
 import {
   useGetCaseByIdQuery,
@@ -686,56 +687,57 @@ function BillDataTab({ bill }: { bill: IBill }) {
   const analysis = bill.analysis;
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState<string | null>(null);
   const [previewType, setPreviewType] = useState<"pdf" | "image" | "other">("other");
 
-  const fileApiUrl = `${server_url}bills/${bill.id}/file`;
+  const billFiles: IBillFile[] = bill.files ?? [];
 
-  const fetchFileBlob = useCallback(async () => {
-    const res = await fetch(fileApiUrl, {
+  const fetchFileBlobByUrl = useCallback(async (url: string) => {
+    const res = await fetch(url, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) throw new Error("Failed to fetch file");
     return res.blob();
-  }, [fileApiUrl, token]);
+  }, [token]);
 
-  const detectFileType = (blob: Blob): "pdf" | "image" | "other" => {
+  const detectFileType = (blob: Blob, fileUrl?: string): "pdf" | "image" | "other" => {
     const mime = blob.type.toLowerCase();
     if (mime === "application/pdf") return "pdf";
     if (mime.startsWith("image/")) return "image";
-    // Fallback: check fileUrl extension
-    if (bill.fileUrl?.toLowerCase().endsWith(".pdf")) return "pdf";
-    if (bill.fileUrl && /\.(jpg|jpeg|png)$/i.test(bill.fileUrl)) return "image";
+    if (fileUrl?.toLowerCase().endsWith(".pdf")) return "pdf";
+    if (fileUrl && /\.(jpg|jpeg|png)$/i.test(fileUrl)) return "image";
     return "other";
   };
 
-  const handleView = async () => {
-    setPreviewLoading(true);
+  const handleView = async (bf: IBillFile) => {
+    setPreviewLoading(bf.id);
     try {
-      const blob = await fetchFileBlob();
-      setPreviewType(detectFileType(blob));
-      const url = URL.createObjectURL(blob);
-      setPreviewUrl(url);
+      const url = `${server_url}bills/${bill.id}/files/${bf.id}`;
+      const blob = await fetchFileBlobByUrl(url);
+      setPreviewType(detectFileType(blob, bf.fileUrl));
+      const objUrl = URL.createObjectURL(blob);
+      setPreviewUrl(objUrl);
       setPreviewOpen(true);
     } catch {
       message.error("Failed to load document");
     } finally {
-      setPreviewLoading(false);
+      setPreviewLoading(null);
     }
   };
 
-  const handleDownload = async () => {
+  const handleDownload = async (bf: IBillFile) => {
     try {
-      const blob = await fetchFileBlob();
-      const url = URL.createObjectURL(blob);
+      const url = `${server_url}bills/${bill.id}/files/${bf.id}`;
+      const blob = await fetchFileBlobByUrl(url);
+      const objUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url;
-      const ext = bill.fileUrl?.split(".").pop() || "pdf";
-      a.download = `bill-${bill.id.slice(0, 8)}.${ext}`;
+      a.href = objUrl;
+      const ext = bf.fileUrl?.split(".").pop() || "pdf";
+      a.download = bf.originalName || `bill-${bill.id.slice(0, 8)}.${ext}`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      URL.revokeObjectURL(objUrl);
     } catch {
       message.error("Failed to download document");
     }
@@ -781,27 +783,37 @@ function BillDataTab({ bill }: { bill: IBill }) {
         { label: "Upload Date", value: fmtDate(bill.createdAt) },
         { label: "Last Updated", value: fmtDate(bill.updatedAt) },
         {
-          label: "Uploaded Bill",
-          value: bill.fileUrl ? (
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={handleView}
-                disabled={previewLoading}
-                className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors disabled:opacity-50"
-              >
-                <FiEye className="h-3.5 w-3.5" />
-                {previewLoading ? "Loading..." : "View"}
-              </button>
-              <button
-                type="button"
-                onClick={handleDownload}
-                className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-600 hover:text-emerald-800 transition-colors"
-              >
-                <FiDownload className="h-3.5 w-3.5" />
-                Download
-              </button>
+          label: `Uploaded Documents${billFiles.length > 0 ? ` (${billFiles.length})` : ""}`,
+          value: billFiles.length > 0 ? (
+            <div className="space-y-2">
+              {billFiles.map((bf, idx) => (
+                <div key={bf.id} className="flex items-center gap-3">
+                  <span className="text-xs text-slate-500 font-mono w-4">{idx + 1}.</span>
+                  <span className="text-xs text-slate-600 truncate max-w-[120px]">
+                    {bf.originalName || bf.fileUrl.split("/").pop()}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleView(bf)}
+                    disabled={previewLoading === bf.id}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors disabled:opacity-50"
+                  >
+                    <FiEye className="h-3 w-3" />
+                    {previewLoading === bf.id ? "..." : "View"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDownload(bf)}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-800 transition-colors"
+                  >
+                    <LuDownload className="h-3 w-3" />
+                    Download
+                  </button>
+                </div>
+              ))}
             </div>
+          ) : bill.fileUrl ? (
+            <span className="text-xs text-slate-500">1 file (legacy)</span>
           ) : "—",
         },
       ],
@@ -941,20 +953,12 @@ function BillDataTab({ bill }: { bill: IBill }) {
         footer={
           <div className="flex justify-end gap-2">
             <Button onClick={handleClosePreview}>Close</Button>
-            <Button
-              type="primary"
-              icon={<FiDownload className="h-3.5 w-3.5" />}
-              onClick={handleDownload}
-              className="bg-emerald-500! hover:bg-emerald-600! border-0!"
-            >
-              Download
-            </Button>
           </div>
         }
         title={
           <span className="flex items-center gap-2">
             <FiFileText className="h-4 w-4 text-indigo-500" />
-            Uploaded Bill Document
+            Bill Document
           </span>
         }
         width={900}

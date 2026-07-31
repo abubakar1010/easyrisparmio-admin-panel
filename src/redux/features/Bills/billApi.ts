@@ -55,6 +55,16 @@ export interface IBillAnalysis {
   createdAt: string;
 }
 
+export interface IBillFile {
+  id: string;
+  billId: string;
+  fileUrl: string;
+  originalName: string | null;
+  mimeType: string | null;
+  fileSize: number | null;
+  createdAt: string;
+}
+
 export interface IBill {
   id: string;
   fileUrl: string | null;
@@ -85,6 +95,7 @@ export interface IBill {
   updatedAt: string;
   user?: { id: string; firstName: string; lastName: string; email: string };
   supplier?: { id: string; name: string } | null;
+  files?: IBillFile[] | null;
   analysis?: IBillAnalysis | null;
   switchCases?: Array<{
     id: string;

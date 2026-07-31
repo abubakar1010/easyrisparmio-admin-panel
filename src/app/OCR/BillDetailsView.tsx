@@ -24,6 +24,7 @@ import {
   useGetAllOffersForBillQuery,
   useSendSelectedOffersMutation,
   type IBill,
+  type IBillFile,
   type IOfferWithSavings,
 } from "../../redux/features/Bills/billApi";
 import { useAppSelector } from "../../redux/hooks";
@@ -78,7 +79,7 @@ const BillDetailsView = () => {
   const [savingsOverrides, setSavingsOverrides] = useState<Record<string, number>>({});
   const [docPreviewOpen, setDocPreviewOpen] = useState(false);
   const [docPreviewUrl, setDocPreviewUrl] = useState<string | null>(null);
-  const [docPreviewLoading, setDocPreviewLoading] = useState(false);
+  const [docPreviewLoading, setDocPreviewLoading] = useState<string | null>(null);
   const [docPreviewType, setDocPreviewType] = useState<"pdf" | "image" | "other">("other");
 
   if (isLoading) {
@@ -107,52 +108,89 @@ const BillDetailsView = () => {
     (c) => !["cancelled", "rejected"].includes(c.status),
   ) ?? false;
 
-  const fileApiUrl = `${server_url}bills/${bill.id}/file`;
+  const billFiles: IBillFile[] = bill.files ?? [];
 
-  const fetchFileBlob = useCallback(async () => {
-    const res = await fetch(fileApiUrl, {
+  const fetchFileBlobByUrl = useCallback(async (url: string) => {
+    const res = await fetch(url, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) throw new Error("Failed to fetch file");
     return res.blob();
-  }, [fileApiUrl, token]);
+  }, [token]);
 
-  const detectFileType = (blob: Blob): "pdf" | "image" | "other" => {
+  const detectFileType = (blob: Blob, fileUrl?: string): "pdf" | "image" | "other" => {
     const mime = blob.type.toLowerCase();
     if (mime === "application/pdf") return "pdf";
     if (mime.startsWith("image/")) return "image";
-    if (bill.fileUrl?.toLowerCase().endsWith(".pdf")) return "pdf";
-    if (bill.fileUrl && /\.(jpg|jpeg|png)$/i.test(bill.fileUrl)) return "image";
+    if (fileUrl?.toLowerCase().endsWith(".pdf")) return "pdf";
+    if (fileUrl && /\.(jpg|jpeg|png)$/i.test(fileUrl)) return "image";
     return "other";
   };
 
-  const handleDocView = async () => {
-    setDocPreviewLoading(true);
+  const handleDocView = async (bf: IBillFile) => {
+    setDocPreviewLoading(bf.id);
     try {
-      const blob = await fetchFileBlob();
-      setDocPreviewType(detectFileType(blob));
-      const url = URL.createObjectURL(blob);
-      setDocPreviewUrl(url);
+      const url = `${server_url}bills/${bill.id}/files/${bf.id}`;
+      const blob = await fetchFileBlobByUrl(url);
+      setDocPreviewType(detectFileType(blob, bf.fileUrl));
+      const objUrl = URL.createObjectURL(blob);
+      setDocPreviewUrl(objUrl);
       setDocPreviewOpen(true);
     } catch {
       message.error("Failed to load document");
     } finally {
-      setDocPreviewLoading(false);
+      setDocPreviewLoading(null);
     }
   };
 
-  const handleDocDownload = async () => {
+  const handleDocDownload = async (bf: IBillFile) => {
     try {
-      const blob = await fetchFileBlob();
-      const url = URL.createObjectURL(blob);
+      const url = `${server_url}bills/${bill.id}/files/${bf.id}`;
+      const blob = await fetchFileBlobByUrl(url);
+      const objUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url;
+      a.href = objUrl;
+      const ext = bf.fileUrl?.split(".").pop() || "pdf";
+      a.download = bf.originalName || `bill-${bill.id.slice(0, 8)}.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(objUrl);
+    } catch {
+      message.error("Failed to download document");
+    }
+  };
+
+  // Legacy single-file fallback handlers
+  const handleLegacyDocView = async () => {
+    setDocPreviewLoading("legacy");
+    try {
+      const url = `${server_url}bills/${bill.id}/file`;
+      const blob = await fetchFileBlobByUrl(url);
+      setDocPreviewType(detectFileType(blob, bill.fileUrl ?? undefined));
+      const objUrl = URL.createObjectURL(blob);
+      setDocPreviewUrl(objUrl);
+      setDocPreviewOpen(true);
+    } catch {
+      message.error("Failed to load document");
+    } finally {
+      setDocPreviewLoading(null);
+    }
+  };
+
+  const handleLegacyDocDownload = async () => {
+    try {
+      const url = `${server_url}bills/${bill.id}/file`;
+      const blob = await fetchFileBlobByUrl(url);
+      const objUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objUrl;
       const ext = bill.fileUrl?.split(".").pop() || "pdf";
       a.download = `bill-${bill.id.slice(0, 8)}.${ext}`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      URL.revokeObjectURL(objUrl);
     } catch {
       message.error("Failed to download document");
     }
@@ -415,9 +453,48 @@ const BillDetailsView = () => {
             />
           </Card>
 
-          {/* Document */}
-          <Card title="Document" icon={<FiFileText className="h-4 w-4 text-slate-500" />}>
-            {bill.fileUrl ? (
+          {/* Documents */}
+          <Card title={`Documents${billFiles.length > 0 ? ` (${billFiles.length})` : ""}`} icon={<FiFileText className="h-4 w-4 text-slate-500" />}>
+            {billFiles.length > 0 ? (
+              <div className="space-y-3">
+                {billFiles.map((bf, idx) => (
+                  <div key={bf.id} className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-50">
+                      <FiFileText className="h-5 w-5 text-red-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-slate-700 truncate">
+                        {bf.originalName || bf.fileUrl.split("/").pop()}
+                      </p>
+                      <p className="text-xs text-slate-400">
+                        {bf.mimeType === "application/pdf" ? "PDF" : "Image"}
+                        {bf.fileSize ? ` · ${(bf.fileSize / 1024).toFixed(0)} KB` : ""}
+                        {billFiles.length > 1 ? ` · File ${idx + 1}` : ""}
+                      </p>
+                    </div>
+                    <Tooltip title="View">
+                      <button
+                        type="button"
+                        onClick={() => handleDocView(bf)}
+                        disabled={docPreviewLoading === bf.id}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-500 transition hover:bg-indigo-100 disabled:opacity-50"
+                      >
+                        <FiEye className="h-4 w-4" />
+                      </button>
+                    </Tooltip>
+                    <Tooltip title="Download">
+                      <button
+                        type="button"
+                        onClick={() => handleDocDownload(bf)}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-500 transition hover:bg-slate-200"
+                      >
+                        <FiDownload className="h-4 w-4" />
+                      </button>
+                    </Tooltip>
+                  </div>
+                ))}
+              </div>
+            ) : bill.fileUrl ? (
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-50">
                   <FiFileText className="h-5 w-5 text-red-500" />
@@ -433,8 +510,8 @@ const BillDetailsView = () => {
                 <Tooltip title="View document">
                   <button
                     type="button"
-                    onClick={handleDocView}
-                    disabled={docPreviewLoading}
+                    onClick={handleLegacyDocView}
+                    disabled={docPreviewLoading === "legacy"}
                     className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-500 transition hover:bg-indigo-100 disabled:opacity-50"
                   >
                     <FiEye className="h-4 w-4" />
@@ -443,7 +520,7 @@ const BillDetailsView = () => {
                 <Tooltip title="Download file">
                   <button
                     type="button"
-                    onClick={handleDocDownload}
+                    onClick={handleLegacyDocDownload}
                     className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-500 transition hover:bg-slate-200"
                   >
                     <FiDownload className="h-4 w-4" />
@@ -479,20 +556,12 @@ const BillDetailsView = () => {
         footer={
           <div className="flex justify-end gap-2">
             <Button onClick={handleCloseDocPreview}>Close</Button>
-            <Button
-              type="primary"
-              icon={<FiDownload className="h-3.5 w-3.5" />}
-              onClick={handleDocDownload}
-              className="bg-emerald-500! hover:bg-emerald-600! border-0!"
-            >
-              Download
-            </Button>
           </div>
         }
         title={
           <span className="flex items-center gap-2">
             <FiFileText className="h-4 w-4 text-indigo-500" />
-            Uploaded Bill Document
+            Bill Document
           </span>
         }
         width={900}
