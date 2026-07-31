@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { Button, Input, InputNumber, Spin, Empty, Tag, Select, Table, message, Tooltip, DatePicker, Modal } from "antd";
+import { Button, Input, InputNumber, Spin, Empty, Tag, Select, Table, Upload, message, Tooltip, DatePicker, Modal } from "antd";
 import type { Dayjs } from "dayjs";
 import type { ColumnsType } from "antd/es/table";
 import {
@@ -42,6 +42,7 @@ import {
   useGetCaseByIdQuery,
   useUpdateCaseMutation,
   useVerifyDocumentMutation,
+  useUploadCaseDocumentMutation,
   type ICase,
   type ICaseEvent,
   type ICaseDocument,
@@ -1425,6 +1426,9 @@ const IDENTITY_DOC_TYPES = ["id_card", "codice_fiscale", "partita_iva"];
 function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[]; caseId: string }) {
   const token = useAppSelector((state) => state.auth.token);
   const [verifyDocument, { isLoading: isVerifying }] = useVerifyDocumentMutation();
+  const [uploadCaseDocument] = useUploadCaseDocumentMutation();
+  const [uploading, setUploading] = useState(false);
+  const [selectedDocType, setSelectedDocType] = useState<string>("id_card");
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewDoc, setPreviewDoc] = useState<ICaseDocument | null>(null);
@@ -1488,13 +1492,40 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
     }
   };
 
-  if (documents.length === 0) {
-    return (
-      <div className="py-8">
-        <Empty description="No documents uploaded" />
-      </div>
-    );
-  }
+  const handleMultiUpload = async (fileList: File[]) => {
+    setUploading(true);
+    let successCount = 0;
+    for (const file of fileList) {
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await fetch(`${server_origin}/api/v1/upload`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData,
+        });
+        const result = await res.json();
+        const url = result?.data?.url || result?.url;
+        if (res.ok && url) {
+          await uploadCaseDocument({
+            caseId,
+            documentType: selectedDocType,
+            fileUrl: url,
+            fileName: file.name,
+          }).unwrap();
+          successCount++;
+        }
+      } catch {
+        // continue with remaining files
+      }
+    }
+    setUploading(false);
+    if (successCount > 0) {
+      message.success(`${successCount} document(s) uploaded successfully`);
+    } else {
+      message.error("Failed to upload documents");
+    }
+  };
 
   const isPdf = (doc: ICaseDocument) => doc.mimeType === "application/pdf" || doc.fileName.endsWith(".pdf");
   const isImage = (doc: ICaseDocument) => doc.mimeType?.startsWith("image/") || /\.(jpg|jpeg|png)$/i.test(doc.fileName);
@@ -1589,16 +1620,46 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
             )}
           </div>
 
-          {identityDocs.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-red-200 bg-red-50/50 p-6 text-center">
-              <p className="text-sm text-red-500 font-medium">No identity documents uploaded</p>
-              <p className="text-xs text-red-400 mt-1">User has not uploaded ID card or tax code document.</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
+          {identityDocs.length > 0 && (
+            <div className="space-y-3 mb-4">
               {identityDocs.map((doc) => renderDocRow(doc, true))}
             </div>
           )}
+
+          {/* Admin Upload Identity Documents */}
+          <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-4">
+            <div className="flex items-center gap-3 flex-wrap">
+              <Select
+                size="small"
+                value={selectedDocType}
+                onChange={setSelectedDocType}
+                className="w-40 [&_.ant-select-selector]:rounded-lg!"
+                options={[
+                  { value: "id_card", label: "ID Card" },
+                  { value: "codice_fiscale", label: "Codice Fiscale" },
+                  { value: "partita_iva", label: "Partita IVA" },
+                ]}
+              />
+              <Upload
+                accept=".pdf,.png,.jpg,.jpeg,.webp"
+                multiple
+                showUploadList={false}
+                beforeUpload={(_file, fileList) => {
+                  handleMultiUpload(fileList as unknown as File[]);
+                  return false;
+                }}
+              >
+                <Button
+                  icon={<LuUpload className="h-4 w-4" />}
+                  loading={uploading}
+                  className="h-8 rounded-lg text-xs!"
+                >
+                  Upload Identity Documents
+                </Button>
+              </Upload>
+              <span className="text-xs text-slate-400">PDF, JPG, PNG, WebP — select multiple files</span>
+            </div>
+          </div>
         </div>
 
         {/* Other Documents Section */}
