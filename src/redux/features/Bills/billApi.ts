@@ -87,6 +87,7 @@ export interface IBill {
   contractNumber: string | null;
   meterNumber: string | null;
   customerName: string | null;
+  supplierName: string | null;
   rawAnalysisData: Record<string, unknown> | null;
   userId: string;
   supplierId: string | null;

@@ -44,11 +44,11 @@ const statusConfig: Record<string, { color: string; label: string }> = {
   cancelled: { color: "default", label: "Cancelled" },
 };
 
-const fmt = (val: number | null | undefined, decimals = 2) =>
-  val != null ? `€ ${Number(val).toFixed(decimals)}` : "—";
+const fmt = (val: number | null | undefined, decimals = 2): string | null =>
+  val != null ? `€ ${Number(val).toFixed(decimals)}` : null;
 
-const fmtNum = (val: number | null | undefined, unit = "") =>
-  val != null ? `${Number(val).toLocaleString("it-IT", { maximumFractionDigits: 2 })} ${unit}`.trim() : "—";
+const fmtNum = (val: number | null | undefined, unit = ""): string | null =>
+  val != null ? `${Number(val).toLocaleString("it-IT", { maximumFractionDigits: 2 })} ${unit}`.trim() : null;
 
 const fmtDate = (val: string | null | undefined) => {
   if (!val) return "—";
@@ -339,9 +339,13 @@ const BillDetailsView = () => {
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <div className="rounded-xl bg-slate-50 p-4">
                 <p className="text-xs text-slate-400">Total Amount</p>
-                <p className="mt-1 text-2xl font-bold text-slate-800">{fmt(bill.totalAmount)}</p>
+                {bill.totalAmount != null ? (
+                  <p className="mt-1 text-2xl font-bold text-slate-800">{fmt(bill.totalAmount)}</p>
+                ) : (
+                  <p className="mt-1 text-xs italic text-amber-500">Not found in document</p>
+                )}
               </div>
-              <InfoRow label="Cost per Unit" value={bill.costPerUnit != null ? `€ ${Number(bill.costPerUnit).toFixed(6)}` : "—"} />
+              <InfoRow label="Cost per Unit" value={bill.costPerUnit != null ? `€ ${Number(bill.costPerUnit).toFixed(6)}` : null} />
               <InfoRow label="Fixed Charges" value={fmt(bill.fixedCharges)} />
               <InfoRow label="Taxes" value={fmt(bill.taxes)} />
               <InfoRow
@@ -353,25 +357,24 @@ const BillDetailsView = () => {
                 value={
                   bill.billingPeriodStart || bill.billingPeriodEnd
                     ? `${fmtDate(bill.billingPeriodStart)} — ${fmtDate(bill.billingPeriodEnd)}`
-                    : "—"
+                    : null
                 }
               />
             </div>
           </Card>
 
           {/* Customer & Supply Details */}
-          {(bill.supplyAddress || bill.codiceFiscale || bill.partitaIva || bill.contractNumber || bill.meterNumber || bill.customerName) && (
-            <Card title="Customer & Supply Details" icon={<FiUser className="h-4 w-4 text-blue-500" />}>
-              <div className="grid gap-4 sm:grid-cols-2">
-                {bill.customerName && <InfoRow label="Account Holder" value={bill.customerName} />}
-                {bill.supplyAddress && <InfoRow label="Supply Address" value={bill.supplyAddress} />}
-                {bill.codiceFiscale && <InfoRow label="Codice Fiscale" value={bill.codiceFiscale} mono />}
-                {bill.partitaIva && <InfoRow label="Partita IVA" value={bill.partitaIva} mono />}
-                {bill.contractNumber && <InfoRow label="Contract No." value={bill.contractNumber} mono />}
-                {bill.meterNumber && <InfoRow label="Meter No." value={bill.meterNumber} mono />}
-              </div>
-            </Card>
-          )}
+          <Card title="Customer & Supply Details" icon={<FiUser className="h-4 w-4 text-blue-500" />}>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <InfoRow label="Account Holder" value={bill.customerName} />
+              <InfoRow label="Supply Address" value={bill.supplyAddress} />
+              <InfoRow label="Codice Fiscale" value={bill.codiceFiscale} mono />
+              <InfoRow label="Partita IVA" value={bill.partitaIva} mono />
+              <InfoRow label={isElectricity ? "POD Number" : "PDR Number"} value={isElectricity ? bill.podNumber : bill.pdrNumber} mono />
+              <InfoRow label="Contract No." value={bill.contractNumber} mono />
+              <InfoRow label="Meter No." value={bill.meterNumber} mono />
+            </div>
+          </Card>
 
           {/* Available Offers */}
           {bill.status !== "pending_email" && (
@@ -449,7 +452,7 @@ const BillDetailsView = () => {
           <Card title="Supplier">
             <InfoRow
               label="Current Supplier"
-              value={bill.supplier?.name || "Not matched"}
+              value={bill.supplierName || bill.supplier?.name || (bill.rawAnalysisData?.ocrSupplierName as string) || null}
             />
           </Card>
 
@@ -631,9 +634,13 @@ interface InfoRowProps {
 const InfoRow = ({ label, value, mono }: InfoRowProps) => (
   <div>
     <p className="text-xs text-slate-400">{label}</p>
-    <p className={`mt-0.5 text-sm font-semibold text-slate-700 ${mono ? "font-mono" : ""}`}>
-      {value || "—"}
-    </p>
+    {value ? (
+      <p className={`mt-0.5 text-sm font-semibold text-slate-700 ${mono ? "font-mono" : ""}`}>
+        {value}
+      </p>
+    ) : (
+      <p className="mt-0.5 text-xs italic text-amber-500">Not found in document</p>
+    )}
   </div>
 );
 

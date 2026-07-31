@@ -148,13 +148,13 @@ const fmtDate = (val: string | null | undefined) => {
   }
 };
 
-const fmt = (val: number | null | undefined, decimals = 2) =>
-  val != null ? `€ ${Number(val).toFixed(decimals)}` : "—";
+const fmt = (val: number | null | undefined, decimals = 2): string | null =>
+  val != null ? `€ ${Number(val).toFixed(decimals)}` : null;
 
-const fmtNum = (val: number | null | undefined, unit = "") =>
+const fmtNum = (val: number | null | undefined, unit = ""): string | null =>
   val != null
     ? `${Number(val).toLocaleString("it-IT", { maximumFractionDigits: 2 })} ${unit}`.trim()
-    : "—";
+    : null;
 
 /* ── Tab definitions ─────────────────────────────────────── */
 
@@ -824,7 +824,7 @@ function BillDataTab({ bill }: { bill: IBill }) {
         { label: "Total Amount", value: fmt(bill.totalAmount) },
         {
           label: "Cost per Unit",
-          value: bill.costPerUnit != null ? `€ ${Number(bill.costPerUnit).toFixed(6)}` : "—",
+          value: bill.costPerUnit != null ? `€ ${Number(bill.costPerUnit).toFixed(6)}` : null,
         },
         { label: "Fixed Charges", value: fmt(bill.fixedCharges) },
         { label: "Taxes", value: fmt(bill.taxes) },
@@ -840,7 +840,7 @@ function BillDataTab({ bill }: { bill: IBill }) {
           value:
             bill.billingPeriodStart || bill.billingPeriodEnd
               ? `${fmtDate(bill.billingPeriodStart)} — ${fmtDate(bill.billingPeriodEnd)}`
-              : "—",
+              : null,
         },
       ],
     },
@@ -851,23 +851,23 @@ function BillDataTab({ bill }: { bill: IBill }) {
           label: "Name",
           value: bill.user
             ? `${bill.user.firstName} ${bill.user.lastName}`
-            : bill.customerName || "—",
+            : bill.customerName || null,
         },
-        { label: "Email", value: bill.user?.email || "—" },
-        { label: "Supply Address", value: bill.supplyAddress || "—" },
-        { label: "Codice Fiscale", value: bill.codiceFiscale || "—" },
-        { label: "Partita IVA", value: bill.partitaIva || "—" },
+        { label: "Email", value: bill.user?.email || null },
+        { label: "Supply Address", value: bill.supplyAddress || null },
+        { label: "Codice Fiscale", value: bill.codiceFiscale || null },
+        { label: "Partita IVA", value: bill.partitaIva || null },
       ],
     },
     {
       title: "Supply Details",
       rows: [
-        { label: "Supplier", value: bill.supplier?.name || "Not matched" },
-        { label: isElectricity ? "POD Number" : "PDR Number", value: (isElectricity ? bill.podNumber : bill.pdrNumber) || "—" },
+        { label: "Supplier", value: bill.supplierName || bill.supplier?.name || (bill.rawAnalysisData?.ocrSupplierName as string) || null },
+        { label: isElectricity ? "POD Number" : "PDR Number", value: (isElectricity ? bill.podNumber : bill.pdrNumber) || null },
         ...(isElectricity && bill.pdrNumber ? [{ label: "PDR Number", value: bill.pdrNumber }] : []),
         ...(!isElectricity && bill.podNumber ? [{ label: "POD Number", value: bill.podNumber }] : []),
-        { label: "Contract Number", value: bill.contractNumber || "—" },
-        { label: "Meter Number", value: bill.meterNumber || "—" },
+        { label: "Contract Number", value: bill.contractNumber || null },
+        { label: "Meter Number", value: bill.meterNumber || null },
         ...(bill.meterId ? [{ label: "Meter ID", value: bill.meterId }] : []),
       ],
     },
@@ -882,7 +882,11 @@ function BillDataTab({ bill }: { bill: IBill }) {
             {g.rows.map((r) => (
               <div key={r.label}>
                 <span className="text-xs text-slate-400">{r.label}</span>
-                <div className="text-sm font-medium text-slate-700 mt-0.5">{r.value}</div>
+                {r.value ? (
+                  <div className="text-sm font-medium text-slate-700 mt-0.5">{r.value}</div>
+                ) : (
+                  <p className="text-xs italic text-amber-500 mt-0.5">Not found in document</p>
+                )}
               </div>
             ))}
           </div>
@@ -899,11 +903,11 @@ function BillDataTab({ bill }: { bill: IBill }) {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-4">
             <div>
               <span className="text-xs text-slate-400">Potential Savings</span>
-              <p className="text-sm font-semibold text-emerald-600">{fmt(analysis.potentialSavings)}/year</p>
+              <p className="text-sm font-semibold text-emerald-600">{fmt(analysis.potentialSavings) ?? "€ 0.00"}/year</p>
             </div>
             <div>
               <span className="text-xs text-slate-400">Current Monthly Average</span>
-              <p className="text-sm font-medium text-slate-700">{fmt(analysis.currentMonthlyAvg)}</p>
+              <p className="text-sm font-medium text-slate-700">{fmt(analysis.currentMonthlyAvg) ?? "€ 0.00"}</p>
             </div>
             <div>
               <span className="text-xs text-slate-400">Recommended Market Type</span>
