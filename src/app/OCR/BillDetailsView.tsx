@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { Button, Spin, Empty, Tag, message, Tooltip, InputNumber, Table, Modal } from "antd";
+import { Button, Spin, Empty, Tag, message, Tooltip, InputNumber, Table, Modal, Input, Checkbox } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import {
   FiArrowLeft,
@@ -10,6 +10,7 @@ import {
   FiFileText,
   FiZap,
   FiMail,
+  FiAlertTriangle,
 } from "react-icons/fi";
 import {
   LuZap,
@@ -23,6 +24,7 @@ import {
   useGetBillByIdAdminQuery,
   useGetAllOffersForBillQuery,
   useSendSelectedOffersMutation,
+  useRequestVerificationMutation,
   type IBill,
   type IBillFile,
   type IOfferWithSavings,
@@ -36,6 +38,7 @@ const statusConfig: Record<string, { color: string; label: string }> = {
   analyzing: { color: "orange", label: "Analyzing" },
   analyzed: { color: "green", label: "Analyzed" },
   error: { color: "red", label: "Error" },
+  verification_required: { color: "volcano", label: "Verification Required" },
   offer_sent: { color: "cyan", label: "Offer Sent" },
   case_created: { color: "purple", label: "Case Created" },
   contract_sent: { color: "gold", label: "Contract Sent" },
@@ -73,6 +76,7 @@ const BillDetailsView = () => {
     skip: !billId || bill?.status === "pending_email",
   });
   const [sendSelectedOffers, { isLoading: isSending }] = useSendSelectedOffersMutation();
+  const [requestVerification, { isLoading: isRequestingVerification }] = useRequestVerificationMutation();
   const token = useAppSelector((state) => state.auth.token);
   const [showRawJson, setShowRawJson] = useState(false);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
@@ -81,6 +85,10 @@ const BillDetailsView = () => {
   const [docPreviewUrl, setDocPreviewUrl] = useState<string | null>(null);
   const [docPreviewLoading, setDocPreviewLoading] = useState<string | null>(null);
   const [docPreviewType, setDocPreviewType] = useState<"pdf" | "image" | "other">("other");
+  const [verifyModalOpen, setVerifyModalOpen] = useState(false);
+  const [verifyMessage, setVerifyMessage] = useState("");
+  const [verifyFields, setVerifyFields] = useState<string[]>([]);
+  const [verifyReupload, setVerifyReupload] = useState(false);
 
   if (isLoading) {
     return (
@@ -194,6 +202,49 @@ const BillDetailsView = () => {
     } catch {
       message.error("Failed to download document");
     }
+  };
+
+  const handleRequestVerification = async () => {
+    if (!verifyMessage.trim()) {
+      message.warning("Please enter a message for the user");
+      return;
+    }
+    try {
+      await requestVerification({
+        billId: bill.id,
+        message: verifyMessage,
+        missingFields: verifyFields,
+        requireReupload: verifyReupload,
+      }).unwrap();
+      message.success("Verification request sent to user");
+      setVerifyModalOpen(false);
+      setVerifyMessage("");
+      setVerifyFields([]);
+      setVerifyReupload(false);
+      refetch();
+    } catch {
+      message.error("Failed to send verification request");
+    }
+  };
+
+  const FIELD_LABELS: Record<string, string> = {
+    podNumber: "POD Number",
+    pdrNumber: "PDR Number",
+    totalAmount: "Total Amount",
+    consumptionKwh: "Consumption (kWh)",
+    consumptionSmc: "Consumption (Smc)",
+    costPerUnit: "Cost per Unit",
+    fixedCharges: "Fixed Charges",
+    taxes: "Taxes",
+    billingPeriodStart: "Billing Period Start",
+    billingPeriodEnd: "Billing Period End",
+    supplyAddress: "Supply Address",
+    codiceFiscale: "Codice Fiscale",
+    partitaIva: "Partita IVA",
+    contractNumber: "Contract Number",
+    meterNumber: "Meter Number",
+    customerName: "Account Holder",
+    supplierName: "Supplier Name",
   };
 
   const handleCloseDocPreview = () => {
@@ -435,6 +486,24 @@ const BillDetailsView = () => {
                   Offers have been sent. You can still send additional offers.
                 </p>
               )}
+              {bill.status === "verification_required" && (
+                <div className="rounded-lg bg-orange-50 border border-orange-200 px-3 py-2.5">
+                  <p className="text-xs font-semibold text-orange-800">Verification requested</p>
+                  <p className="text-xs text-orange-600 mt-0.5">
+                    Waiting for the user to provide the requested information.
+                  </p>
+                </div>
+              )}
+              {!hasActiveCase && bill.status !== "pending_email" && bill.status !== "verification_required" && (
+                <Button
+                  block
+                  icon={<FiAlertTriangle />}
+                  onClick={() => setVerifyModalOpen(true)}
+                  className="!border-orange-300 !text-orange-600 hover:!bg-orange-50"
+                >
+                  Request Verification
+                </Button>
+              )}
             </div>
           </Card>
 
@@ -551,6 +620,80 @@ const BillDetailsView = () => {
           </Card>
         </div>
       </div>
+
+      {/* Verification Request Modal */}
+      <Modal
+        open={verifyModalOpen}
+        onCancel={() => setVerifyModalOpen(false)}
+        title={
+          <span className="flex items-center gap-2">
+            <FiAlertTriangle className="h-4 w-4 text-orange-500" />
+            Request Verification from User
+          </span>
+        }
+        width={600}
+        centered
+        destroyOnClose
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button onClick={() => setVerifyModalOpen(false)}>Cancel</Button>
+            <Button
+              type="primary"
+              loading={isRequestingVerification}
+              onClick={handleRequestVerification}
+              disabled={!verifyMessage.trim()}
+              className="!bg-orange-500 hover:!bg-orange-600 !border-0"
+            >
+              Send to User
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-5 py-2">
+          <div>
+            <label className="text-xs font-semibold text-slate-600 mb-1.5 block">Message to User *</label>
+            <Input.TextArea
+              rows={3}
+              placeholder="Explain what's wrong or missing (e.g. 'The bill is hard to read, please re-upload a clearer copy')"
+              value={verifyMessage}
+              onChange={(e) => setVerifyMessage(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-slate-600 mb-1.5 block">Select Missing Fields (user will fill these manually)</label>
+            <div className="grid grid-cols-2 gap-2">
+              {Object.entries(FIELD_LABELS).map(([key, label]) => (
+                <Checkbox
+                  key={key}
+                  checked={verifyFields.includes(key)}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setVerifyFields((prev) => [...prev, key]);
+                    } else {
+                      setVerifyFields((prev) => prev.filter((f) => f !== key));
+                    }
+                  }}
+                >
+                  <span className="text-xs text-slate-600">{label}</span>
+                </Checkbox>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <Checkbox
+              checked={verifyReupload}
+              onChange={(e) => setVerifyReupload(e.target.checked)}
+            >
+              <span className="text-sm font-medium text-slate-700">Request document re-upload</span>
+            </Checkbox>
+            <p className="text-xs text-slate-400 mt-0.5 ml-6">
+              Ask the user to upload a clearer or complete version of the bill
+            </p>
+          </div>
+        </div>
+      </Modal>
 
       {/* Document Preview Modal */}
       <Modal

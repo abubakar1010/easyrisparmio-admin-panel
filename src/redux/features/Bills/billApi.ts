@@ -55,6 +55,19 @@ export interface IBillAnalysis {
   createdAt: string;
 }
 
+export interface IBillVerification {
+  id: string;
+  billId: string;
+  adminMessage: string;
+  missingFields: string[];
+  requireReupload: boolean;
+  status: "pending" | "submitted" | "resolved";
+  userMessage: string | null;
+  userData: Record<string, unknown> | null;
+  resolvedAt: string | null;
+  createdAt: string;
+}
+
 export interface IBillFile {
   id: string;
   billId: string;
@@ -69,7 +82,7 @@ export interface IBill {
   id: string;
   fileUrl: string | null;
   billType: "electricity" | "gas";
-  status: "pending_email" | "uploaded" | "analyzing" | "analyzed" | "error" | "offer_sent" | "case_created" | "contract_sent" | "contract_signed" | "activated" | "cancelled";
+  status: "pending_email" | "uploaded" | "analyzing" | "analyzed" | "error" | "verification_required" | "offer_sent" | "case_created" | "contract_sent" | "contract_signed" | "activated" | "cancelled";
   source?: "upload" | "email";
   podNumber: string | null;
   pdrNumber: string | null;
@@ -97,6 +110,7 @@ export interface IBill {
   user?: { id: string; firstName: string; lastName: string; email: string };
   supplier?: { id: string; name: string } | null;
   files?: IBillFile[] | null;
+  verifications?: IBillVerification[] | null;
   analysis?: IBillAnalysis | null;
   switchCases?: Array<{
     id: string;
@@ -248,6 +262,23 @@ const billApi = baseApi.injectEndpoints({
       invalidatesTags: [{ type: "bill", id: "LIST" }],
     }),
 
+    requestVerification: builder.mutation<
+      IBillVerification,
+      { billId: string; message: string; missingFields: string[]; requireReupload?: boolean }
+    >({
+      query: ({ billId, ...body }) => ({
+        url: `bills/admin/${billId}/request-verification`,
+        method: "POST",
+        body,
+      }),
+      transformResponse: (response: { success: boolean; data: IBillVerification }) =>
+        response.data,
+      invalidatesTags: (_r, _e, { billId }) => [
+        { type: "bill", id: billId },
+        { type: "bill", id: "LIST" },
+      ],
+    }),
+
     associateBillWithUser: builder.mutation<
       IBill,
       { billId: string; userId: string; pendingBillId?: string }
@@ -277,4 +308,5 @@ export const {
   useExtractBillDataMutation,
   useAdminUploadEmailBillMutation,
   useAssociateBillWithUserMutation,
+  useRequestVerificationMutation,
 } = billApi;
