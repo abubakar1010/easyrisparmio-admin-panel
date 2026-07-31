@@ -47,7 +47,7 @@ const Referrals = () => {
   const [selectedReferral, setSelectedReferral] = useState<IReferral | null>(null);
   const [rewardAmount, setRewardAmount] = useState(10);
 
-  const { data: stats } = useGetReferralStatsQuery();
+  const { data: stats, isLoading: isStatsLoading, isError: isStatsError } = useGetReferralStatsQuery();
   const { data, isLoading } = useGetReferralsQuery({
     page,
     limit: 20,
@@ -106,6 +106,14 @@ const Referrals = () => {
           </p>
           <p className="text-xs text-slate-400">{record.referrer?.email}</p>
         </div>
+      ),
+    },
+    {
+      title: "CODE",
+      dataIndex: "referralCode",
+      key: "referralCode",
+      render: (code: string) => (
+        <span className="font-mono text-xs text-slate-600">{code}</span>
       ),
     },
     {
@@ -213,53 +221,57 @@ const Referrals = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {[
-          { title: t("referrals.total_referrals"), value: String(stats?.totalReferrals || 0), icon: <FiUsers className="h-4 w-4" /> },
-          { title: t("referrals.qualified"), value: String(stats?.qualified || 0), icon: <FiUsers className="h-4 w-4" /> },
-          { title: t("referrals.rewarded"), value: String(stats?.rewarded || 0), icon: <FiUsers className="h-4 w-4" /> },
-          {
-            title: t("referrals.total_paid"),
-            value: stats?.totalRewardsPaid ? `EUR${stats.totalRewardsPaid}` : "EUR0",
-            icon: <FiDollarSign className="h-4 w-4" />,
-          },
-        ].map((item) => (
-          <Card key={item.title} className="rounded-2xl border-slate-200/70 shadow-sm [&_.ant-card-body]:p-4">
-            <div className="mb-2 inline-flex items-center gap-2 text-slate-500">
-              {item.icon}
-              <span className="text-sm">{item.title}</span>
-            </div>
-            <p className="text-4xl font-semibold leading-none text-slate-700">{item.value}</p>
-          </Card>
-        ))}
+        {isStatsLoading ? (
+          <div className="col-span-full flex items-center justify-center py-8">
+            <Spin size="large" />
+          </div>
+        ) : isStatsError ? (
+          <div className="col-span-full rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+            Failed to load referral statistics. Please try refreshing the page.
+          </div>
+        ) : (
+          [
+            { title: t("referrals.total_referrals"), value: String(stats?.totalReferrals || 0), icon: <FiUsers className="h-4 w-4" /> },
+            { title: t("referrals.qualified"), value: String(stats?.qualified || 0), icon: <FiUsers className="h-4 w-4" /> },
+            { title: t("referrals.rewarded"), value: String(stats?.rewarded || 0), icon: <FiUsers className="h-4 w-4" /> },
+            {
+              title: t("referrals.total_paid"),
+              value: stats?.totalRewardsPaid ? `EUR${stats.totalRewardsPaid}` : "EUR0",
+              icon: <FiDollarSign className="h-4 w-4" />,
+            },
+          ].map((item) => (
+            <Card key={item.title} className="rounded-2xl border-slate-200/70 shadow-sm [&_.ant-card-body]:p-4">
+              <div className="mb-2 inline-flex items-center gap-2 text-slate-500">
+                {item.icon}
+                <span className="text-sm">{item.title}</span>
+              </div>
+              <p className="text-4xl font-semibold leading-none text-slate-700">{item.value}</p>
+            </Card>
+          ))
+        )}
       </div>
 
-      {/* Reward Configuration */}
+      {/* Reward Prefill */}
       <Card className="rounded-2xl border-slate-200/70 shadow-sm [&_.ant-card-body]:p-4 sm:[&_.ant-card-body]:p-5">
         <div className="mb-3 inline-flex items-center gap-2 text-lg font-semibold text-slate-700">
           <FiSettings className="h-4 w-4" />
           {t("referrals.reward_configuration")}
         </div>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="mb-1 text-sm text-slate-500">{t("referrals.amazon_voucher_amount")}</p>
-            <div className="flex items-center gap-2">
-              <InputNumber
-                min={1}
-                value={defaultReward}
-                onChange={(v) => v && setDefaultReward(v)}
-                className="rounded-lg"
-                size="large"
-              />
-              <span className="text-sm text-slate-400">{t("referrals.eur_per_activation")}</span>
-            </div>
+        <div>
+          <p className="mb-1 text-sm text-slate-500">{t("referrals.amazon_voucher_amount")}</p>
+          <div className="flex items-center gap-2">
+            <InputNumber
+              min={1}
+              max={1000}
+              precision={2}
+              value={defaultReward}
+              onChange={(v) => v && setDefaultReward(v)}
+              className="rounded-lg"
+              size="large"
+            />
+            <span className="text-sm text-slate-400">{t("referrals.eur_per_activation")}</span>
           </div>
-          <Button
-            type="primary"
-            onClick={() => message.success(t("referrals.default_reward_updated"))}
-            className="h-10 rounded-lg border-0 bg-emerald-500 px-6 font-semibold hover:bg-emerald-600"
-          >
-            Save
-          </Button>
+          <p className="mt-2 text-xs text-slate-400">Pre-fills the reward amount in the payment modal for this session.</p>
         </div>
       </Card>
 
@@ -358,6 +370,8 @@ const Referrals = () => {
           <p className="mb-2 text-sm text-slate-500">{t("referrals.reward_amount_label")}</p>
           <InputNumber
             min={1}
+            max={1000}
+            precision={2}
             value={rewardAmount}
             onChange={(v) => v && setRewardAmount(v)}
             className="w-full rounded-lg"
