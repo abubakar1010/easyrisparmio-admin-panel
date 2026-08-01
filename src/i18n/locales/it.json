@@ -507,7 +507,17 @@
     "type_case_update": "Aggiornamento Pratica",
     "type_contract_status": "Stato Contratto",
     "type_referral_status": "Stato Referral",
-    "type_general": "Generale"
+    "type_general": "Generale",
+    "tab_all": "Tutte",
+    "tab_sent": "Inviate",
+    "tab_received": "Ricevute",
+    "sent_label": "Inviata",
+    "view_details": "Visualizza",
+    "viewed": "Visualizzata",
+    "date": "Data",
+    "recipient_label": "Destinatario",
+    "read_at": "Letta il",
+    "additional_data": "Dati aggiuntivi"
   },
   "settings": {
     "title": "Profilo e impostazioni admin",

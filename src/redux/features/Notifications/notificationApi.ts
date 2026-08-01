@@ -1,5 +1,12 @@
 import { baseApi } from "../../api/baseApi";
 
+export interface INotificationUser {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+}
+
 export interface INotification {
   id: string;
   userId: string;
@@ -9,6 +16,8 @@ export interface INotification {
   data: Record<string, unknown> | null;
   isRead: boolean;
   readAt: string | null;
+  sentBy: string | null;
+  user?: INotificationUser | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -18,6 +27,13 @@ export interface INotificationQuery {
   limit?: number;
   type?: string;
   isRead?: boolean;
+}
+
+export interface IAdminNotificationQuery {
+  page?: number;
+  limit?: number;
+  direction?: "all" | "sent" | "received";
+  type?: string;
 }
 
 interface IPaginatedResponse<T> {
@@ -77,7 +93,38 @@ const notificationApi = baseApi.injectEndpoints({
       { title: string; body: string; userId?: string; userIds?: string[]; type?: string }
     >({
       query: (data) => ({ url: "notifications/send", method: "POST", body: data }),
-      invalidatesTags: [{ type: "notification", id: "LIST" }],
+      invalidatesTags: [
+        { type: "notification", id: "LIST" },
+        { type: "notification", id: "ADMIN_LIST" },
+      ],
+    }),
+
+    getAdminNotifications: builder.query<IPaginatedResponse<INotification>, IAdminNotificationQuery | void>({
+      query: (params) => {
+        const qp = new URLSearchParams();
+        if (params) {
+          if (params.page) qp.set("page", String(params.page));
+          if (params.limit) qp.set("limit", String(params.limit));
+          if (params.direction) qp.set("direction", params.direction);
+          if (params.type) qp.set("type", params.type);
+        }
+        return { url: `notifications/admin?${qp.toString()}`, method: "GET" };
+      },
+      transformResponse: (response: { success: boolean; data: IPaginatedResponse<INotification> }) =>
+        response.data,
+      providesTags: (result) =>
+        result
+          ? [
+              ...result.data.map(({ id }) => ({ type: "notification" as const, id })),
+              { type: "notification" as const, id: "ADMIN_LIST" },
+            ]
+          : [{ type: "notification" as const, id: "ADMIN_LIST" }],
+    }),
+
+    getNotificationById: builder.query<INotification, string>({
+      query: (id) => ({ url: `notifications/admin/${id}`, method: "GET" }),
+      transformResponse: (response: { success: boolean; data: INotification }) => response.data,
+      providesTags: (_r, _e, id) => [{ type: "notification" as const, id }],
     }),
   }),
 });
@@ -88,4 +135,6 @@ export const {
   useMarkAsReadMutation,
   useMarkAllAsReadMutation,
   useSendNotificationMutation,
+  useGetAdminNotificationsQuery,
+  useGetNotificationByIdQuery,
 } = notificationApi;

@@ -507,7 +507,17 @@
     "type_case_update": "Case Update",
     "type_contract_status": "Contract Status",
     "type_referral_status": "Referral Status",
-    "type_general": "General"
+    "type_general": "General",
+    "tab_all": "All",
+    "tab_sent": "Sent",
+    "tab_received": "Received",
+    "sent_label": "Sent",
+    "view_details": "View",
+    "viewed": "Viewed",
+    "date": "Date",
+    "recipient_label": "Recipient",
+    "read_at": "Read At",
+    "additional_data": "Additional Data"
   },
   "settings": {
     "title": "Profile & Admin Settings",
