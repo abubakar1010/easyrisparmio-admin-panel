@@ -304,7 +304,13 @@
     "supply_contract": "Contract",
     "no_supplies": "No supplies found for this customer",
     "electricity": "Electricity",
-    "gas": "Gas"
+    "gas": "Gas",
+    "new_password": "New Password",
+    "confirm_password": "Confirm Password",
+    "confirm_password_required": "Please confirm the password",
+    "passwords_do_not_match": "Passwords do not match",
+    "set_new_password_for": "Set a new password for",
+    "password_reset_success": "Password has been reset successfully"
   },
   "case_management": {
     "title": "Case Management",

@@ -68,8 +68,12 @@ const clientApi = baseApi.injectEndpoints({
       ],
     }),
 
-    resetClientPassword: builder.mutation<{ message: string }, string>({
-      query: (id) => ({ url: `users/${id}/reset-password`, method: "POST" }),
+    resetClientPassword: builder.mutation<{ message: string }, { id: string; newPassword: string }>({
+      query: ({ id, newPassword }) => ({
+        url: `users/${id}/reset-password`,
+        method: "POST",
+        body: { newPassword },
+      }),
     }),
 
     getClientPreferences: builder.query<IUserPreference | null, string>({

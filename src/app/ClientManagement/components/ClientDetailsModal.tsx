@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Avatar, Button, Divider, Modal, Spin, Tabs, Tag } from "antd";
+import { Avatar, Button, Divider, Form, Input, Modal, Spin, Tabs, Tag } from "antd";
 import { FiEdit3, FiFileText, FiLock, FiMail, FiMapPin, FiPhone, FiUnlock, FiZap } from "react-icons/fi";
 import { useTranslation } from "react-i18next";
 import type { CustomerStatus, IClient } from "../types";
@@ -52,6 +52,8 @@ const caseStatusColors: Record<string, string> = {
 export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModalProps) {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState("anagrafica");
+  const [resetModalOpen, setResetModalOpen] = useState(false);
+  const [resetForm] = Form.useForm();
   const [triggerGetClient, { data: clientDetail, isLoading, isFetching }] = useLazyGetClientByIdQuery();
   const [toggleStatus, { isLoading: toggling }] = useToggleClientStatusMutation();
   const [resetPassword, { isLoading: resetting }] = useResetClientPasswordMutation();
@@ -108,22 +110,16 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
 
   const loading = isLoading || isFetching;
 
-  const handleResetPassword = () => {
+  const handleResetPassword = async (values: { newPassword: string }) => {
     if (!detail) return;
-    sweetAlertConfirmation({
-      title: t("client_management.reset_password"),
-      object: `${t("client_management.send_password_reset")} ${detail.email}`,
-      okay: t("client_management.send_reset"),
-      conBtnColor: "#7061ED",
-      func: async () => {
-        try {
-          await resetPassword(detail.id).unwrap();
-          successAlert({ message: t("client_management.password_reset_sent") });
-        } catch (err) {
-          errorAlert({ error: err as { data?: { message?: string } } });
-        }
-      },
-    });
+    try {
+      await resetPassword({ id: detail.id, newPassword: values.newPassword }).unwrap();
+      successAlert({ message: t("client_management.password_reset_success") });
+      setResetModalOpen(false);
+      resetForm.resetFields();
+    } catch (err) {
+      errorAlert({ error: err as { data?: { message?: string } } });
+    }
   };
 
   const handleToggleStatus = () => {
@@ -479,8 +475,7 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
               icon={<FiEdit3 />}
               className="flex-1 pb-0.5!"
               size="large"
-              loading={resetting}
-              onClick={handleResetPassword}
+              onClick={() => setResetModalOpen(true)}
             >
               {t("client_management.reset_password")}
             </Button>
@@ -495,6 +490,59 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
               {detail.status === "suspended" ? t("client_management.unblock_user") : t("client_management.block_user")}
             </Button>
           </div>
+
+          {/* Reset Password Modal */}
+          <Modal
+            open={resetModalOpen}
+            onCancel={() => { setResetModalOpen(false); resetForm.resetFields(); }}
+            footer={null}
+            width={420}
+            centered
+            destroyOnClose
+            title={t("client_management.reset_password")}
+          >
+            <p className="mb-4 text-sm text-owngray">
+              {t("client_management.set_new_password_for")} <strong>{detail.email}</strong>
+            </p>
+            <Form form={resetForm} layout="vertical" onFinish={handleResetPassword}>
+              <Form.Item
+                name="newPassword"
+                label={t("client_management.new_password")}
+                rules={[
+                  { required: true, message: t("client_management.password_required") },
+                  { min: 8, message: t("client_management.password_required") },
+                ]}
+              >
+                <Input.Password autoFocus />
+              </Form.Item>
+              <Form.Item
+                name="confirmPassword"
+                label={t("client_management.confirm_password")}
+                dependencies={["newPassword"]}
+                rules={[
+                  { required: true, message: t("client_management.confirm_password_required") },
+                  ({ getFieldValue }) => ({
+                    validator(_, value) {
+                      if (!value || getFieldValue("newPassword") === value) {
+                        return Promise.resolve();
+                      }
+                      return Promise.reject(new Error(t("client_management.passwords_do_not_match")));
+                    },
+                  }),
+                ]}
+              >
+                <Input.Password />
+              </Form.Item>
+              <div className="flex justify-end gap-2">
+                <Button onClick={() => { setResetModalOpen(false); resetForm.resetFields(); }}>
+                  {t("common.cancel")}
+                </Button>
+                <Button type="primary" htmlType="submit" loading={resetting}>
+                  {t("client_management.reset_password")}
+                </Button>
+              </div>
+            </Form>
+          </Modal>
         </div>
       ) : null}
     </Modal>

@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { Avatar, Button, Input, Pagination, Segmented, Select, Space, Table, Tag, Tooltip } from "antd";
+import { Avatar, Button, Form, Input, Modal, Pagination, Segmented, Select, Space, Table, Tag, Tooltip } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { HiOutlineUserPlus } from "react-icons/hi2";
 import { FiSearch, FiEye, FiEdit3, FiZap, FiLock, FiKey, FiUnlock } from "react-icons/fi";
@@ -28,12 +28,15 @@ const ClientManagement = () => {
   const [statusFilter, setStatusFilter] = useState<CustomerStatus | undefined>();
   const [addOpen, setAddOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetClient, setResetClient] = useState<IClient | null>(null);
+  const [resetForm] = Form.useForm();
   const [editOpen, setEditOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<IClient | null>(null);
 
   const { data, isLoading, isFetching } = useGetClientsQuery(queryParams);
   const [toggleStatus] = useToggleClientStatusMutation();
-  const [resetPassword] = useResetClientPasswordMutation();
+  const [resetPassword, { isLoading: resetting }] = useResetClientPasswordMutation();
 
   const clients = data?.data || [];
   const meta = data?.meta;
@@ -102,21 +105,22 @@ const ClientManagement = () => {
     });
   };
 
-  const handleResetPassword = (client: IClient) => {
-    sweetAlertConfirmation({
-      title: t("client_management.reset_password"),
-      object: `${t("client_management.send_password_reset")} ${client.email}`,
-      okay: t("client_management.send_reset"),
-      conBtnColor: "#7061ED",
-      func: async () => {
-        try {
-          await resetPassword(client.id).unwrap();
-          successAlert({ message: t("client_management.password_reset_sent") });
-        } catch (err) {
-          errorAlert({ error: err as { data?: { message?: string } } });
-        }
-      },
-    });
+  const openResetPassword = (client: IClient) => {
+    setResetClient(client);
+    setResetOpen(true);
+  };
+
+  const handleResetPasswordSubmit = async (values: { newPassword: string }) => {
+    if (!resetClient) return;
+    try {
+      await resetPassword({ id: resetClient.id, newPassword: values.newPassword }).unwrap();
+      successAlert({ message: t("client_management.password_reset_success") });
+      setResetOpen(false);
+      setResetClient(null);
+      resetForm.resetFields();
+    } catch (err) {
+      errorAlert({ error: err as { data?: { message?: string } } });
+    }
   };
 
   const columns: ColumnsType<IClient> = [
@@ -198,7 +202,7 @@ const ClientManagement = () => {
             />
           </Tooltip>
           <Tooltip title={t("client_management.reset_password")}>
-            <Button type="text" size="small" icon={<FiKey className="h-4 w-4" />} onClick={() => handleResetPassword(record)} />
+            <Button type="text" size="small" icon={<FiKey className="h-4 w-4" />} onClick={() => openResetPassword(record)} />
           </Tooltip>
         </Space>
       ),
@@ -288,6 +292,63 @@ const ClientManagement = () => {
       <ClientFormModal open={addOpen} onClose={() => setAddOpen(false)} mode="add" />
       <ClientDetailsModal open={detailsOpen} onClose={() => setDetailsOpen(false)} client={selectedClient} />
       <ClientFormModal open={editOpen} onClose={() => setEditOpen(false)} mode="edit" client={selectedClient} />
+
+      {/* Reset Password Modal */}
+      <Modal
+        open={resetOpen}
+        onCancel={() => { setResetOpen(false); setResetClient(null); resetForm.resetFields(); }}
+        footer={null}
+        width={420}
+        centered
+        destroyOnClose
+        title={t("client_management.reset_password")}
+      >
+        {resetClient && (
+          <>
+            <p className="mb-4 text-sm text-owngray">
+              {t("client_management.set_new_password_for")} <strong>{resetClient.email}</strong>
+            </p>
+            <Form form={resetForm} layout="vertical" onFinish={handleResetPasswordSubmit}>
+              <Form.Item
+                name="newPassword"
+                label={t("client_management.new_password")}
+                rules={[
+                  { required: true, message: t("client_management.password_required") },
+                  { min: 8, message: t("client_management.password_required") },
+                ]}
+              >
+                <Input.Password autoFocus />
+              </Form.Item>
+              <Form.Item
+                name="confirmPassword"
+                label={t("client_management.confirm_password")}
+                dependencies={["newPassword"]}
+                rules={[
+                  { required: true, message: t("client_management.confirm_password_required") },
+                  ({ getFieldValue }) => ({
+                    validator(_, value) {
+                      if (!value || getFieldValue("newPassword") === value) {
+                        return Promise.resolve();
+                      }
+                      return Promise.reject(new Error(t("client_management.passwords_do_not_match")));
+                    },
+                  }),
+                ]}
+              >
+                <Input.Password />
+              </Form.Item>
+              <div className="flex justify-end gap-2">
+                <Button onClick={() => { setResetOpen(false); setResetClient(null); resetForm.resetFields(); }}>
+                  {t("common.cancel")}
+                </Button>
+                <Button type="primary" htmlType="submit" loading={resetting}>
+                  {t("client_management.reset_password")}
+                </Button>
+              </div>
+            </Form>
+          </>
+        )}
+      </Modal>
     </div>
   );
 };
