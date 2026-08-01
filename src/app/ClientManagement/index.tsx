@@ -3,6 +3,7 @@ import { Avatar, Button, Input, Pagination, Segmented, Select, Space, Table, Tag
 import type { ColumnsType } from "antd/es/table";
 import { HiOutlineUserPlus } from "react-icons/hi2";
 import { FiSearch, FiEye, FiEdit3, FiZap, FiLock, FiKey, FiUnlock } from "react-icons/fi";
+import { useTranslation } from "react-i18next";
 import { ClientDetailsModal } from "./components/ClientDetailsModal";
 import { ClientFormModal } from "./components/ClientFormModal";
 import type { CustomerStatus, CustomerType, IClient, IClientQuery } from "./types";
@@ -12,7 +13,15 @@ import { sweetAlertConfirmation } from "../../lib/helpers/sweetAlertConfirmation
 import { successAlert, errorAlert } from "../../lib/helpers/alert";
 import { debounce } from "../../utils/debounce";
 
+const statusTranslationKeys: Record<string, string> = {
+  Active: "client_management.status_active",
+  Pending: "client_management.status_pending",
+  Blocked: "client_management.status_blocked",
+  Inactive: "client_management.status_inactive",
+};
+
 const ClientManagement = () => {
+  const { t } = useTranslation();
   const [queryParams, setQueryParams] = useState<IClientQuery>({ page: 1, limit: 20 });
   const [segment, setSegment] = useState<"All" | CustomerType>("All");
   const [search, setSearch] = useState("");
@@ -74,14 +83,18 @@ const ClientManagement = () => {
   const handleToggleStatus = (client: IClient) => {
     const isBlocking = client.status === "active";
     sweetAlertConfirmation({
-      title: isBlocking ? "Block User" : "Unblock User",
-      object: isBlocking ? "block this user" : "unblock this user",
-      okay: isBlocking ? "Block" : "Unblock",
+      title: isBlocking ? t("client_management.block_user") : t("client_management.unblock_user"),
+      object: isBlocking ? t("client_management.block_confirm") : t("client_management.unblock_confirm"),
+      okay: isBlocking ? t("client_management.block") : t("client_management.unblock"),
       conBtnColor: isBlocking ? "red" : "#7061ED",
       func: async () => {
         try {
           await toggleStatus(client.id).unwrap();
-          successAlert({ message: `User ${isBlocking ? "blocked" : "unblocked"} successfully` });
+          successAlert({
+            message: isBlocking
+              ? t("client_management.user_blocked_successfully")
+              : t("client_management.user_unblocked_successfully"),
+          });
         } catch (err) {
           errorAlert({ error: err as { data?: { message?: string } } });
         }
@@ -91,14 +104,14 @@ const ClientManagement = () => {
 
   const handleResetPassword = (client: IClient) => {
     sweetAlertConfirmation({
-      title: "Reset Password",
-      object: `send a password reset email to ${client.email}`,
-      okay: "Send Reset",
+      title: t("client_management.reset_password"),
+      object: `${t("client_management.send_password_reset")} ${client.email}`,
+      okay: t("client_management.send_reset"),
       conBtnColor: "#7061ED",
       func: async () => {
         try {
           await resetPassword(client.id).unwrap();
-          successAlert({ message: "Password reset code sent to user email" });
+          successAlert({ message: t("client_management.password_reset_sent") });
         } catch (err) {
           errorAlert({ error: err as { data?: { message?: string } } });
         }
@@ -108,7 +121,7 @@ const ClientManagement = () => {
 
   const columns: ColumnsType<IClient> = [
     {
-      title: "Name",
+      title: t("client_management.name"),
       key: "name",
       width: 220,
       render: (_, record) => (
@@ -122,17 +135,24 @@ const ClientManagement = () => {
         </div>
       ),
     },
-    { title: "Email", dataIndex: "email", key: "email", width: 210, ellipsis: true },
-    { title: "Phone", dataIndex: "phone", key: "phone", width: 160 },
+    { title: t("client_management.email_label"), dataIndex: "email", key: "email", width: 210, ellipsis: true },
+    { title: t("client_management.phone"), dataIndex: "phone", key: "phone", width: 160 },
     {
-      title: "Type",
+      title: t("client_management.type"),
       key: "type",
       width: 110,
-      render: (_, record) => <span className="text-gray-700">{roleToType[record.role] || record.role}</span>,
+      render: (_, record) => {
+        const typeKey = roleToType[record.role];
+        return (
+          <span className="text-gray-700">
+            {typeKey ? t(`client_management.${typeKey.toLowerCase()}`) : record.role}
+          </span>
+        );
+      },
       align: "center",
     },
     {
-      title: "Supplies",
+      title: t("client_management.supplies"),
       key: "supplies",
       width: 100,
       render: (_, record) => (
@@ -144,32 +164,32 @@ const ClientManagement = () => {
       align: "center",
     },
     {
-      title: "Status",
+      title: t("common.status"),
       key: "status",
       width: 100,
       render: (_, record) => {
         const displayStatus = statusToDisplay[record.status] || record.status;
         return (
           <Tag color={statusClass[displayStatus as CustomerStatus] || "default"} className="rounded-full px-2.5 py-0.5 text-xs font-semibold">
-            {displayStatus}
+            {t(statusTranslationKeys[displayStatus] || displayStatus)}
           </Tag>
         );
       },
       align: "center",
     },
     {
-      title: "Actions",
+      title: t("common.actions"),
       key: "actions",
       width: 120,
       render: (_, record) => (
         <Space size={2}>
-          <Tooltip title="View user">
+          <Tooltip title={t("client_management.view_user")}>
             <Button type="text" size="small" icon={<FiEye className="h-4 w-4" />} onClick={() => openDetails(record)} />
           </Tooltip>
-          <Tooltip title="Quick edit">
+          <Tooltip title={t("client_management.quick_edit")}>
             <Button type="text" size="small" icon={<FiEdit3 className="h-4 w-4" />} onClick={() => openEdit(record)} />
           </Tooltip>
-          <Tooltip title={record.status === "suspended" ? "Unblock" : "Block"}>
+          <Tooltip title={record.status === "suspended" ? t("client_management.unblock") : t("client_management.block")}>
             <Button
               type="text"
               size="small"
@@ -177,7 +197,7 @@ const ClientManagement = () => {
               onClick={() => handleToggleStatus(record)}
             />
           </Tooltip>
-          <Tooltip title="Reset password">
+          <Tooltip title={t("client_management.reset_password")}>
             <Button type="text" size="small" icon={<FiKey className="h-4 w-4" />} onClick={() => handleResetPassword(record)} />
           </Tooltip>
         </Space>
@@ -190,8 +210,8 @@ const ClientManagement = () => {
     <div>
       <div className="mb-4 flex flex-col gap-3 border-b border-cborder/45 pb-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-brand">Users Management</h2>
-          <p className="text-sm text-owngray">Manage energy customers and their supplies</p>
+          <h2 className="text-xl font-semibold text-brand">{t("client_management.users_management")}</h2>
+          <p className="text-sm text-owngray">{t("client_management.manage_customers_supplies")}</p>
         </div>
         <Button
           type="primary"
@@ -199,7 +219,7 @@ const ClientManagement = () => {
           icon={<HiOutlineUserPlus className="h-4 w-4" />}
           onClick={() => setAddOpen(true)}
         >
-          Add new user
+          {t("client_management.add_new_user")}
         </Button>
       </div>
 
@@ -208,19 +228,23 @@ const ClientManagement = () => {
           <Segmented<"All" | CustomerType>
             value={segment}
             onChange={handleSegmentChange}
-            options={["All", "Private", "Business"]}
+            options={[
+              { value: "All", label: t("client_management.all") },
+              { value: "Private", label: t("client_management.private") },
+              { value: "Business", label: t("client_management.business") },
+            ]}
           />
           <Select
             allowClear
-            placeholder="Status"
+            placeholder={t("common.status")}
             value={statusFilter}
             onChange={handleStatusFilter}
             className="min-w-[130px]"
             options={[
-              { value: "Active", label: "Active" },
-              { value: "Pending", label: "Pending" },
-              { value: "Blocked", label: "Blocked" },
-              { value: "Inactive", label: "Inactive" },
+              { value: "Active", label: t("client_management.status_active") },
+              { value: "Pending", label: t("client_management.status_pending") },
+              { value: "Blocked", label: t("client_management.status_blocked") },
+              { value: "Inactive", label: t("client_management.status_inactive") },
             ]}
           />
         </div>
@@ -229,7 +253,7 @@ const ClientManagement = () => {
           value={search}
           onChange={handleSearchChange}
           prefix={<FiSearch className="text-owngray" />}
-          placeholder="Search customers..."
+          placeholder={t("client_management.search_customers")}
           className="w-full xl:w-[280px]!"
         />
       </div>
@@ -246,7 +270,7 @@ const ClientManagement = () => {
         />
         <div className="mt-3 flex items-center justify-between px-4">
           <p className="text-xs text-gray-500">
-            Showing {clients.length} of {meta?.total ?? 0} customers
+            {t("client_management.showing_of_customers", { count: clients.length, total: meta?.total ?? 0 })}
           </p>
           {meta && meta.totalPages > 1 && (
             <Pagination

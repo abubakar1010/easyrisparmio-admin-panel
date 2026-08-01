@@ -1,8 +1,9 @@
 import { useEffect } from "react";
 import { Avatar, Button, Divider, Modal, Spin, Tabs, Tag } from "antd";
 import { FiEdit3, FiFileText, FiLock, FiMail, FiMapPin, FiPhone, FiUnlock } from "react-icons/fi";
+import { useTranslation } from "react-i18next";
 import type { CustomerStatus, IClient } from "../types";
-import { statusClass, statusToDisplay, paymentMethodLabels, invoiceDeliveryLabels, languageLabels } from "../types";
+import { statusClass, statusToDisplay } from "../types";
 import { useLazyGetClientByIdQuery, useToggleClientStatusMutation, useResetClientPasswordMutation } from "../../../redux/features/Users/clientApi";
 import { sweetAlertConfirmation } from "../../../lib/helpers/sweetAlertConfirmation";
 import { successAlert, errorAlert } from "../../../lib/helpers/alert";
@@ -13,7 +14,15 @@ type ClientDetailsModalProps = {
   client: IClient | null;
 };
 
+const statusTranslationKeys: Record<string, string> = {
+  Active: "client_management.status_active",
+  Pending: "client_management.status_pending",
+  Blocked: "client_management.status_blocked",
+  Inactive: "client_management.status_inactive",
+};
+
 export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModalProps) {
+  const { t } = useTranslation();
   const [triggerGetClient, { data: clientDetail, isLoading, isFetching }] = useLazyGetClientByIdQuery();
   const [toggleStatus, { isLoading: toggling }] = useToggleClientStatusMutation();
   const [resetPassword, { isLoading: resetting }] = useResetClientPasswordMutation();
@@ -30,14 +39,14 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
   const handleResetPassword = () => {
     if (!detail) return;
     sweetAlertConfirmation({
-      title: "Reset Password",
-      object: `send a password reset email to ${detail.email}`,
-      okay: "Send Reset",
+      title: t("client_management.reset_password"),
+      object: `${t("client_management.send_password_reset")} ${detail.email}`,
+      okay: t("client_management.send_reset"),
       conBtnColor: "#7061ED",
       func: async () => {
         try {
           await resetPassword(detail.id).unwrap();
-          successAlert({ message: "Password reset code sent to user email" });
+          successAlert({ message: t("client_management.password_reset_sent") });
         } catch (err) {
           errorAlert({ error: err as { data?: { message?: string } } });
         }
@@ -49,14 +58,18 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
     if (!detail) return;
     const isBlocking = detail.status === "active";
     sweetAlertConfirmation({
-      title: isBlocking ? "Block User" : "Unblock User",
-      object: isBlocking ? "block this user" : "unblock this user",
-      okay: isBlocking ? "Block" : "Unblock",
+      title: isBlocking ? t("client_management.block_user") : t("client_management.unblock_user"),
+      object: isBlocking ? t("client_management.block_confirm") : t("client_management.unblock_confirm"),
+      okay: isBlocking ? t("client_management.block") : t("client_management.unblock"),
       conBtnColor: isBlocking ? "red" : "#7061ED",
       func: async () => {
         try {
           await toggleStatus(detail.id).unwrap();
-          successAlert({ message: `User ${isBlocking ? "blocked" : "unblocked"} successfully` });
+          successAlert({
+            message: isBlocking
+              ? t("client_management.user_blocked_successfully")
+              : t("client_management.user_unblocked_successfully"),
+          });
         } catch (err) {
           errorAlert({ error: err as { data?: { message?: string } } });
         }
@@ -98,7 +111,7 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
                   color={statusClass[displayStatus as CustomerStatus] || "default"}
                   className="mt-1 rounded-full"
                 >
-                  {displayStatus}
+                  {t(statusTranslationKeys[displayStatus] || displayStatus)}
                 </Tag>
               </div>
             </div>
@@ -115,7 +128,7 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
             </p>
             {detail.codiceFiscale && (
               <p className="flex items-center gap-2">
-                <FiFileText /> Codice fiscale: {detail.codiceFiscale}
+                <FiFileText /> {t("client_management.codice_fiscale_label")}: {detail.codiceFiscale}
               </p>
             )}
             {primaryAddress && (
@@ -131,50 +144,50 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
           <Tabs
             defaultActiveKey="anagrafica"
             items={[
-              { key: "anagrafica", label: "Anagrafica" },
-              { key: "forniture", label: `Forniture (${detail.billCount ?? 0})` },
-              { key: "bollette", label: "Bollette" },
-              { key: "case", label: "Case" },
-              { key: "gdpr", label: "Connessi GDPR" },
+              { key: "anagrafica", label: t("client_management.tab_personal_data") },
+              { key: "forniture", label: `${t("client_management.tab_supplies")} (${detail.billCount ?? 0})` },
+              { key: "bollette", label: t("client_management.tab_bills") },
+              { key: "case", label: t("client_management.tab_cases") },
+              { key: "gdpr", label: t("client_management.tab_gdpr") },
             ]}
           />
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <p className="mb-2 text-base font-semibold text-brand">Dati anagrafici</p>
-              <p className="text-sm text-owngray">Email</p>
+              <p className="mb-2 text-base font-semibold text-brand">{t("client_management.personal_data")}</p>
+              <p className="text-sm text-owngray">{t("client_management.email_label")}</p>
               <p className="mb-2 text-[15px] font-semibold text-brand">{detail.email}</p>
               {detail.phone && (
                 <>
-                  <p className="text-sm text-owngray">Telefono</p>
+                  <p className="text-sm text-owngray">{t("client_management.telephone")}</p>
                   <p className="mb-2 text-[15px] font-semibold text-brand">{detail.phone}</p>
                 </>
               )}
               {detail.codiceFiscale && (
                 <>
-                  <p className="text-sm text-owngray">Codice Fiscale</p>
+                  <p className="text-sm text-owngray">{t("client_management.codice_fiscale_label")}</p>
                   <p className="mb-2 text-[15px] font-semibold text-brand">{detail.codiceFiscale}</p>
                 </>
               )}
             </div>
             <div>
-              <p className="mb-2 text-base font-semibold text-brand">Altre informazioni</p>
-              <p className="text-sm text-owngray">Metodo di pagamento</p>
+              <p className="mb-2 text-base font-semibold text-brand">{t("client_management.other_info")}</p>
+              <p className="text-sm text-owngray">{t("client_management.payment_method")}</p>
               <p className="mb-2 text-[15px] font-semibold text-brand">
                 {preferences?.paymentMethod
-                  ? paymentMethodLabels[preferences.paymentMethod] || preferences.paymentMethod
+                  ? t(`client_management.payment_${preferences.paymentMethod}`, { defaultValue: preferences.paymentMethod })
                   : "—"}
               </p>
-              <p className="text-sm text-owngray">Tipo fattura</p>
+              <p className="text-sm text-owngray">{t("client_management.invoice_type")}</p>
               <p className="mb-2 text-[15px] font-semibold text-brand">
                 {preferences?.invoiceDelivery
-                  ? invoiceDeliveryLabels[preferences.invoiceDelivery] || preferences.invoiceDelivery
+                  ? t(`client_management.invoice_${preferences.invoiceDelivery}`, { defaultValue: preferences.invoiceDelivery })
                   : "—"}
               </p>
-              <p className="text-sm text-owngray">Lingua</p>
+              <p className="text-sm text-owngray">{t("client_management.language_label")}</p>
               <p className="text-[15px] font-semibold text-brand">
                 {preferences?.language
-                  ? languageLabels[preferences.language] || preferences.language
+                  ? t(`client_management.lang_${preferences.language}`, { defaultValue: preferences.language })
                   : "—"}
               </p>
             </div>
@@ -191,7 +204,7 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
               loading={resetting}
               onClick={handleResetPassword}
             >
-              Reset password
+              {t("client_management.reset_password")}
             </Button>
             <Button
               danger={detail.status !== "suspended"}
@@ -201,7 +214,7 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
               loading={toggling}
               onClick={handleToggleStatus}
             >
-              {detail.status === "suspended" ? "Sblocca utente" : "Blocca utente"}
+              {detail.status === "suspended" ? t("client_management.unblock_user") : t("client_management.block_user")}
             </Button>
           </div>
         </div>
