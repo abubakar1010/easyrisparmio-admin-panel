@@ -195,7 +195,7 @@
     "documentation": "Documentazione",
     "validation": "Validazione",
     "activation": "Attivazione",
-    "rejected_ko": "Rifiutato (KO)",
+    "rejected_ko": "Rifiutato (KO)"
   },
   "client_management": {
     "users_management": "Gestione utenti",
