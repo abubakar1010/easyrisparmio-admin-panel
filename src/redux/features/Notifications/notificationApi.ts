@@ -5,7 +5,7 @@ export interface INotification {
   userId: string;
   title: string;
   body: string;
-  type: "bill_analyzed" | "offer_available" | "case_update" | "contract_status" | "general";
+  type: "bill_analyzed" | "bill_verification" | "offer_available" | "case_update" | "contract_status" | "referral_status" | "general";
   data: Record<string, unknown> | null;
   isRead: boolean;
   readAt: string | null;

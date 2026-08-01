@@ -1,4 +1,4 @@
-import { Button, Empty, List, Spin, Tag, message } from "antd";
+import { Button, Empty, List, Select, Spin, Tag, message } from "antd";
 import { FiCheck, FiCheckCircle, FiBell } from "react-icons/fi";
 import {
   useGetNotificationsQuery,
@@ -6,18 +6,35 @@ import {
   useMarkAllAsReadMutation,
 } from "../../redux/features/Notifications/notificationApi";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import SendNotificationModal from "./SendNotificationModal";
 
 const typeColor: Record<string, string> = {
   bill_analyzed: "blue",
+  bill_verification: "orange",
   offer_available: "green",
   case_update: "gold",
   contract_status: "purple",
+  referral_status: "cyan",
   general: "default",
 };
 
+const notificationTypes = [
+  "bill_analyzed",
+  "bill_verification",
+  "offer_available",
+  "case_update",
+  "contract_status",
+  "referral_status",
+  "general",
+] as const;
+
 const Notification = () => {
+  const { t } = useTranslation();
   const [page, setPage] = useState(1);
-  const { data, isLoading } = useGetNotificationsQuery({ page, limit: 20 });
+  const [typeFilter, setTypeFilter] = useState<string | undefined>();
+  const [sendOpen, setSendOpen] = useState(false);
+  const { data, isLoading } = useGetNotificationsQuery({ page, limit: 20, type: typeFilter });
   const [markAsRead] = useMarkAsReadMutation();
   const [markAllAsRead, { isLoading: isMarkingAll }] = useMarkAllAsReadMutation();
 
@@ -35,7 +52,7 @@ const Notification = () => {
   const handleMarkAllRead = async () => {
     try {
       await markAllAsRead().unwrap();
-      message.success("All notifications marked as read");
+      message.success(t("notifications.mark_all_read"));
     } catch {
       message.error("Failed to mark all as read");
     }
@@ -45,17 +62,46 @@ const Notification = () => {
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Notifications</h1>
-          <p className="text-sm text-slate-500 mt-1">Stay updated with system events</p>
+          <h1 className="text-2xl font-bold text-slate-800">{t("notifications.title")}</h1>
+          <p className="text-sm text-slate-500 mt-1">{t("notifications.description")}</p>
         </div>
-        <Button
-          icon={<FiCheckCircle />}
-          onClick={handleMarkAllRead}
-          loading={isMarkingAll}
-          className="h-10 rounded-lg font-medium"
+        <div className="flex gap-2">
+          <Button
+            type="primary"
+            icon={<FiBell />}
+            onClick={() => setSendOpen(true)}
+            className="h-10 rounded-lg font-medium"
+          >
+            {t("notifications.send_notification")}
+          </Button>
+          <Button
+            icon={<FiCheckCircle />}
+            onClick={handleMarkAllRead}
+            loading={isMarkingAll}
+            className="h-10 rounded-lg font-medium"
+          >
+            {t("notifications.mark_all_read")}
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <Select
+          placeholder={t("notifications.filter_by_type")}
+          allowClear
+          value={typeFilter}
+          onChange={(value) => {
+            setTypeFilter(value);
+            setPage(1);
+          }}
+          className="w-56"
         >
-          Mark All as Read
-        </Button>
+          {notificationTypes.map((type) => (
+            <Select.Option key={type} value={type}>
+              {t(`notifications.type_${type}`)}
+            </Select.Option>
+          ))}
+        </Select>
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
@@ -65,7 +111,7 @@ const Notification = () => {
           <div className="py-24">
             <Empty
               image={<FiBell className="h-16 w-16 text-slate-300 mx-auto" />}
-              description="No notifications"
+              description={t("notifications.no_notifications")}
             />
           </div>
         ) : (
@@ -92,7 +138,7 @@ const Notification = () => {
                           onClick={() => handleMarkRead(item.id)}
                           className="text-indigo-500"
                         >
-                          Mark Read
+                          {t("notifications.mark_read")}
                         </Button>,
                       ]
                     : undefined
@@ -128,6 +174,8 @@ const Notification = () => {
           />
         )}
       </div>
+
+      <SendNotificationModal isOpen={sendOpen} onClose={() => setSendOpen(false)} />
     </div>
   );
 };

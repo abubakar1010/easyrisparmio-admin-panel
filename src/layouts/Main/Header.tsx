@@ -5,7 +5,11 @@ import { useAppSelector } from "../../redux/hooks";
 import { IoNotificationsOutline } from "react-icons/io5";
 import { FiMenu } from "react-icons/fi";
 import { BrandLightningMark } from "../../components/ui/BrandLightningMark";
-import { useGetUnreadCountQuery } from "../../redux/features/Notifications/notificationApi";
+import {
+  useGetUnreadCountQuery,
+  useGetNotificationsQuery,
+  useMarkAsReadMutation,
+} from "../../redux/features/Notifications/notificationApi";
 import { useTranslation } from "react-i18next";
 
 type HeaderProps = {
@@ -20,6 +24,9 @@ const Header = ({ onMobileMenuClick }: HeaderProps) => {
   const [notificationPopup, setNotificationPopup] = useState(false);
   const { data: unreadData } = useGetUnreadCountQuery();
   const unreadCount = unreadData?.count || 0;
+  const { data: notificationsData } = useGetNotificationsQuery({ page: 1, limit: 5 });
+  const [markAsRead] = useMarkAsReadMutation();
+  const recentNotifications = notificationsData?.data || [];
   const { t, i18n } = useTranslation();
 
   const toggleLanguage = () => {
@@ -116,8 +123,43 @@ const Header = ({ onMobileMenuClick }: HeaderProps) => {
             ref={notificationRef}
             className="absolute top-[calc(100%+12px)] right-4 sm:right-8 max-w-[400px] w-[min(100vw-2rem,400px)] rounded-2xl border border-cborder/40 bg-white/95 backdrop-blur-md px-3 py-4 shadow-[0_24px_48px_-12px_rgba(15,23,42,0.15)] divide-y divide-cborder/30 motion-safe:animate-[header-pop_0.22s_cubic-bezier(0.3,0,0,1)]"
           >
-            <div></div>
-            <div className="w-fit mx-auto mt-4">
+            <div className="pb-3">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-bold text-slate-800">{t("header.notifications")}</span>
+                {unreadCount > 0 && (
+                  <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 rounded-full px-2 py-0.5">
+                    {unreadCount}
+                  </span>
+                )}
+              </div>
+              {recentNotifications.length === 0 ? (
+                <p className="text-sm text-slate-400 text-center py-4">{t("notifications.no_notifications")}</p>
+              ) : (
+                <div className="space-y-1">
+                  {recentNotifications.map((item) => (
+                    <div
+                      key={item.id}
+                      className={`rounded-lg px-3 py-2 cursor-pointer transition-colors hover:bg-slate-50 ${!item.isRead ? "bg-indigo-50/50" : ""}`}
+                      onClick={() => {
+                        if (!item.isRead) markAsRead(item.id);
+                        navigate("/notifications");
+                      }}
+                    >
+                      <p className={`text-sm truncate ${!item.isRead ? "font-bold text-slate-800" : "font-normal text-slate-600"}`}>
+                        {item.title}
+                      </p>
+                      <p className="text-xs text-slate-400 truncate mt-0.5">
+                        {item.body.length > 60 ? `${item.body.slice(0, 60)}...` : item.body}
+                      </p>
+                      <p className="text-[10px] text-slate-300 mt-1">
+                        {new Date(item.createdAt).toLocaleString("it-IT")}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="w-fit mx-auto mt-2 pt-3">
               <Button
                 onClick={() => navigate("/notifications")}
                 style={{ background: "#34D399", color: "white" }}
