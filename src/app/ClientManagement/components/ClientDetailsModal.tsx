@@ -1,10 +1,12 @@
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Avatar, Button, Divider, Modal, Spin, Tabs, Tag } from "antd";
-import { FiEdit3, FiFileText, FiLock, FiMail, FiMapPin, FiPhone, FiUnlock } from "react-icons/fi";
+import { FiEdit3, FiFileText, FiLock, FiMail, FiMapPin, FiPhone, FiUnlock, FiZap } from "react-icons/fi";
 import { useTranslation } from "react-i18next";
 import type { CustomerStatus, IClient } from "../types";
 import { statusClass, statusToDisplay } from "../types";
 import { useLazyGetClientByIdQuery, useToggleClientStatusMutation, useResetClientPasswordMutation } from "../../../redux/features/Users/clientApi";
+import { useGetBillsAdminQuery, type IBill } from "../../../redux/features/Bills/billApi";
+import { useGetCasesQuery, type ICase } from "../../../redux/features/Cases/caseApi";
 import { sweetAlertConfirmation } from "../../../lib/helpers/sweetAlertConfirmation";
 import { successAlert, errorAlert } from "../../../lib/helpers/alert";
 
@@ -21,19 +23,89 @@ const statusTranslationKeys: Record<string, string> = {
   Inactive: "client_management.status_inactive",
 };
 
+const billStatusColors: Record<string, string> = {
+  analyzed: "green",
+  uploaded: "blue",
+  analyzing: "processing",
+  error: "red",
+  offer_sent: "purple",
+  case_created: "cyan",
+  activated: "green",
+  cancelled: "default",
+  pending_email: "gold",
+  verification_required: "orange",
+  contract_sent: "geekblue",
+  contract_signed: "lime",
+};
+
+const caseStatusColors: Record<string, string> = {
+  new: "blue",
+  in_progress: "processing",
+  documents_pending: "orange",
+  contract_sent: "geekblue",
+  contract_signed: "lime",
+  activated: "green",
+  rejected: "red",
+  cancelled: "default",
+};
+
 export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModalProps) {
   const { t } = useTranslation();
+  const [activeTab, setActiveTab] = useState("anagrafica");
   const [triggerGetClient, { data: clientDetail, isLoading, isFetching }] = useLazyGetClientByIdQuery();
   const [toggleStatus, { isLoading: toggling }] = useToggleClientStatusMutation();
   const [resetPassword, { isLoading: resetting }] = useResetClientPasswordMutation();
 
+  const detail = clientDetail || client;
+  const clientId = detail?.id;
+
+  const { data: billsData, isLoading: billsLoading } = useGetBillsAdminQuery(
+    { userId: clientId!, limit: 50 },
+    { skip: !open || !clientId },
+  );
+
+  const { data: casesData, isLoading: casesLoading } = useGetCasesQuery(
+    { userId: clientId!, limit: 50 },
+    { skip: !open || !clientId },
+  );
+
+  const bills = billsData?.data || [];
+  const cases = casesData?.data || [];
+
+  // Extract unique supplies from bills (grouped by POD/PDR)
+  const supplies = useMemo(() => {
+    const supplyMap = new Map<string, { id: string; type: "electricity" | "gas"; podPdr: string; address: string | null; meter: string | null; contract: string | null; supplier: string | null }>();
+    for (const bill of bills) {
+      const key = bill.podNumber || bill.pdrNumber;
+      if (!key || supplyMap.has(key)) continue;
+      supplyMap.set(key, {
+        id: key,
+        type: bill.billType,
+        podPdr: key,
+        address: bill.supplyAddress,
+        meter: bill.meterNumber,
+        contract: bill.contractNumber,
+        supplier: bill.supplierName || bill.supplier?.name || null,
+      });
+    }
+    return Array.from(supplyMap.values());
+  }, [bills]);
+
+  // Find assigned operator from cases
+  const assignedOperator = useMemo(() => {
+    for (const c of cases) {
+      if (c.assignedAgent) return c.assignedAgent;
+    }
+    return null;
+  }, [cases]);
+
   useEffect(() => {
     if (open && client?.id) {
       triggerGetClient(client.id);
+      setActiveTab("anagrafica");
     }
   }, [open, client?.id, triggerGetClient]);
 
-  const detail = clientDetail || client;
   const loading = isLoading || isFetching;
 
   const handleResetPassword = () => {
@@ -81,6 +153,227 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
   const primaryAddress = detail?.addresses?.[0];
   const preferences = detail?.preferences;
 
+  const formatDate = (dateStr: string | null | undefined) => {
+    if (!dateStr) return "—";
+    return new Date(dateStr).toLocaleDateString();
+  };
+
+  const renderAnagraficaTab = () => (
+    <div className="grid gap-4 sm:grid-cols-2">
+      <div>
+        <p className="mb-2 text-base font-semibold text-brand">{t("client_management.personal_data")}</p>
+        <p className="text-sm text-owngray">{t("client_management.email_label")}</p>
+        <p className="mb-2 text-[15px] font-semibold text-brand">{detail!.email}</p>
+        {detail!.phone && (
+          <>
+            <p className="text-sm text-owngray">{t("client_management.telephone")}</p>
+            <p className="mb-2 text-[15px] font-semibold text-brand">{detail!.phone}</p>
+          </>
+        )}
+        {detail!.codiceFiscale && (
+          <>
+            <p className="text-sm text-owngray">{t("client_management.codice_fiscale_label")}</p>
+            <p className="mb-2 text-[15px] font-semibold text-brand">{detail!.codiceFiscale}</p>
+          </>
+        )}
+      </div>
+      <div>
+        <p className="mb-2 text-base font-semibold text-brand">{t("client_management.other_info")}</p>
+        <p className="text-sm text-owngray">{t("client_management.payment_method")}</p>
+        <p className="mb-2 text-[15px] font-semibold text-brand">
+          {preferences?.paymentMethod
+            ? t(`client_management.payment_${preferences.paymentMethod}`, { defaultValue: preferences.paymentMethod })
+            : "—"}
+        </p>
+        <p className="text-sm text-owngray">{t("client_management.invoice_type")}</p>
+        <p className="mb-2 text-[15px] font-semibold text-brand">
+          {preferences?.invoiceDelivery
+            ? t(`client_management.invoice_${preferences.invoiceDelivery}`, { defaultValue: preferences.invoiceDelivery })
+            : "—"}
+        </p>
+        <p className="text-sm text-owngray">{t("client_management.language_label")}</p>
+        <p className="text-[15px] font-semibold text-brand">
+          {preferences?.language
+            ? t(`client_management.lang_${preferences.language}`, { defaultValue: preferences.language })
+            : "—"}
+        </p>
+      </div>
+    </div>
+  );
+
+  const renderFornitureTab = () => {
+    if (billsLoading) return <div className="flex justify-center py-8"><Spin /></div>;
+    if (supplies.length === 0) {
+      return <p className="py-6 text-center text-sm text-owngray">{t("client_management.no_supplies")}</p>;
+    }
+    return (
+      <div className="space-y-3">
+        {supplies.map((supply) => (
+          <div key={supply.id} className="rounded-lg border border-cborder/45 p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <FiZap className={`h-4 w-4 ${supply.type === "electricity" ? "text-yellow-500" : "text-blue-500"}`} />
+              <span className="font-semibold text-brand">
+                {t(`client_management.${supply.type}`)}
+              </span>
+              <Tag className="rounded-full text-xs">{supply.podPdr}</Tag>
+            </div>
+            <div className="grid gap-1 text-sm sm:grid-cols-2">
+              {supply.supplier && (
+                <div>
+                  <span className="text-owngray">{t("client_management.bill_supplier")}: </span>
+                  <span className="text-brand">{supply.supplier}</span>
+                </div>
+              )}
+              {supply.address && (
+                <div>
+                  <span className="text-owngray">{t("client_management.supply_address")}: </span>
+                  <span className="text-brand">{supply.address}</span>
+                </div>
+              )}
+              {supply.meter && (
+                <div>
+                  <span className="text-owngray">{t("client_management.supply_meter")}: </span>
+                  <span className="text-brand">{supply.meter}</span>
+                </div>
+              )}
+              {supply.contract && (
+                <div>
+                  <span className="text-owngray">{t("client_management.supply_contract")}: </span>
+                  <span className="text-brand">{supply.contract}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const renderBolletteTab = () => {
+    if (billsLoading) return <div className="flex justify-center py-8"><Spin /></div>;
+    if (bills.length === 0) {
+      return <p className="py-6 text-center text-sm text-owngray">{t("client_management.no_bills")}</p>;
+    }
+    return (
+      <div className="space-y-2">
+        {bills.map((bill: IBill) => (
+          <div key={bill.id} className="flex items-center justify-between rounded-lg border border-cborder/45 p-3">
+            <div className="flex items-center gap-3">
+              <div className={`flex h-8 w-8 items-center justify-center rounded-full ${bill.billType === "electricity" ? "bg-yellow-50 text-yellow-600" : "bg-blue-50 text-blue-600"}`}>
+                <FiZap className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-brand">
+                  {t(`client_management.${bill.billType}`)}
+                  {(bill.podNumber || bill.pdrNumber) && (
+                    <span className="ml-1.5 font-normal text-owngray">
+                      {bill.podNumber || bill.pdrNumber}
+                    </span>
+                  )}
+                </p>
+                <p className="text-xs text-owngray">
+                  {bill.supplierName || bill.supplier?.name || "—"}
+                  {bill.billingPeriodStart && ` · ${formatDate(bill.billingPeriodStart)} – ${formatDate(bill.billingPeriodEnd)}`}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 text-right">
+              {bill.totalAmount != null && (
+                <span className="text-sm font-semibold text-brand">€{Number(bill.totalAmount).toFixed(2)}</span>
+              )}
+              <Tag color={billStatusColors[bill.status] || "default"} className="rounded-full text-xs">
+                {bill.status.replace(/_/g, " ")}
+              </Tag>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const renderCaseTab = () => {
+    if (casesLoading) return <div className="flex justify-center py-8"><Spin /></div>;
+    if (cases.length === 0) {
+      return <p className="py-6 text-center text-sm text-owngray">{t("client_management.no_cases")}</p>;
+    }
+    return (
+      <div className="space-y-2">
+        {cases.map((c: ICase) => (
+          <div key={c.id} className="rounded-lg border border-cborder/45 p-3">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-sm font-semibold text-brand">
+                {c.caseNumber || c.id.slice(0, 8)}
+              </span>
+              <Tag color={caseStatusColors[c.status] || "default"} className="rounded-full text-xs">
+                {c.status.replace(/_/g, " ")}
+              </Tag>
+            </div>
+            <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-owngray">
+              <span>{t("client_management.case_type")}: <span className="text-brand">{c.caseType.replace(/_/g, " ")}</span></span>
+              {c.toSupplier && (
+                <span>{t("client_management.case_supplier")}: <span className="text-brand">{c.toSupplier.name}</span></span>
+              )}
+              <span>{t("client_management.case_priority")}: <span className="text-brand">{c.priority}</span></span>
+              <span>{t("client_management.case_created")}: <span className="text-brand">{formatDate(c.createdAt)}</span></span>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const renderGdprTab = () => {
+    if (!preferences) {
+      return <p className="py-6 text-center text-sm text-owngray">{t("client_management.no_gdpr_data")}</p>;
+    }
+    return (
+      <div className="space-y-3">
+        <div className="rounded-lg border border-cborder/45 p-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <p className="text-sm text-owngray">{t("client_management.gdpr_consent")}</p>
+              <p className="text-[15px] font-semibold text-brand">
+                {preferences.gdprConsentAt
+                  ? <Tag color="green" className="rounded-full">{t("client_management.gdpr_consent_given")}</Tag>
+                  : <Tag color="red" className="rounded-full">{t("client_management.gdpr_consent_not_given")}</Tag>
+                }
+              </p>
+            </div>
+            {preferences.gdprConsentAt && (
+              <div>
+                <p className="text-sm text-owngray">{t("client_management.gdpr_consent_date")}</p>
+                <p className="text-[15px] font-semibold text-brand">{formatDate(preferences.gdprConsentAt)}</p>
+              </div>
+            )}
+            <div>
+              <p className="text-sm text-owngray">{t("client_management.marketing_consent")}</p>
+              <p className="text-[15px] font-semibold text-brand">
+                {preferences.marketingConsent
+                  ? <Tag color="green" className="rounded-full">{t("common.yes")}</Tag>
+                  : <Tag color="red" className="rounded-full">{t("common.no")}</Tag>
+                }
+              </p>
+            </div>
+            {preferences.contactPreference && (
+              <div>
+                <p className="text-sm text-owngray">{t("client_management.contact_preference")}</p>
+                <p className="text-[15px] font-semibold text-brand">{preferences.contactPreference}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const tabContent: Record<string, () => JSX.Element | null> = {
+    anagrafica: renderAnagraficaTab,
+    forniture: renderFornitureTab,
+    bollette: renderBolletteTab,
+    case: renderCaseTab,
+    gdpr: renderGdprTab,
+  };
+
   return (
     <Modal
       open={open}
@@ -97,109 +390,94 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
         </div>
       ) : detail ? (
         <div className="pt-2">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-start gap-3">
-              <Avatar size={50} className="bg-indigo-500">
-                {detail.firstName?.charAt(0) || detail.email.charAt(0)}
-              </Avatar>
-              <div>
-                <h3 className="text-[30px] font-semibold leading-tight text-brand">
-                  {detail.firstName} {detail.lastName}
-                </h3>
-                <p className="text-owngray">{detail.email}</p>
-                <Tag
-                  color={statusClass[displayStatus as CustomerStatus] || "default"}
-                  className="mt-1 rounded-full"
-                >
-                  {t(statusTranslationKeys[displayStatus] || displayStatus)}
-                </Tag>
-              </div>
+          {/* Header: Avatar + Name + Email + Status */}
+          <div className="flex items-start gap-3">
+            <Avatar size={50} className="bg-indigo-500 flex-shrink-0">
+              {detail.firstName?.charAt(0) || detail.email.charAt(0)}
+            </Avatar>
+            <div>
+              <h3 className="text-[22px] font-semibold leading-tight text-brand">
+                {detail.firstName} {detail.lastName}
+              </h3>
+              <p className="text-sm text-owngray">{detail.email}</p>
+              <Tag
+                color={statusClass[displayStatus as CustomerStatus] || "default"}
+                className="mt-1 rounded-full"
+              >
+                {t(statusTranslationKeys[displayStatus] || displayStatus)}
+              </Tag>
             </div>
           </div>
 
-          <div className="mt-4 space-y-2 text-[15px] text-gray-700">
+          {/* Contact info */}
+          <div className="mt-4 space-y-1.5 text-[14px] text-gray-700">
             {detail.phone && (
               <p className="flex items-center gap-2">
-                <FiPhone /> {detail.phone}
+                <FiPhone className="h-3.5 w-3.5 text-owngray" /> {detail.phone}
               </p>
             )}
             <p className="flex items-center gap-2">
-              <FiMail /> {detail.email}
+              <FiMail className="h-3.5 w-3.5 text-owngray" /> {detail.email}
             </p>
             {detail.codiceFiscale && (
               <p className="flex items-center gap-2">
-                <FiFileText /> {t("client_management.codice_fiscale_label")}: {detail.codiceFiscale}
+                <FiFileText className="h-3.5 w-3.5 text-owngray" /> {t("client_management.codice_fiscale_label")}: {detail.codiceFiscale}
               </p>
             )}
             {primaryAddress && (
               <p className="flex items-center gap-2">
-                <FiMapPin /> {primaryAddress.streetAddress}, {primaryAddress.city}
+                <FiMapPin className="h-3.5 w-3.5 text-owngray" /> {primaryAddress.streetAddress}, {primaryAddress.city}
                 {primaryAddress.postalCode ? ` ${primaryAddress.postalCode}` : ""}
               </p>
             )}
           </div>
 
-          <Divider />
+          {/* Assigned operator */}
+          {assignedOperator && (
+            <>
+              <Divider className="my-3" />
+              <div className="flex items-center gap-2.5">
+                <Avatar size={32} className="bg-gray-200 text-gray-600 text-xs">
+                  {assignedOperator.firstName?.charAt(0) || "O"}
+                </Avatar>
+                <div>
+                  <p className="text-xs text-owngray">{t("client_management.assigned_operator")}</p>
+                  <p className="text-sm font-semibold text-brand">
+                    {assignedOperator.firstName} {assignedOperator.lastName}
+                  </p>
+                </div>
+              </div>
+            </>
+          )}
 
+          <Divider className="my-3" />
+
+          {/* Tabs */}
           <Tabs
-            defaultActiveKey="anagrafica"
+            activeKey={activeTab}
+            onChange={setActiveTab}
             items={[
               { key: "anagrafica", label: t("client_management.tab_personal_data") },
-              { key: "forniture", label: `${t("client_management.tab_supplies")} (${detail.billCount ?? 0})` },
-              { key: "bollette", label: t("client_management.tab_bills") },
-              { key: "case", label: t("client_management.tab_cases") },
+              { key: "forniture", label: `${t("client_management.tab_supplies")}${supplies.length ? ` (${supplies.length})` : ""}` },
+              { key: "bollette", label: `${t("client_management.tab_bills")}${bills.length ? ` (${bills.length})` : ""}` },
+              { key: "case", label: `${t("client_management.tab_cases")}${cases.length ? ` (${cases.length})` : ""}` },
               { key: "gdpr", label: t("client_management.tab_gdpr") },
             ]}
           />
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <p className="mb-2 text-base font-semibold text-brand">{t("client_management.personal_data")}</p>
-              <p className="text-sm text-owngray">{t("client_management.email_label")}</p>
-              <p className="mb-2 text-[15px] font-semibold text-brand">{detail.email}</p>
-              {detail.phone && (
-                <>
-                  <p className="text-sm text-owngray">{t("client_management.telephone")}</p>
-                  <p className="mb-2 text-[15px] font-semibold text-brand">{detail.phone}</p>
-                </>
-              )}
-              {detail.codiceFiscale && (
-                <>
-                  <p className="text-sm text-owngray">{t("client_management.codice_fiscale_label")}</p>
-                  <p className="mb-2 text-[15px] font-semibold text-brand">{detail.codiceFiscale}</p>
-                </>
-              )}
-            </div>
-            <div>
-              <p className="mb-2 text-base font-semibold text-brand">{t("client_management.other_info")}</p>
-              <p className="text-sm text-owngray">{t("client_management.payment_method")}</p>
-              <p className="mb-2 text-[15px] font-semibold text-brand">
-                {preferences?.paymentMethod
-                  ? t(`client_management.payment_${preferences.paymentMethod}`, { defaultValue: preferences.paymentMethod })
-                  : "—"}
-              </p>
-              <p className="text-sm text-owngray">{t("client_management.invoice_type")}</p>
-              <p className="mb-2 text-[15px] font-semibold text-brand">
-                {preferences?.invoiceDelivery
-                  ? t(`client_management.invoice_${preferences.invoiceDelivery}`, { defaultValue: preferences.invoiceDelivery })
-                  : "—"}
-              </p>
-              <p className="text-sm text-owngray">{t("client_management.language_label")}</p>
-              <p className="text-[15px] font-semibold text-brand">
-                {preferences?.language
-                  ? t(`client_management.lang_${preferences.language}`, { defaultValue: preferences.language })
-                  : "—"}
-              </p>
-            </div>
+          {/* Tab content */}
+          <div className="min-h-[120px]">
+            {tabContent[activeTab]?.()}
           </div>
 
-          <Divider />
+          <Divider className="my-3" />
 
-          <div className="flex flex-col gap-2">
+          {/* Action buttons — side by side */}
+          <div className="flex gap-3">
             <Button
               type="primary"
               icon={<FiEdit3 />}
-              className="w-full pb-0.5!"
+              className="flex-1 pb-0.5!"
               size="large"
               loading={resetting}
               onClick={handleResetPassword}
@@ -209,7 +487,7 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
             <Button
               danger={detail.status !== "suspended"}
               icon={detail.status === "suspended" ? <FiUnlock /> : <FiLock />}
-              className="w-full pb-0.5!"
+              className="flex-1 pb-0.5!"
               size="large"
               loading={toggling}
               onClick={handleToggleStatus}

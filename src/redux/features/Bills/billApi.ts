@@ -133,6 +133,7 @@ export interface IBillQuery {
   dateFrom?: string;
   dateTo?: string;
   source?: string;
+  userId?: string;
 }
 
 export interface IOfferWithSavings {
@@ -175,6 +176,7 @@ const billApi = baseApi.injectEndpoints({
           if (params.dateFrom) qp.set("dateFrom", params.dateFrom);
           if (params.dateTo) qp.set("dateTo", params.dateTo);
           if (params.source) qp.set("source", params.source);
+          if (params.userId) qp.set("userId", params.userId);
         }
         return { url: `bills/admin?${qp.toString()}`, method: "GET" };
       },
