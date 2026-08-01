@@ -94,9 +94,6 @@ const SupplierDetails = () => {
   const { iconKey, color, bg, displayStatus } = getVisuals(supplier);
   const offers = supplier.offers || [];
   const activeOffers = offers.filter((o) => o.isActive);
-  const avgCommission =
-    (Number(supplier.commissionElectricity || 0) + Number(supplier.commissionGas || 0)) / 2;
-
   const editInitialValues: Record<string, unknown> = {
     brandName: supplier.name,
     legalName: supplier.legalName,
@@ -112,8 +109,6 @@ const SupplierDetails = () => {
     zipCode: supplier.zipCode,
     country: supplier.country,
     iban: supplier.iban,
-    commElectricity: supplier.commissionElectricity ? Number(supplier.commissionElectricity) : undefined,
-    commGas: supplier.commissionGas ? Number(supplier.commissionGas) : undefined,
     startDate: supplier.contractStartDate ? dayjs(supplier.contractStartDate) : undefined,
     notes: supplier.notes,
   };
@@ -186,7 +181,7 @@ const SupplierDetails = () => {
   const tabs: { key: TabKey; label: string }[] = [
     { key: "overview", label: "Overview" },
     { key: "offers", label: `Offers (${offers.length})` },
-    { key: "billing", label: "Billing & Commissions" },
+    { key: "billing", label: "Billing" },
   ];
 
   const contractDate = supplier.contractStartDate
@@ -234,10 +229,9 @@ const SupplierDetails = () => {
       </div>
 
       {/* Meta cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
         {[
           { label: "Active Offers", value: activeOffers.length },
-          { label: "Avg. Commission", value: `€${Math.round(avgCommission)}` },
           { label: "Commodity", value: supplier.commodity ? supplier.commodity.charAt(0).toUpperCase() + supplier.commodity.slice(1) : "—" },
           { label: "Contract Since", value: contractDate },
         ].map((c) => (
@@ -343,12 +337,10 @@ const SupplierDetails = () => {
 
       {activeTab === "billing" && (
         <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
-          <h3 className="mb-4 text-base font-semibold text-slate-800">Billing &amp; Commissions</h3>
+          <h3 className="mb-4 text-base font-semibold text-slate-800">Billing</h3>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <InfoRow label="IBAN" value={supplier.iban ? <span className="font-mono">{supplier.iban}</span> : null} />
             <InfoRow label="Contract Start Date" value={contractDate} />
-            <InfoRow label="Commission Per Electricity Contract" value={supplier.commissionElectricity ? `€${Number(supplier.commissionElectricity)}` : null} />
-            <InfoRow label="Commission Per Gas Contract" value={supplier.commissionGas ? `€${Number(supplier.commissionGas)}` : null} />
           </div>
         </div>
       )}

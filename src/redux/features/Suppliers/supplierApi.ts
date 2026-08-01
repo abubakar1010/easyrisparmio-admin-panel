@@ -38,8 +38,6 @@ export interface ISupplier {
   zipCode: string | null;
   country: string | null;
   iban: string | null;
-  commissionElectricity: number | null;
-  commissionGas: number | null;
   contractStartDate: string | null;
   notes: string | null;
   supplierCode: string | null;
@@ -75,8 +73,6 @@ export interface ICreateSupplier {
   zipCode?: string;
   country?: string;
   iban?: string;
-  commissionElectricity?: number;
-  commissionGas?: number;
   contractStartDate?: string;
   notes?: string;
   supplierCode?: string;

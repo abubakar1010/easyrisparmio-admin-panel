@@ -1,7 +1,7 @@
 import { Button, Input, Tabs, Tag } from "antd";
 import { FiArrowLeft, FiMessageSquare, FiUpload } from "react-icons/fi";
 import { HiOutlineDocumentText } from "react-icons/hi2";
-import { LuBadgeDollarSign, LuClipboardCheck, LuFileCheck2, LuMessageCircle } from "react-icons/lu";
+import { LuClipboardCheck, LuFileCheck2, LuMessageCircle } from "react-icons/lu";
 import { useNavigate } from "react-router";
 
 type StepItem = {
@@ -185,16 +185,6 @@ const CaseDetailsView = () => {
               children: (
                 <div className="p-4">
                   <Input.TextArea rows={4} placeholder="Add internal notes..." />
-                </div>
-              ),
-            },
-            {
-              key: "commission",
-              label: "Commission",
-              children: (
-                <div className="flex min-h-[180px] flex-col items-center justify-center gap-2 p-4 text-slate-400">
-                  <LuBadgeDollarSign className="h-10 w-10" />
-                  <p>Commission details will appear here</p>
                 </div>
               ),
             },

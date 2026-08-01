@@ -30,7 +30,6 @@ const sidebarI18nKeys: Record<string, string> = {
   "Agreement Section": "sidebar.agreement_section",
   "Referrals": "sidebar.referrals",
   "Support": "sidebar.support",
-  "Commission": "sidebar.commission",
   "Settings": "sidebar.settings",
 };
 

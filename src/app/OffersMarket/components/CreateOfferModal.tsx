@@ -104,7 +104,7 @@ export const CreateOfferModal = ({
       energyType: values.commodity?.toLowerCase(),
       marketType: values.priceType?.toLowerCase(),
       offerStatus: values.status?.toLowerCase() || "draft",
-      activationCost: values.commission ?? 0,
+      activationCost: values.activationCost ?? 0,
       fixedMonthlyFee: values.fixedMonthlyFee ?? 0,
       pricePerKwh: values.pricePerKwh ?? undefined,
       pricePerSmc: values.pricePerSmc ?? undefined,
@@ -254,7 +254,7 @@ export const CreateOfferModal = ({
             />
           </Form.Item>
           <Form.Item
-            name="commission"
+            name="activationCost"
             label="Activation Cost (EUR)"
             rules={[{ required: true, message: "Required" }]}
           >

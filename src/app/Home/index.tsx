@@ -1,10 +1,8 @@
 import { Spin } from "antd";
 import { useGetAdminDashboardQuery } from "../../redux/features/Dashboard/dashboardApi";
 import { KpiStatCards } from "../../components/home/KpiStatCards";
-import { KpiFinancialCards } from "../../components/home/KpiFinancialCards";
 import { PriorityTasksCard } from "../../components/home/PriorityTasksCard";
 import { ConversionFunnelCard } from "../../components/home/ConversionFunnelCard";
-import { RevenueTrendCard } from "../../components/home/RevenueTrendCard";
 import { ActiveAlertsCard } from "../../components/home/ActiveAlertsCard";
 import { RecentActivityCard } from "../../components/home/RecentActivityCard";
 import { HomeTopBar } from "../../components/home/HomeTopBar";
@@ -26,18 +24,14 @@ const Home = () => {
 
       <section className="space-y-3 sm:space-y-4">
         <KpiStatCards data={data?.kpiStats} />
-        <KpiFinancialCards data={data?.financialKpis} />
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-3 lg:gap-5 xl:gap-6">
+      <section className="grid gap-4 lg:grid-cols-2 lg:gap-5 xl:gap-6">
         <div className="lg:col-span-1">
           <PriorityTasksCard data={data?.priorityTasks} />
         </div>
         <div className="lg:col-span-1">
           <ConversionFunnelCard data={data?.conversionFunnel} />
-        </div>
-        <div className="lg:col-span-1">
-          <RevenueTrendCard data={data?.revenueTrend} />
         </div>
       </section>
 

@@ -12,12 +12,6 @@ export interface AdminDashboardData {
     conversionRate: KpiDelta;
     avgProcessingTime: KpiDelta;
   };
-  financialKpis: {
-    acquisitionCommission: { total: number; count: number };
-    recurringCommission: { total: number; count: number };
-    pendingRevenue: { total: number; count: number };
-    churnRate: number;
-  };
   priorityTasks: {
     missingDocuments: number;
     expiringContracts: number;
@@ -32,12 +26,6 @@ export interface AdminDashboardData {
     rejected: number;
     conversionRate: number;
   };
-  revenueTrend: Array<{
-    month: string;
-    potential: number;
-    validated: number;
-    collected: number;
-  }>;
   activeAlerts: Array<{
     id: string;
     alertType: string;

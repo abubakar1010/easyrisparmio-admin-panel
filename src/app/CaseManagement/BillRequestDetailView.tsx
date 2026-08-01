@@ -23,7 +23,6 @@ import {
   LuFilePlus2,
   LuMessageSquare,
   LuScanLine,
-  LuBadgeDollarSign,
   LuClock3,
   LuDownload,
   LuBrain,
@@ -1097,7 +1096,6 @@ const caseSubTabs = [
   { key: "case_data", label: "Case Data" },
   { key: "documents", label: "Documents", counted: true },
   { key: "contract", label: "Contract" },
-  { key: "commission", label: "Commission" },
 ] as const;
 
 function CaseDetailsTab({ caseId }: { caseId: string | null }) {
@@ -1182,8 +1180,6 @@ function CaseDetailsTab({ caseId }: { caseId: string | null }) {
         return <CaseDocumentsSection documents={caseData.documents || []} caseId={caseData.id} />;
       case "contract":
         return <CaseContractSection caseData={caseData} />;
-      case "commission":
-        return <CaseCommissionSection caseData={caseData} />;
       default:
         return null;
     }
@@ -1729,41 +1725,6 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
         )}
       </Modal>
     </>
-  );
-}
-
-function CaseCommissionSection({ caseData }: { caseData: ICase }) {
-  return (
-    <div className="space-y-6">
-      <div className="rounded-xl bg-slate-900 p-6 text-white">
-        <span className="text-sm text-slate-300">Estimated Annual Value</span>
-        <p className="mt-3 flex items-center gap-2 text-3xl font-bold">
-          <LuBadgeDollarSign className="h-6 w-6 text-emerald-400" />
-          {caseData.estimatedAnnualValue
-            ? `€${Number(caseData.estimatedAnnualValue).toFixed(2)}`
-            : "—"}
-        </p>
-      </div>
-      {caseData.contract && (
-        <div>
-          <h4 className="text-sm font-semibold text-slate-800 mb-4">Contract Info</h4>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <span className="text-xs text-slate-400">Contract Number</span>
-              <p className="text-sm font-medium text-slate-700">
-                {caseData.contract.contractNumber}
-              </p>
-            </div>
-            <div>
-              <span className="text-xs text-slate-400">Status</span>
-              <p className="text-sm font-medium text-slate-700 capitalize">
-                {caseData.contract.status}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
   );
 }
 

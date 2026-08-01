@@ -99,7 +99,7 @@ const OffersMarket = () => {
     commodity: offer.energyType,
     priceType: offer.marketType,
     status: offer.offerStatus,
-    commission: offer.activationCost,
+    activationCost: offer.activationCost,
     fixedMonthlyFee: offer.fixedMonthlyFee,
     pricePerKwh: offer.pricePerKwh,
     pricePerSmc: offer.pricePerSmc,
@@ -199,7 +199,7 @@ const OffersMarket = () => {
       responsive: ["lg"],
     },
     {
-      title: "COMMISSION",
+      title: "ACTIVATION COST",
       dataIndex: "activationCost",
       key: "activationCost",
       render: (val) => (
@@ -305,7 +305,7 @@ const OffersMarket = () => {
         {[
           { title: "Total Offers", value: String(totalOffers), icon: <LuTag className="h-6 w-6" />, color: "bg-blue-50 text-blue-500" },
           { title: "Active", value: String(activeCount), icon: <LuLeaf className="h-6 w-6" />, color: "bg-emerald-50 text-emerald-500" },
-          { title: "Avg Commission", value: "—", icon: <LuLeaf className="h-6 w-6" />, color: "bg-emerald-50 text-emerald-500" },
+          { title: "Avg Activation Cost", value: "—", icon: <LuLeaf className="h-6 w-6" />, color: "bg-emerald-50 text-emerald-500" },
           { title: "Suppliers", value: String(new Set(offers.map((o) => o.supplierId)).size), icon: <LuTrendingUp className="h-6 w-6" />, color: "bg-purple-50 text-purple-500" },
         ].map((kpi, idx) => (
           <Card key={idx} className="border-slate-100 shadow-sm rounded-2xl overflow-hidden [&_.ant-card-body]:p-5">

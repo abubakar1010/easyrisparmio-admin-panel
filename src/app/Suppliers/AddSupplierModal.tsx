@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Modal, Form, Input, InputNumber, Select, DatePicker, Button, message } from "antd";
+import { Modal, Form, Input, Select, DatePicker, Button, message } from "antd";
 import { FiX } from "react-icons/fi";
 import dayjs from "dayjs";
 import {
@@ -50,8 +50,6 @@ const AddSupplierModal = ({ isOpen, onClose, mode = "add", supplierId, initialVa
       zipCode: values.zipCode || undefined,
       country: values.country || undefined,
       iban: values.iban || undefined,
-      commissionElectricity: values.commElectricity ?? undefined,
-      commissionGas: values.commGas ?? undefined,
       contractStartDate: values.startDate ? dayjs(values.startDate).format("YYYY-MM-DD") : undefined,
       notes: values.notes || undefined,
     };
@@ -165,18 +163,12 @@ const AddSupplierModal = ({ isOpen, onClose, mode = "add", supplierId, initialVa
           </div>
         </section>
 
-        {/* Billing & Commissions */}
+        {/* Billing */}
         <section>
-          <h3 className="text-[15px] font-bold text-slate-800 mb-4 px-1">Billing & Commissions</h3>
+          <h3 className="text-[15px] font-bold text-slate-800 mb-4 px-1">Billing</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
             <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">IBAN</span>} name="iban" className="md:col-span-2">
               <Input placeholder="Enter IBAN" className="rounded-lg h-10 border-slate-200 font-mono" />
-            </Form.Item>
-            <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Commission Per Electricity Contract</span>} name="commElectricity">
-              <InputNumber min={0} controls={false} prefix="€" placeholder="Enter amount" className="w-full! rounded-lg [&_.ant-input-number-input]:h-10 border-slate-200" />
-            </Form.Item>
-            <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Commission Per Gas Contract</span>} name="commGas">
-              <InputNumber min={0} controls={false} prefix="€" placeholder="Enter amount" className="w-full! rounded-lg [&_.ant-input-number-input]:h-10 border-slate-200" />
             </Form.Item>
             <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Contact Start Date</span>} name="startDate">
               <DatePicker className="w-full rounded-lg h-10 border-slate-200" />

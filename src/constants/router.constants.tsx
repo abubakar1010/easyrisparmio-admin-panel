@@ -14,7 +14,6 @@ import {
   LuClipboardCheck,
   LuGift,
   LuMessageCircle,
-  LuPercent,
   LuBuilding2,
   LuCircleHelp,
   LuBookOpen,
@@ -40,7 +39,6 @@ import TicketDetailsView from "../app/SupportTicket/TicketDetailsView";
 import SupportTopics from "../app/SupportTopics";
 import FAQManagement from "../app/FAQManagement";
 import StaticPages from "../app/StaticPages";
-import Commission from "../app/Commission";
 
 export const dashboardItems: DashboardItem[] = [
   {
@@ -205,13 +203,6 @@ export const dashboardItems: DashboardItem[] = [
     icon: LuBookOpen,
     role: [ROLE.ADMIN],
     element: <StaticPages />,
-  },
-  {
-    name: "Commission",
-    path: "commission",
-    icon: LuPercent,
-    role: [ROLE.ADMIN],
-    element: <Commission />,
   },
   // {
   //   name: "Requests",
