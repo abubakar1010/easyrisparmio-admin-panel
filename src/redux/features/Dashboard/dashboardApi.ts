@@ -3,6 +3,7 @@ import { baseApi } from "../../api/baseApi";
 export interface KpiDelta {
   value: number;
   delta: number;
+  sparkline: number[];
 }
 
 export interface AdminDashboardData {

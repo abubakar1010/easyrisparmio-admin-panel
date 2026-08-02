@@ -19,6 +19,7 @@ export function KpiStatCards({ data }: Props) {
       value: s ? s.totalSwitches.value.toLocaleString() : "—",
       delta: s ? formatDelta(s.totalSwitches.delta, t("dashboard.vs_last_month")) : "",
       deltaPositive: (s?.totalSwitches.delta ?? 0) >= 0,
+      sparkline: s?.totalSwitches.sparkline,
       icon: <LuFileStack className="h-5 w-5 text-white" />,
       iconBg: "bg-[#8B5CF6]",
     },
@@ -27,6 +28,7 @@ export function KpiStatCards({ data }: Props) {
       value: s ? s.activeCustomers.value.toLocaleString() : "—",
       delta: s ? formatDelta(s.activeCustomers.delta, t("dashboard.growth")) : "",
       deltaPositive: (s?.activeCustomers.delta ?? 0) >= 0,
+      sparkline: s?.activeCustomers.sparkline,
       icon: <LuUsers className="h-5 w-5 text-white" />,
       iconBg: "bg-[#3B82F6]",
     },
@@ -35,6 +37,7 @@ export function KpiStatCards({ data }: Props) {
       value: s ? `${s.conversionRate.value}%` : "—",
       delta: s ? formatDelta(s.conversionRate.delta, t("dashboard.improvement")) : "",
       deltaPositive: (s?.conversionRate.delta ?? 0) >= 0,
+      sparkline: s?.conversionRate.sparkline,
       icon: <FiCheckCircle className="h-5 w-5 text-white" />,
       iconBg: "bg-[#22C55E]",
     },
@@ -43,6 +46,7 @@ export function KpiStatCards({ data }: Props) {
       value: s ? `${s.avgProcessingTime.value} ${t("dashboard.days")}` : "—",
       delta: s ? formatTimeDelta(s.avgProcessingTime.delta, t) : "",
       deltaPositive: (s?.avgProcessingTime.delta ?? 0) <= 0,
+      sparkline: s?.avgProcessingTime.sparkline,
       icon: <LuClock className="h-5 w-5 text-white" />,
       iconBg: "bg-[#F97316]",
     },
@@ -57,7 +61,7 @@ export function KpiStatCards({ data }: Props) {
         >
           <div className="flex items-start justify-between gap-2">
             <div className={`${iconWrap} ${item.iconBg}`}>{item.icon}</div>
-            <MiniSparkline positive={item.deltaPositive} />
+            <MiniSparkline positive={item.deltaPositive} data={item.sparkline} />
           </div>
           <p className="mt-4 text-xs font-medium text-owngray">{item.label}</p>
           <p className="mt-1 text-2xl font-bold tracking-tight text-brand sm:text-[26px]">{item.value}</p>
