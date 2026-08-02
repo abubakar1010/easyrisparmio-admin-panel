@@ -120,6 +120,7 @@ export const baseApi = createApi({
     "auth", "user", "setting", "meter", "dashboard", "supplier",
     "case", "offer", "bill", "contract", "referral",
     "notification", "agreement", "support", "faq", "support-topic", "static-page",
+    "activityLog",
   ],
   endpoints: () => ({}),
 });
