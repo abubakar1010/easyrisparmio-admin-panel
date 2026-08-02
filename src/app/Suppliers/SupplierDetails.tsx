@@ -8,7 +8,6 @@ import {
   FiMail,
   FiMapPin,
   FiPhone,
-  FiPlus,
   FiTrash2,
   FiUser,
 } from "react-icons/fi";
@@ -16,7 +15,6 @@ import { LuDatabase, LuFlame, LuGlobe, LuZap } from "react-icons/lu";
 import { useNavigate, useParams } from "react-router";
 import dayjs from "dayjs";
 import AddSupplierModal from "./AddSupplierModal";
-import { CreateOfferModal } from "../OffersMarket/components/CreateOfferModal";
 import {
   useGetSupplierByIdQuery,
   useUpdateSupplierMutation,
@@ -70,7 +68,6 @@ const SupplierDetails = () => {
 
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const [editOpen, setEditOpen] = useState(false);
-  const [offerOpen, setOfferOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -222,9 +219,6 @@ const SupplierDetails = () => {
           <Button icon={<FiEdit2 />} onClick={() => setEditOpen(true)} className="h-10 rounded-lg font-medium">
             Edit Supplier
           </Button>
-          <Button type="primary" icon={<FiPlus />} onClick={() => setOfferOpen(true)} className="h-10 rounded-lg bg-[#8b85f6] font-semibold hover:bg-[#7a74e5]">
-            Add Offer
-          </Button>
         </div>
       </div>
 
@@ -316,11 +310,7 @@ const SupplierDetails = () => {
         <div className="rounded-2xl border border-slate-200/70 bg-white p-3 shadow-sm">
           {offers.length === 0 ? (
             <div className="py-12">
-              <Empty description="No offers yet">
-                <Button type="primary" icon={<FiPlus />} onClick={() => setOfferOpen(true)} className="rounded-lg bg-[#8b85f6] font-semibold hover:bg-[#7a74e5]">
-                  Add Offer
-                </Button>
-              </Empty>
+              <Empty description="No offers yet" />
             </div>
           ) : (
             <Table<SupplierOffer>
@@ -352,7 +342,6 @@ const SupplierDetails = () => {
         supplierId={supplier.id}
         initialValues={editInitialValues}
       />
-      <CreateOfferModal open={offerOpen} onClose={() => setOfferOpen(false)} />
     </div>
   );
 };
