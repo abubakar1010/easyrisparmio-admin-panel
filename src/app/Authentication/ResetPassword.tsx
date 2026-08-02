@@ -63,7 +63,11 @@ const ResetPassword = () => {
             name="password"
             rules={[
               { required: true, message: t("auth.please_input_new_password") },
-              { min: 8, message: t("auth.password_must_be_8_10_chars") },
+              { min: 8, message: t("auth.password_min_8_chars") },
+              { pattern: /(?=.*[a-z])/, message: t("auth.password_needs_lowercase") },
+              { pattern: /(?=.*[A-Z])/, message: t("auth.password_needs_uppercase") },
+              { pattern: /(?=.*\d)/, message: t("auth.password_needs_number") },
+              { pattern: /(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?])/, message: t("auth.password_needs_special") },
             ]}
             className="mb-5"
           >

@@ -578,8 +578,12 @@
     "entity_id": "ID entita'",
     "admin": "Admin",
     "time": "Data/Ora",
+    "actions": "Azioni",
     "search_placeholder": "Cerca per azione...",
     "filter_entity_type": "Tipo entita'",
-    "no_data": "Nessun log di attivita' trovato"
+    "no_data": "Nessun log di attivita' trovato",
+    "detail_title": "Dettagli attivita'",
+    "details": "Dettagli aggiuntivi",
+    "view_entity": "Visualizza entita'"
   }
 }

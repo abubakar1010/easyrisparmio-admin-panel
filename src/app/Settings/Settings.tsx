@@ -2,23 +2,33 @@ import { Button, Card, Form, Input, Upload, Avatar, Typography, message, Select 
 import type { UploadFile, UploadProps } from "antd";
 import { useState } from "react";
 import { FiUser, FiLock, FiSave, FiGlobe } from "react-icons/fi";
-import { useNavigate } from "react-router";
 import { useAppSelector, useAppDispatch } from "../../redux/hooks";
 import { getRoleLabel } from "../../lib/helpers/getRoleLabel";
 import type { TUserRole } from "../../types/common.type";
-import { useUpdateProfileMutation } from "../../redux/features/Auth/authApi";
+import { useUpdateProfileMutation, useChangePasswordMutation } from "../../redux/features/Auth/authApi";
 import { setUser } from "../../redux/features/Auth/authSlice";
 import { useTranslation } from "react-i18next";
 import { supportedLanguages } from "../../constants/language.contants";
+import { errorAlert } from "../../lib/helpers/alert";
 
 const { Title, Text } = Typography;
 
+const passwordRules = (t: (key: string) => string) => [
+  { required: true, message: t("auth.please_input_new_password") },
+  { min: 8, message: t("auth.password_min_8_chars") },
+  { pattern: /(?=.*[a-z])/, message: t("auth.password_needs_lowercase") },
+  { pattern: /(?=.*[A-Z])/, message: t("auth.password_needs_uppercase") },
+  { pattern: /(?=.*\d)/, message: t("auth.password_needs_number") },
+  { pattern: /(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?])/, message: t("auth.password_needs_special") },
+];
+
 const Settings = () => {
-  const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { t, i18n } = useTranslation();
   const [profileForm] = Form.useForm();
+  const [passwordForm] = Form.useForm();
   const [updateProfile, { isLoading: isSaving }] = useUpdateProfileMutation();
+  const [changePassword, { isLoading: isChangingPassword }] = useChangePasswordMutation();
   const [fileList, setFileList] = useState<UploadFile[]>([]);
   const [imageUrl, setImageUrl] = useState<string>("/statics/profile.jpg");
   const { user } = useAppSelector((state) => state.auth);
@@ -219,17 +229,80 @@ const Settings = () => {
         }
         styles={{ header: { borderBottom: '1px solid #f1f5f9', padding: '16px 24px' }, body: { padding: '24px' } }}
       >
-        <div className="max-w-[440px]">
-          <p className="text-slate-500 text-sm mb-6">
-            {t("settings.password_reset_flow")}
+        <div className="max-w-[540px]">
+          <p className="text-slate-500 text-sm mb-1">
+            {t("settings.change_password_description")}
           </p>
-          <Button
-            type="primary"
-            onClick={() => navigate("/auth/forgot-password")}
-            className="bg-[#8b85f6] hover:bg-[#7a74e5]! border-none h-11 px-8 rounded-lg font-semibold"
+          <p className="text-slate-400 text-xs mb-6">
+            {t("settings.password_requirements")}
+          </p>
+          <Form
+            form={passwordForm}
+            layout="vertical"
+            onFinish={async (values: { currentPassword: string; newPassword: string; confirmPassword: string }) => {
+              try {
+                await changePassword({
+                  currentPassword: values.currentPassword,
+                  newPassword: values.newPassword,
+                  confirmPassword: values.confirmPassword,
+                }).unwrap();
+                message.success(t("auth.password_changed_success"));
+                passwordForm.resetFields();
+              } catch (err) {
+                errorAlert({ error: err as { data?: { message?: string | string[] } } });
+              }
+            }}
+            className="w-full"
           >
-            {t("settings.reset_password")}
-          </Button>
+            <Form.Item
+              name="currentPassword"
+              label={<span className="text-[14px] font-medium text-slate-600">{t("auth.current_password")}</span>}
+              rules={[{ required: true, message: t("auth.please_input_current_password") }]}
+            >
+              <Input.Password placeholder={t("auth.current_password")} className="h-11 rounded-lg border-slate-200" />
+            </Form.Item>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
+              <Form.Item
+                name="newPassword"
+                label={<span className="text-[14px] font-medium text-slate-600">{t("auth.new_password")}</span>}
+                rules={passwordRules(t)}
+              >
+                <Input.Password placeholder={t("auth.new_password")} className="h-11 rounded-lg border-slate-200" />
+              </Form.Item>
+
+              <Form.Item
+                name="confirmPassword"
+                label={<span className="text-[14px] font-medium text-slate-600">{t("auth.confirm_password")}</span>}
+                dependencies={["newPassword"]}
+                rules={[
+                  { required: true, message: t("auth.please_confirm_password") },
+                  ({ getFieldValue }) => ({
+                    validator(_, value) {
+                      if (!value || getFieldValue("newPassword") === value) {
+                        return Promise.resolve();
+                      }
+                      return Promise.reject(new Error(t("auth.passwords_do_not_match")));
+                    },
+                  }),
+                ]}
+              >
+                <Input.Password placeholder={t("auth.confirm_password")} className="h-11 rounded-lg border-slate-200" />
+              </Form.Item>
+            </div>
+
+            <Form.Item className="mb-0 mt-2">
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={isChangingPassword}
+                icon={<FiLock className="text-lg" />}
+                className="bg-[#8b85f6] hover:bg-[#7a74e5]! border-none h-11 px-6 rounded-lg font-semibold flex items-center gap-2"
+              >
+                {t("settings.change_password")}
+              </Button>
+            </Form.Item>
+          </Form>
         </div>
       </Card>
     </div>

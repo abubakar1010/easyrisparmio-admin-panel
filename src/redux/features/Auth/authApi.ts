@@ -25,6 +25,12 @@ type ResetPasswordPayload = {
   newPassword: string;
 };
 
+type ChangePasswordPayload = {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+};
+
 type TokenResponse = {
   accessToken: string;
   refreshToken: string;
@@ -82,6 +88,15 @@ const authApi = baseApi.injectEndpoints({
       transformResponse: (response: { success: boolean; data: MessageResponse }) =>
         response.data,
     }),
+    changePassword: builder.mutation<MessageResponse, ChangePasswordPayload>({
+      query: (data) => ({
+        url: "auth/change-password",
+        method: "POST",
+        body: data,
+      }),
+      transformResponse: (response: { success: boolean; data: MessageResponse }) =>
+        response.data,
+    }),
     refreshToken: builder.mutation<TokenResponse, { refreshToken: string }>({
       query: (data) => ({
         url: "auth/refresh-token",
@@ -132,6 +147,7 @@ export const {
   useVerifyOtpMutation,
   useResendOtpMutation,
   useResetPasswordMutation,
+  useChangePasswordMutation,
   useRefreshTokenMutation,
   useGetMeQuery,
   useUpdateProfileMutation,
