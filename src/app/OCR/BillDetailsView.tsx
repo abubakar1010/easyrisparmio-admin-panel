@@ -78,7 +78,6 @@ const BillDetailsView = () => {
   const [sendSelectedOffers, { isLoading: isSending }] = useSendSelectedOffersMutation();
   const [requestVerification, { isLoading: isRequestingVerification }] = useRequestVerificationMutation();
   const token = useAppSelector((state) => state.auth.token);
-  const [showRawJson, setShowRawJson] = useState(false);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [savingsOverrides, setSavingsOverrides] = useState<Record<string, number>>({});
   const [docPreviewOpen, setDocPreviewOpen] = useState(false);
@@ -329,51 +328,6 @@ const BillDetailsView = () => {
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Left Column */}
         <div className="space-y-6 lg:col-span-2">
-          {/* OCR Extracted Data */}
-          {ocrData && !ocrData.ocrError && (
-            <Card title="OCR Extracted Data" icon={<FiFileText className="h-4 w-4 text-indigo-500" />}>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <InfoRow label="Supplier (OCR)" value={ocrData.supplierName as string} />
-                <InfoRow label={isElectricity ? "POD Number" : "PDR Number"} value={(isElectricity ? ocrData.podNumber : ocrData.pdrNumber) as string} mono />
-                <InfoRow label="Contract Number" value={ocrData.contractNumber as string} />
-                <InfoRow label="Meter Number" value={ocrData.meterNumber as string} />
-                <InfoRow label="Customer Address" value={ocrData.customerAddress as string} />
-                {ocrData.confidence != null && (
-                  <div>
-                    <p className="text-xs text-slate-400">OCR Confidence</p>
-                    <div className="mt-1 flex items-center gap-2">
-                      <div className="h-2 flex-1 rounded-full bg-slate-100">
-                        <div
-                          className="h-2 rounded-full bg-indigo-500"
-                          style={{ width: `${Number(ocrData.confidence) * 100}%` }}
-                        />
-                      </div>
-                      <span className="text-xs font-semibold text-slate-600">
-                        {(Number(ocrData.confidence) * 100).toFixed(0)}%
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-              {ocrData.rawText && (
-                <div className="mt-4 rounded-lg bg-slate-50 p-3">
-                  <p className="text-xs text-slate-500">{ocrData.rawText as string}</p>
-                </div>
-              )}
-              <button
-                onClick={() => setShowRawJson(!showRawJson)}
-                className="mt-3 text-xs font-medium text-indigo-500 hover:text-indigo-700"
-              >
-                {showRawJson ? "Hide" : "Show"} raw JSON
-              </button>
-              {showRawJson && (
-                <pre className="mt-2 max-h-60 overflow-auto rounded-lg bg-slate-800 p-3 text-xs text-slate-200">
-                  {JSON.stringify(ocrData, null, 2)}
-                </pre>
-              )}
-            </Card>
-          )}
-
           {/* OCR Error */}
           {ocrData?.ocrError && (
             <Card title="OCR Status" icon={<FiFileText className="h-4 w-4 text-red-500" />}>

@@ -938,18 +938,7 @@ function BillDataTab({ bill }: { bill: IBill }) {
               <p className="text-sm font-medium text-slate-700">{fmtDate(analysis.createdAt)}</p>
             </div>
           </div>
-          {analysis.analysisSummary && (
-            <div className="mt-2">
-              <span className="text-xs text-slate-400">Analysis Summary</span>
-              <p className="text-sm text-slate-600 mt-1 bg-slate-50 rounded-lg p-3 leading-relaxed">{analysis.analysisSummary}</p>
-            </div>
-          )}
         </div>
-      )}
-
-      {/* Raw Analysis Data */}
-      {bill.rawAnalysisData && Object.keys(bill.rawAnalysisData).length > 0 && (
-        <RawAnalysisSection data={bill.rawAnalysisData} />
       )}
 
       {/* Document Preview Modal */}
@@ -997,46 +986,6 @@ function BillDataTab({ bill }: { bill: IBill }) {
           </div>
         )}
       </Modal>
-    </div>
-  );
-}
-
-function RawAnalysisSection({ data }: { data: Record<string, unknown> }) {
-  const [expanded, setExpanded] = useState(false);
-
-  const formatKey = (key: string) =>
-    key.replace(/([A-Z])/g, " $1").replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
-
-  const displayEntries = Object.entries(data).filter(
-    ([, v]) => v != null && v !== "" && (typeof v !== "object" || (Array.isArray(v) ? v.length > 0 : Object.keys(v as object).length > 0)),
-  );
-
-  if (displayEntries.length === 0) return null;
-
-  return (
-    <div>
-      <button
-        type="button"
-        onClick={() => setExpanded(!expanded)}
-        className="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2 hover:text-indigo-600 transition-colors"
-      >
-        <LuScanLine className="h-4 w-4 text-amber-500" />
-        Raw Extracted Data
-        <span className="text-xs font-normal text-slate-400">({displayEntries.length} fields)</span>
-        <span className="text-xs text-slate-400">{expanded ? "▲" : "▼"}</span>
-      </button>
-      {expanded && (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {displayEntries.map(([key, value]) => (
-            <div key={key}>
-              <span className="text-xs text-slate-400">{formatKey(key)}</span>
-              <p className="text-sm font-medium text-slate-700 break-words">
-                {typeof value === "object" ? JSON.stringify(value, null, 2) : String(value)}
-              </p>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
