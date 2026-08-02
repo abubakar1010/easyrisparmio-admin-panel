@@ -82,6 +82,8 @@ const contractApi = baseApi.injectEndpoints({
         { type: "case", id: "LIST" },
         { type: "case", id: caseId },
         { type: "bill" },
+        { type: "dashboard", id: "ADMIN" },
+        { type: "activityLog", id: "LIST" },
       ],
     }),
 
@@ -113,6 +115,8 @@ const contractApi = baseApi.injectEndpoints({
           : []),
         { type: "case", id: "LIST" },
         { type: "bill" },
+        { type: "dashboard", id: "ADMIN" },
+        { type: "activityLog", id: "LIST" },
       ],
     }),
 

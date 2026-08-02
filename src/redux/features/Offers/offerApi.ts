@@ -116,7 +116,7 @@ const offerApi = baseApi.injectEndpoints({
     createOffer: builder.mutation<IOffer, ICreateOffer>({
       query: (data) => ({ url: "offers", method: "POST", body: data }),
       transformResponse: (response: { success: boolean; data: IOffer }) => response.data,
-      invalidatesTags: [{ type: "offer", id: "LIST" }],
+      invalidatesTags: [{ type: "offer", id: "LIST" }, { type: "dashboard", id: "ADMIN" }, { type: "activityLog", id: "LIST" }],
     }),
 
     updateOffer: builder.mutation<IOffer, { id: string; data: Partial<ICreateOffer> }>({
@@ -125,6 +125,8 @@ const offerApi = baseApi.injectEndpoints({
       invalidatesTags: (_r, _e, { id }) => [
         { type: "offer", id },
         { type: "offer", id: "LIST" },
+        { type: "dashboard", id: "ADMIN" },
+        { type: "activityLog", id: "LIST" },
       ],
     }),
 
@@ -138,12 +140,14 @@ const offerApi = baseApi.injectEndpoints({
       invalidatesTags: (_r, _e, { id }) => [
         { type: "offer", id },
         { type: "offer", id: "LIST" },
+        { type: "dashboard", id: "ADMIN" },
+        { type: "activityLog", id: "LIST" },
       ],
     }),
 
     deleteOffer: builder.mutation<void, string>({
       query: (id) => ({ url: `offers/${id}`, method: "DELETE" }),
-      invalidatesTags: [{ type: "offer", id: "LIST" }],
+      invalidatesTags: [{ type: "offer", id: "LIST" }, { type: "dashboard", id: "ADMIN" }, { type: "activityLog", id: "LIST" }],
     }),
   }),
 });

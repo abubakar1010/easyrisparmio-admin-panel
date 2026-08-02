@@ -135,6 +135,8 @@ const caseApi = baseApi.injectEndpoints({
           ? [{ type: "bill" as const, id: result.billId }]
           : []),
         { type: "bill" as const, id: "LIST" },
+        { type: "dashboard", id: "ADMIN" },
+        { type: "activityLog", id: "LIST" },
       ],
     }),
 
@@ -160,7 +162,11 @@ const caseApi = baseApi.injectEndpoints({
         url: `cases/${caseId}/documents/${docId}/verify`,
         method: "PATCH",
       }),
-      invalidatesTags: (_r, _e, { caseId }) => [{ type: "case", id: caseId }],
+      invalidatesTags: (_r, _e, { caseId }) => [
+        { type: "case", id: caseId },
+        { type: "dashboard", id: "ADMIN" },
+        { type: "activityLog", id: "LIST" },
+      ],
     }),
   }),
 });

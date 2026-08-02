@@ -218,7 +218,7 @@ const billApi = baseApi.injectEndpoints({
 
     sendOffersToUser: builder.mutation<{ message: string }, string>({
       query: (billId) => ({ url: `bills/admin/${billId}/send-offers`, method: "POST" }),
-      invalidatesTags: (_r, _e, id) => [{ type: "bill", id }, { type: "bill", id: "LIST" }],
+      invalidatesTags: (_r, _e, id) => [{ type: "bill", id }, { type: "bill", id: "LIST" }, { type: "dashboard", id: "ADMIN" }, { type: "activityLog", id: "LIST" }],
     }),
 
     getAllOffersForBill: builder.query<IOfferWithSavings[], string>({
@@ -241,6 +241,8 @@ const billApi = baseApi.injectEndpoints({
         { type: "bill", id: billId },
         { type: "bill", id: "LIST" },
         { type: "offer", id: `bill-offers-${billId}` },
+        { type: "dashboard", id: "ADMIN" },
+        { type: "activityLog", id: "LIST" },
       ],
     }),
 
@@ -261,7 +263,7 @@ const billApi = baseApi.injectEndpoints({
         body: formData,
       }),
       transformResponse: (response: { success: boolean; data: IBill }) => response.data,
-      invalidatesTags: [{ type: "bill", id: "LIST" }],
+      invalidatesTags: [{ type: "bill", id: "LIST" }, { type: "dashboard", id: "ADMIN" }, { type: "activityLog", id: "LIST" }],
     }),
 
     requestVerification: builder.mutation<
@@ -278,6 +280,8 @@ const billApi = baseApi.injectEndpoints({
       invalidatesTags: (_r, _e, { billId }) => [
         { type: "bill", id: billId },
         { type: "bill", id: "LIST" },
+        { type: "dashboard", id: "ADMIN" },
+        { type: "activityLog", id: "LIST" },
       ],
     }),
 
@@ -293,6 +297,8 @@ const billApi = baseApi.injectEndpoints({
       invalidatesTags: (_r, _e, { billId }) => [
         { type: "bill" as const, id: billId },
         { type: "bill" as const, id: "LIST" },
+        { type: "dashboard" as const, id: "ADMIN" },
+        { type: "activityLog" as const, id: "LIST" },
       ],
     }),
   }),

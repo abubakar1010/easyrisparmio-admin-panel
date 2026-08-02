@@ -123,7 +123,7 @@ const supplierApi = baseApi.injectEndpoints({
     createSupplier: builder.mutation<ISupplier, ICreateSupplier>({
       query: (data) => ({ url: "suppliers", method: "POST", body: data }),
       transformResponse: (response: { success: boolean; data: ISupplier }) => response.data,
-      invalidatesTags: [{ type: "supplier", id: "LIST" }],
+      invalidatesTags: [{ type: "supplier", id: "LIST" }, { type: "dashboard", id: "ADMIN" }, { type: "activityLog", id: "LIST" }],
     }),
 
     updateSupplier: builder.mutation<ISupplier, { id: string; data: Partial<ICreateSupplier> }>({
@@ -132,12 +132,14 @@ const supplierApi = baseApi.injectEndpoints({
       invalidatesTags: (_r, _e, { id }) => [
         { type: "supplier", id },
         { type: "supplier", id: "LIST" },
+        { type: "dashboard", id: "ADMIN" },
+        { type: "activityLog", id: "LIST" },
       ],
     }),
 
     deleteSupplier: builder.mutation<void, string>({
       query: (id) => ({ url: `suppliers/${id}`, method: "DELETE" }),
-      invalidatesTags: [{ type: "supplier", id: "LIST" }],
+      invalidatesTags: [{ type: "supplier", id: "LIST" }, { type: "dashboard", id: "ADMIN" }, { type: "activityLog", id: "LIST" }],
     }),
 
     toggleSupplierStatus: builder.mutation<ISupplier, { id: string; isActive: boolean }>({
@@ -150,6 +152,8 @@ const supplierApi = baseApi.injectEndpoints({
       invalidatesTags: (_r, _e, { id }) => [
         { type: "supplier", id },
         { type: "supplier", id: "LIST" },
+        { type: "dashboard", id: "ADMIN" },
+        { type: "activityLog", id: "LIST" },
       ],
     }),
   }),

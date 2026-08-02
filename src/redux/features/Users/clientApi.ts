@@ -42,7 +42,7 @@ const clientApi = baseApi.injectEndpoints({
     createClient: builder.mutation<IClient, ICreateClient>({
       query: (data) => ({ url: "users", method: "POST", body: data }),
       transformResponse: (response: { success: boolean; data: IClient }) => response.data,
-      invalidatesTags: [{ type: "user", id: "LIST" }],
+      invalidatesTags: [{ type: "user", id: "LIST" }, { type: "dashboard", id: "ADMIN" }, { type: "activityLog", id: "LIST" }],
     }),
 
     updateClient: builder.mutation<IClient, { id: string; data: IUpdateClient }>({
@@ -51,12 +51,14 @@ const clientApi = baseApi.injectEndpoints({
       invalidatesTags: (_r, _e, { id }) => [
         { type: "user", id },
         { type: "user", id: "LIST" },
+        { type: "dashboard", id: "ADMIN" },
+        { type: "activityLog", id: "LIST" },
       ],
     }),
 
     deleteClient: builder.mutation<void, string>({
       query: (id) => ({ url: `users/${id}`, method: "DELETE" }),
-      invalidatesTags: [{ type: "user", id: "LIST" }],
+      invalidatesTags: [{ type: "user", id: "LIST" }, { type: "dashboard", id: "ADMIN" }, { type: "activityLog", id: "LIST" }],
     }),
 
     toggleClientStatus: builder.mutation<IClient, string>({
@@ -65,6 +67,8 @@ const clientApi = baseApi.injectEndpoints({
       invalidatesTags: (_r, _e, id) => [
         { type: "user", id },
         { type: "user", id: "LIST" },
+        { type: "dashboard", id: "ADMIN" },
+        { type: "activityLog", id: "LIST" },
       ],
     }),
 
@@ -74,6 +78,7 @@ const clientApi = baseApi.injectEndpoints({
         method: "POST",
         body: { newPassword },
       }),
+      invalidatesTags: [{ type: "dashboard", id: "ADMIN" }, { type: "activityLog", id: "LIST" }],
     }),
 
     getClientPreferences: builder.query<IUserPreference | null, string>({
