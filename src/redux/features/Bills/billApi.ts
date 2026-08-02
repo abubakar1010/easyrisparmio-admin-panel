@@ -47,7 +47,6 @@ export interface IBillAnalysis {
   potentialSavings: number;
   currentMonthlyAvg: number;
   recommendedMarketType: string;
-  analysisSummary: string;
   analysisDetails: Record<string, unknown> | null;
   confidenceScore: number | null;
   recommendedOffers: unknown[] | null;
@@ -209,7 +208,7 @@ const billApi = baseApi.injectEndpoints({
     reanalyzeBill: builder.mutation<IBillAnalysis, string>({
       query: (id) => ({ url: `bills/admin/${id}/reanalyze`, method: "POST" }),
       transformResponse: (response: { success: boolean; data: IBillAnalysis }) => response.data,
-      invalidatesTags: (_r, _e, id) => [{ type: "bill", id }],
+      invalidatesTags: (_r, _e, id) => [{ type: "bill", id }, { type: "bill", id: "LIST" }],
     }),
 
     getRecommendedOffersAdmin: builder.query<unknown[], string>({
@@ -219,7 +218,7 @@ const billApi = baseApi.injectEndpoints({
 
     sendOffersToUser: builder.mutation<{ message: string }, string>({
       query: (billId) => ({ url: `bills/admin/${billId}/send-offers`, method: "POST" }),
-      invalidatesTags: (_r, _e, id) => [{ type: "bill", id }],
+      invalidatesTags: (_r, _e, id) => [{ type: "bill", id }, { type: "bill", id: "LIST" }],
     }),
 
     getAllOffersForBill: builder.query<IOfferWithSavings[], string>({
@@ -240,6 +239,7 @@ const billApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: (_r, _e, { billId }) => [
         { type: "bill", id: billId },
+        { type: "bill", id: "LIST" },
         { type: "offer", id: `bill-offers-${billId}` },
       ],
     }),
