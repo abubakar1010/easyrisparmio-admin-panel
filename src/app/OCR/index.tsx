@@ -1,10 +1,8 @@
-import { useCallback, useMemo, useState } from "react";
-import { Button, Input, Pagination, Select, Spin, Empty, Table, Tag, Upload, message } from "antd";
-import type { ColumnsType } from "antd/es/table";
+import { useMemo, useState } from "react";
+import { Button, Select, Spin, Tag, Upload, message } from "antd";
 import {
   FiCheckCircle,
   FiAlertCircle,
-  FiSearch,
   FiSend,
   FiMail,
   FiFileText,
@@ -12,35 +10,15 @@ import {
   FiUpload,
 } from "react-icons/fi";
 import { HiOutlineDocumentText } from "react-icons/hi2";
-import { LuZap, LuFlame } from "react-icons/lu";
-import { useNavigate } from "react-router";
 import {
   useGetBillsAdminQuery,
   useExtractBillDataMutation,
   useAdminUploadEmailBillMutation,
-  type IBill,
-  type IBillQuery,
   type IBillExtractionResult,
 } from "../../redux/features/Bills/billApi";
 import { useSearchUsersQuery } from "../../redux/features/Users/clientApi";
-import { debounce } from "../../utils/debounce";
 
 const { Dragger } = Upload;
-
-const statusConfig: Record<string, { color: string; label: string }> = {
-  pending_email: { color: "purple", label: "Pending (Email)" },
-  uploaded: { color: "blue", label: "Uploaded" },
-  analyzing: { color: "orange", label: "Analyzing" },
-  analyzed: { color: "green", label: "Analyzed" },
-  error: { color: "red", label: "Error" },
-  verification_required: { color: "volcano", label: "Verification Required" },
-  offer_sent: { color: "cyan", label: "Offer Sent" },
-  case_created: { color: "purple", label: "Case Created" },
-  contract_sent: { color: "gold", label: "Contract Sent" },
-  contract_signed: { color: "orange", label: "Contract Signed" },
-  activated: { color: "green", label: "Activated" },
-  cancelled: { color: "default", label: "Cancelled" },
-};
 
 const confidenceColor: Record<string, string> = {
   high: "bg-emerald-500",
@@ -55,13 +33,6 @@ const confidenceTagColor: Record<string, string> = {
 };
 
 const OCRBills = () => {
-  const navigate = useNavigate();
-  const [queryParams, setQueryParams] = useState<IBillQuery>({ page: 1, limit: 20 });
-  const [search, setSearch] = useState("");
-  const [billTypeFilter, setBillTypeFilter] = useState<string | undefined>();
-  const [statusFilter, setStatusFilter] = useState<string | undefined>();
-  const [sourceFilter, setSourceFilter] = useState<string | undefined>();
-
   // Email bill upload state
   const [emailBillType, setEmailBillType] = useState<"electricity" | "gas">("electricity");
   const [emailUserSearch, setEmailUserSearch] = useState("");
@@ -72,7 +43,7 @@ const OCRBills = () => {
   const [extractedData, setExtractedData] = useState<IBillExtractionResult | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);
 
-  const { data, isLoading, isFetching } = useGetBillsAdminQuery(queryParams);
+  const { data } = useGetBillsAdminQuery({ page: 1, limit: 100 });
   const [extractBillData] = useExtractBillDataMutation();
   const [adminUploadEmailBill, { isLoading: isUploadingEmail }] = useAdminUploadEmailBillMutation();
   const { data: searchedUsers } = useSearchUsersQuery(emailUserSearch, {
@@ -80,7 +51,6 @@ const OCRBills = () => {
   });
 
   const bills = data?.data || [];
-  const meta = data?.meta;
 
   // KPI computed values
   const kpis = useMemo(() => {
@@ -91,35 +61,6 @@ const OCRBills = () => {
     const errors = bills.filter((b) => b.status === "error").length;
     return { uploaded, pendingEmail, offerSent, analyzed, errors };
   }, [bills]);
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const debouncedSearch = useCallback(
-    debounce((value: string) => {
-      setQueryParams((prev) => ({ ...prev, page: 1, search: value || undefined }));
-    }, 500),
-    [],
-  );
-
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setSearch(value);
-    debouncedSearch(value);
-  };
-
-  const handleBillTypeFilter = (value: string | undefined) => {
-    setBillTypeFilter(value);
-    setQueryParams((prev) => ({ ...prev, page: 1, billType: value }));
-  };
-
-  const handleStatusFilter = (value: string | undefined) => {
-    setStatusFilter(value);
-    setQueryParams((prev) => ({ ...prev, page: 1, status: value }));
-  };
-
-  const handleSourceFilter = (value: string | undefined) => {
-    setSourceFilter(value);
-    setQueryParams((prev) => ({ ...prev, page: 1, source: value }));
-  };
 
   // Phase A: Extract OCR data and show preview
   const handleExtract = async (file: File) => {
@@ -169,143 +110,6 @@ const OCRBills = () => {
     setExtractedData(null);
     setPendingFile(null);
   };
-
-  const formatCurrency = (val: number | null) =>
-    val != null ? `€ ${Number(val).toFixed(2)}` : "—";
-
-  const columns: ColumnsType<IBill> = [
-    {
-      title: "TYPE",
-      key: "billType",
-      width: 100,
-      render: (_, record) => (
-        <div className="flex flex-col items-center gap-1">
-          <Tag
-            className={`border-0 rounded font-bold text-[10px] px-2 py-0 uppercase ${
-              record.billType === "electricity"
-                ? "bg-emerald-50 text-emerald-600"
-                : "bg-blue-50 text-blue-600"
-            }`}
-            icon={
-              record.billType === "electricity" ? (
-                <LuZap className="inline mr-1 h-3 w-3" />
-              ) : (
-                <LuFlame className="inline mr-1 h-3 w-3" />
-              )
-            }
-          >
-            {record.billType}
-          </Tag>
-          {record.source === "email" && (
-            <Tag className="border-0 rounded font-bold text-[9px] px-1.5 py-0 bg-purple-50 text-purple-600" icon={<FiMail className="inline mr-0.5 h-2.5 w-2.5" />}>
-              Email
-            </Tag>
-          )}
-        </div>
-      ),
-      align: "center",
-    },
-    {
-      title: "POD / PDR",
-      key: "pod_pdr",
-      width: 180,
-      render: (_, record) => (
-        <span className="font-medium text-slate-700 text-xs font-mono">
-          {record.podNumber || record.pdrNumber || "—"}
-        </span>
-      ),
-    },
-    {
-      title: "USER",
-      key: "user",
-      width: 160,
-      render: (_, record) =>
-        record.user ? (
-          <span className="text-slate-700">
-            {record.user.firstName} {record.user.lastName}
-          </span>
-        ) : (
-          <span className="text-slate-400">—</span>
-        ),
-    },
-    {
-      title: "SUPPLIER",
-      key: "supplier",
-      width: 140,
-      responsive: ["md"],
-      render: (_, record) => (
-        <span className="text-slate-500">{record.supplier?.name || "—"}</span>
-      ),
-    },
-    {
-      title: "AMOUNT",
-      key: "totalAmount",
-      width: 110,
-      render: (_, record) => (
-        <span className="font-bold text-slate-800">{formatCurrency(record.totalAmount)}</span>
-      ),
-      align: "right",
-    },
-    {
-      title: "CONSUMPTION",
-      key: "consumption",
-      width: 130,
-      responsive: ["lg"],
-      render: (_, record) => {
-        if (record.consumptionKwh != null) return <span className="text-slate-600">{record.consumptionKwh} kWh</span>;
-        if (record.consumptionSmc != null) return <span className="text-slate-600">{record.consumptionSmc} Smc</span>;
-        return <span className="text-slate-400">—</span>;
-      },
-      align: "right",
-    },
-    {
-      title: "PERIOD",
-      key: "period",
-      width: 160,
-      responsive: ["lg"],
-      render: (_, record) => {
-        if (!record.billingPeriodStart) return <span className="text-slate-400">—</span>;
-        const start = new Date(record.billingPeriodStart).toLocaleDateString("it-IT");
-        const end = record.billingPeriodEnd
-          ? new Date(record.billingPeriodEnd).toLocaleDateString("it-IT")
-          : "—";
-        return <span className="text-slate-500 text-xs">{start} - {end}</span>;
-      },
-    },
-    {
-      title: "STATUS",
-      key: "status",
-      width: 120,
-      render: (_, record) => {
-        const cfg = statusConfig[record.status] || { color: "default", label: record.status };
-        return (
-          <Tag color={cfg.color} className="rounded-full px-2.5 py-0.5 text-xs font-semibold border-0">
-            {cfg.label}
-          </Tag>
-        );
-      },
-      align: "center",
-    },
-    {
-      title: "ACTIONS",
-      key: "actions",
-      width: 80,
-      render: (_, record) => (
-        <Button
-          type="link"
-          size="small"
-          className="text-[#7061ED] font-semibold"
-          onClick={(e) => {
-            e.stopPropagation();
-            navigate(`/ocr/${record.id}`);
-          }}
-        >
-          View
-        </Button>
-      ),
-      align: "center",
-    },
-  ];
 
   const isElectricity = emailBillType === "electricity";
 
@@ -546,111 +350,6 @@ const OCRBills = () => {
         )}
       </div>
 
-      {/* Filters & Table */}
-      <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-white p-4">
-          <div className="w-full min-w-0 flex-1 sm:min-w-[280px]">
-            <Input
-              allowClear
-              value={search}
-              onChange={handleSearchChange}
-              placeholder="Search by POD, PDR, user..."
-              prefix={<FiSearch className="text-slate-400 mr-2" />}
-              className="h-11 rounded-xl border-slate-200 hover:border-indigo-400 focus:border-indigo-400 shadow-sm"
-            />
-          </div>
-          <div className="grid w-full grid-cols-1 gap-2 sm:w-auto sm:grid-cols-[auto_auto_auto] sm:gap-3">
-            <Select
-              allowClear
-              placeholder="Bill type"
-              value={billTypeFilter}
-              onChange={handleBillTypeFilter}
-              style={{ height: "44px" }}
-              className="w-full sm:w-36 [&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-xl [&_.ant-select-selector]:border-slate-200"
-              options={[
-                { value: "electricity", label: "Electricity" },
-                { value: "gas", label: "Gas" },
-              ]}
-            />
-            <Select
-              allowClear
-              placeholder="Status"
-              value={statusFilter}
-              onChange={handleStatusFilter}
-              style={{ height: "44px" }}
-              className="w-full sm:w-36 [&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-xl [&_.ant-select-selector]:border-slate-200"
-              options={[
-                { value: "pending_email", label: "Pending (Email)" },
-                { value: "uploaded", label: "Uploaded" },
-                { value: "analyzing", label: "Analyzing" },
-                { value: "analyzed", label: "Analyzed" },
-                { value: "error", label: "Error" },
-                { value: "verification_required", label: "Verification Required" },
-                { value: "offer_sent", label: "Offer Sent" },
-                { value: "case_created", label: "Case Created" },
-                { value: "contract_sent", label: "Contract Sent" },
-                { value: "contract_signed", label: "Contract Signed" },
-                { value: "activated", label: "Activated" },
-                { value: "cancelled", label: "Cancelled" },
-              ]}
-            />
-            <Select
-              allowClear
-              placeholder="Source"
-              value={sourceFilter}
-              onChange={handleSourceFilter}
-              style={{ height: "44px" }}
-              className="w-full sm:w-32 [&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-xl [&_.ant-select-selector]:border-slate-200"
-              options={[
-                { value: "upload", label: "Upload" },
-                { value: "email", label: "Email" },
-              ]}
-            />
-          </div>
-        </div>
-
-        {isLoading ? (
-          <div className="flex items-center justify-center py-24">
-            <Spin size="large" />
-          </div>
-        ) : bills.length === 0 ? (
-          <div className="py-24">
-            <Empty description="No bills found" />
-          </div>
-        ) : (
-          <>
-            <Table<IBill>
-              rowKey="id"
-              columns={columns}
-              dataSource={bills}
-              size="middle"
-              pagination={false}
-              scroll={{ x: 1100 }}
-              loading={isFetching && !isLoading}
-              onRow={(record) => ({
-                onClick: () => navigate(`/ocr/${record.id}`),
-                className: "cursor-pointer",
-              })}
-              className="[&_.ant-table-thead_th]:bg-slate-50/50 [&_.ant-table-thead_th]:text-slate-500 [&_.ant-table-thead_th]:text-[11px] [&_.ant-table-thead_th]:font-bold [&_.ant-table-thead_th]:uppercase [&_.ant-table-thead_th]:tracking-widest [&_.ant-table-thead_th]:py-4 [&_.ant-table-row]:hover:bg-slate-50/30 [&_.ant-table-cell]:py-4"
-            />
-            <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3">
-              <p className="text-xs text-gray-500">
-                Showing {bills.length} of {meta?.total ?? 0} bills
-              </p>
-              {meta && meta.totalPages > 1 && (
-                <Pagination
-                  current={meta.page}
-                  pageSize={meta.limit}
-                  total={meta.total}
-                  size="small"
-                  showSizeChanger={false}
-                  onChange={(page) => setQueryParams((prev) => ({ ...prev, page }))}
-                />
-              )}
-            </div>
-          </>
-        )}
-      </div>
     </div>
   );
 };
