@@ -13,10 +13,23 @@ const dotColors: Record<string, string> = {
   case: "bg-[#8B5CF6]",
   bill: "bg-orange-500",
   user: "bg-sky-500",
+  offer: "bg-cyan-500",
+  supplier: "bg-pink-500",
 };
 
 function getDotColor(entityType: string): string {
   return dotColors[entityType] ?? "bg-gray-400";
+}
+
+function getEntityRoute(entityType: string, entityId: string): string | null {
+  const routes: Record<string, string> = {
+    user: `/client-list`,
+    bill: `/ocr/${entityId}`,
+    case: `/case-management/case/${entityId}`,
+    offer: `/offers-market/${entityId}`,
+    supplier: `/suppliers/${entityId}`,
+  };
+  return routes[entityType] || null;
 }
 
 function timeAgo(dateStr: string, t: (key: string) => string): string {
@@ -35,6 +48,12 @@ export function RecentActivityCard({ data }: Props) {
   const navigate = useNavigate();
   const items = data ?? [];
 
+  const handleActivityClick = (item: Activity) => {
+    if (!item.entityId) return;
+    const route = getEntityRoute(item.entityType, item.entityId);
+    if (route) navigate(route);
+  };
+
   if (items.length === 0) {
     return (
       <DashboardCard title={t("dashboard.recent_activity")}>
@@ -51,12 +70,19 @@ export function RecentActivityCard({ data }: Props) {
           const userName = item.user
             ? `${item.user.firstName} ${item.user.lastName}`
             : "";
+          const isClickable = !!(item.entityId && getEntityRoute(item.entityType, item.entityId));
           return (
-            <li key={item.id} className="relative flex gap-3 pb-6 last:pb-0">
+            <li
+              key={item.id}
+              className={`relative flex gap-3 pb-6 last:pb-0 ${
+                isClickable ? "cursor-pointer hover:bg-gray-50 -mx-2 px-2 rounded-md transition-colors" : ""
+              }`}
+              onClick={() => handleActivityClick(item)}
+            >
               <span
                 className={`relative z-[1] mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ring-3 ring-white ${getDotColor(item.entityType)}`}
               />
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-brand">{item.action}</p>
                 <p className="text-xs text-gray-600">
                   {userName && `${userName} · `}
@@ -64,6 +90,9 @@ export function RecentActivityCard({ data }: Props) {
                 </p>
                 <p className="mt-1 text-[11px] text-gray-400">{timeAgo(item.createdAt, t)}</p>
               </div>
+              {isClickable && (
+                <FiChevronRight className="mt-2 h-3.5 w-3.5 shrink-0 text-gray-300" />
+              )}
             </li>
           );
         })}

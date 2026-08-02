@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Input, Select, Table, Tag } from "antd";
+import { Button, Descriptions, Input, Modal, Select, Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { FiSearch } from "react-icons/fi";
+import { FiExternalLink, FiEye, FiSearch } from "react-icons/fi";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router";
 import {
   useGetActivityLogsQuery,
   type IActivityLog,
@@ -29,11 +30,31 @@ const ENTITY_TYPE_OPTIONS = [
   { label: "Supplier", value: "supplier" },
 ];
 
+function getEntityRoute(entityType: string, entityId: string): string | null {
+  const routes: Record<string, string> = {
+    user: `/client-list`,
+    bill: `/ocr/${entityId}`,
+    case: `/case-management/case/${entityId}`,
+    offer: `/offers-market/${entityId}`,
+    supplier: `/suppliers/${entityId}`,
+  };
+  return routes[entityType] || null;
+}
+
+function formatMetadataKey(key: string): string {
+  return key
+    .replace(/([A-Z])/g, " $1")
+    .replace(/^./, (s) => s.toUpperCase())
+    .replace(/_/g, " ");
+}
+
 const ActivityHistory = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [entityType, setEntityType] = useState("");
+  const [selectedActivity, setSelectedActivity] = useState<IActivityLog | null>(null);
 
   const { data, isLoading } = useGetActivityLogsQuery({
     page,
@@ -49,6 +70,12 @@ const ActivityHistory = () => {
     setSearch(value);
     setPage(1);
   }, 400);
+
+  const handleNavigateToEntity = (record: IActivityLog) => {
+    if (!record.entityId) return;
+    const route = getEntityRoute(record.entityType, record.entityId);
+    if (route) navigate(route);
+  };
 
   const columns: ColumnsType<IActivityLog> = [
     {
@@ -107,6 +134,35 @@ const ActivityHistory = () => {
         );
       },
     },
+    {
+      title: t("activity_history.actions"),
+      key: "actions",
+      width: 100,
+      render: (_: unknown, record: IActivityLog) => (
+        <div className="flex items-center gap-2">
+          <Button
+            type="text"
+            size="small"
+            icon={<FiEye className="h-4 w-4" />}
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedActivity(record);
+            }}
+          />
+          {record.entityId && getEntityRoute(record.entityType, record.entityId) && (
+            <Button
+              type="text"
+              size="small"
+              icon={<FiExternalLink className="h-4 w-4" />}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleNavigateToEntity(record);
+              }}
+            />
+          )}
+        </div>
+      ),
+    },
   ];
 
   return (
@@ -145,6 +201,10 @@ const ActivityHistory = () => {
         dataSource={logs}
         rowKey="id"
         loading={isLoading}
+        onRow={(record) => ({
+          onClick: () => setSelectedActivity(record),
+          className: "cursor-pointer",
+        })}
         pagination={{
           current: meta?.page || 1,
           pageSize: meta?.limit || 20,
@@ -156,6 +216,78 @@ const ActivityHistory = () => {
           emptyText: t("activity_history.no_data"),
         }}
       />
+
+      {/* Activity Detail Modal */}
+      <Modal
+        open={!!selectedActivity}
+        onCancel={() => setSelectedActivity(null)}
+        title={t("activity_history.detail_title")}
+        footer={
+          selectedActivity?.entityId &&
+          getEntityRoute(selectedActivity.entityType, selectedActivity.entityId) ? (
+            <Button
+              type="primary"
+              icon={<FiExternalLink className="h-4 w-4" />}
+              onClick={() => {
+                if (selectedActivity?.entityId) {
+                  handleNavigateToEntity(selectedActivity);
+                  setSelectedActivity(null);
+                }
+              }}
+            >
+              {t("activity_history.view_entity")}
+            </Button>
+          ) : null
+        }
+        width={600}
+      >
+        {selectedActivity && (
+          <div className="space-y-4">
+            <Descriptions column={1} bordered size="small">
+              <Descriptions.Item label={t("activity_history.action")}>
+                <span className="font-semibold">{selectedActivity.action}</span>
+              </Descriptions.Item>
+              <Descriptions.Item label={t("activity_history.entity_type")}>
+                <Tag color={entityTypeColors[selectedActivity.entityType] || "default"}>
+                  {selectedActivity.entityType.charAt(0).toUpperCase() +
+                    selectedActivity.entityType.slice(1)}
+                </Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label={t("activity_history.entity_id")}>
+                {selectedActivity.entityId ? (
+                  <span className="font-mono text-xs">{selectedActivity.entityId}</span>
+                ) : (
+                  "—"
+                )}
+              </Descriptions.Item>
+              <Descriptions.Item label={t("activity_history.admin")}>
+                {selectedActivity.user
+                  ? `${selectedActivity.user.firstName} ${selectedActivity.user.lastName}`
+                  : "—"}
+              </Descriptions.Item>
+              <Descriptions.Item label={t("activity_history.time")}>
+                {new Date(selectedActivity.createdAt).toLocaleString()}
+              </Descriptions.Item>
+            </Descriptions>
+
+            {selectedActivity.metadata &&
+              Object.keys(selectedActivity.metadata).length > 0 && (
+                <div>
+                  <h4 className="mb-2 text-sm font-semibold text-gray-700">
+                    {t("activity_history.details")}
+                  </h4>
+                  <Descriptions column={1} bordered size="small">
+                    {Object.entries(selectedActivity.metadata).map(([key, value]) => (
+                      <Descriptions.Item key={key} label={formatMetadataKey(key)}>
+                        {value != null ? String(value) : "—"}
+                      </Descriptions.Item>
+                    ))}
+                  </Descriptions>
+                </div>
+              )}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };
