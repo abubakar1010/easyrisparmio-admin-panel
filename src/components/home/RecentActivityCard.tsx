@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router";
 import { DashboardCard } from "./DashboardCard";
 import { FiChevronRight } from "react-icons/fi";
 import type { AdminDashboardData } from "../../redux/features/Dashboard/dashboardApi";
@@ -31,6 +32,7 @@ function timeAgo(dateStr: string, t: (key: string) => string): string {
 
 export function RecentActivityCard({ data }: Props) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const items = data ?? [];
 
   if (items.length === 0) {
@@ -68,9 +70,10 @@ export function RecentActivityCard({ data }: Props) {
       </ul>
       <button
         type="button"
+        onClick={() => navigate("/activity-history")}
         className="mt-2 flex w-full items-center justify-start gap-1 border-t border-gray-100 pt-4 text-sm font-semibold text-[#3B82F6] hover:text-[#2563EB]"
       >
-        View full timeline <FiChevronRight className="h-4 w-4" />
+        {t("dashboard.view_full_timeline")} <FiChevronRight className="h-4 w-4" />
       </button>
     </DashboardCard>
   );

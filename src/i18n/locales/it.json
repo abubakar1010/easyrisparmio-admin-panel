@@ -71,7 +71,16 @@
     "otp_resent": "OTP reinviato con successo",
     "please_input_otp": "Inserisci il codice OTP!",
     "set_your_password": "Imposta la tua password",
-    "please_confirm_password": "Conferma la tua password!"
+    "please_confirm_password": "Conferma la tua password!",
+    "current_password": "Password attuale",
+    "please_input_current_password": "Inserisci la password attuale",
+    "password_min_8_chars": "La password deve essere di almeno 8 caratteri",
+    "password_needs_lowercase": "Deve contenere almeno una lettera minuscola",
+    "password_needs_uppercase": "Deve contenere almeno una lettera maiuscola",
+    "password_needs_number": "Deve contenere almeno un numero",
+    "password_needs_special": "Deve contenere almeno un carattere speciale",
+    "password_changed_success": "Password cambiata con successo",
+    "new_password_must_differ": "La nuova password deve essere diversa da quella attuale"
   },
   "header": {
     "welcome": "Benvenuto,",
@@ -177,6 +186,7 @@
     "contact": "Contatta",
     "recent_activity": "Attivita' recente",
     "no_recent_activity": "Nessuna attivita' recente",
+    "view_full_timeline": "Vedi cronologia completa",
     "just_now": "Adesso",
     "minutes_ago": "minuti fa",
     "hours_ago": "ore fa",
@@ -534,7 +544,8 @@
     "profile_updated": "Profilo aggiornato",
     "failed_update_profile": "Aggiornamento profilo fallito",
     "change_password": "Cambia password",
-    "password_reset_flow": "Per cambiare la password, usa il flusso di reset password.",
+    "change_password_description": "Inserisci la password attuale e scegline una nuova",
+    "password_requirements": "La password deve essere di almeno 8 caratteri con maiuscola, minuscola, numero e carattere speciale",
     "reset_password": "Reimposta password",
     "language": "Lingua",
     "language_description": "Seleziona la lingua di visualizzazione della dashboard",
@@ -558,5 +569,17 @@
     "title": "404",
     "description": "La pagina visitata non esiste.",
     "back_home": "Torna alla home"
+  },
+  "activity_history": {
+    "title": "Cronologia attivita'",
+    "description": "Registro completo di tutte le azioni admin e gli eventi di sistema",
+    "action": "Azione",
+    "entity_type": "Tipo entita'",
+    "entity_id": "ID entita'",
+    "admin": "Admin",
+    "time": "Data/Ora",
+    "search_placeholder": "Cerca per azione...",
+    "filter_entity_type": "Tipo entita'",
+    "no_data": "Nessun log di attivita' trovato"
   }
 }

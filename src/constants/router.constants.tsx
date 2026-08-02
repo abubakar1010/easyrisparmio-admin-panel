@@ -1,6 +1,7 @@
 
 import Home from "../app/Home";
 import Notification from "../app/Notification";
+import ActivityHistory from "../app/ActivityHistory";
 import type { DashboardItem } from "../types/sidebar.type";
 import { ROLE } from "../types/common.type";
 import {
@@ -51,6 +52,10 @@ export const dashboardItems: DashboardItem[] = [
   {
     path: "notifications",
     element: <Notification />,
+  },
+  {
+    path: "activity-history",
+    element: <ActivityHistory />,
   },
   // {
   //   name: "Verify Request",

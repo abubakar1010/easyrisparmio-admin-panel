@@ -71,7 +71,16 @@
     "otp_resent": "OTP has been resent successfully",
     "please_input_otp": "Please input the OTP!",
     "set_your_password": "Set your password",
-    "please_confirm_password": "Please confirm your password!"
+    "please_confirm_password": "Please confirm your password!",
+    "current_password": "Current Password",
+    "please_input_current_password": "Please enter your current password",
+    "password_min_8_chars": "Password must be at least 8 characters",
+    "password_needs_lowercase": "Must contain at least one lowercase letter",
+    "password_needs_uppercase": "Must contain at least one uppercase letter",
+    "password_needs_number": "Must contain at least one number",
+    "password_needs_special": "Must contain at least one special character",
+    "password_changed_success": "Password changed successfully",
+    "new_password_must_differ": "New password must be different from current password"
   },
   "header": {
     "welcome": "Welcome,",
@@ -177,6 +186,7 @@
     "contact": "Contact",
     "recent_activity": "Recent Activity",
     "no_recent_activity": "No recent activity",
+    "view_full_timeline": "View full timeline",
     "just_now": "Just now",
     "minutes_ago": "minutes ago",
     "hours_ago": "hours ago",
@@ -534,7 +544,8 @@
     "profile_updated": "Profile updated",
     "failed_update_profile": "Failed to update profile",
     "change_password": "Change Password",
-    "password_reset_flow": "To change your password, use the password reset flow.",
+    "change_password_description": "Enter your current password and choose a new one",
+    "password_requirements": "Password must be at least 8 characters with uppercase, lowercase, number, and special character",
     "reset_password": "Reset Password",
     "language": "Language",
     "language_description": "Select the display language for the dashboard",
@@ -558,5 +569,17 @@
     "title": "404",
     "description": "Sorry, the page you visited does not exist.",
     "back_home": "Back Home"
+  },
+  "activity_history": {
+    "title": "Activity History",
+    "description": "Complete log of all admin actions and system events",
+    "action": "Action",
+    "entity_type": "Entity Type",
+    "entity_id": "Entity ID",
+    "admin": "Admin",
+    "time": "Time",
+    "search_placeholder": "Search by action...",
+    "filter_entity_type": "Entity Type",
+    "no_data": "No activity logs found"
   }
 }
