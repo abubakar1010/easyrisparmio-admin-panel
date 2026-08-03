@@ -70,6 +70,7 @@ export const CreateOfferModal = ({
   const suppliers = suppliersData?.data || [];
 
   const commodity = Form.useWatch("commodity", form);
+  const priceType = Form.useWatch("priceType", form);
   const validFrom = Form.useWatch("validFrom", form);
   const validUntil = Form.useWatch("validity", form);
 
@@ -90,6 +91,16 @@ export const CreateOfferModal = ({
       setTermsDocUrl(null);
     }
   }, [open, isEdit, initialValues, form]);
+
+  // Clear irrelevant pricing fields when price type changes
+  useEffect(() => {
+    if (!open) return;
+    if (priceType === "variable" || priceType === "indexed") {
+      form.setFieldsValue({ pricePerKwh: undefined, pricePerSmc: undefined });
+    } else if (priceType === "fixed") {
+      form.setFieldsValue({ spread: undefined });
+    }
+  }, [priceType, form, open]);
 
   // Auto-calculate contract duration in days from date range
   useEffect(() => {
@@ -147,6 +158,7 @@ export const CreateOfferModal = ({
       fixedMonthlyFee: values.fixedMonthlyFee ? parseFloat(values.fixedMonthlyFee) : 0,
       pricePerKwh: values.pricePerKwh ? parseFloat(values.pricePerKwh) : undefined,
       pricePerSmc: values.pricePerSmc ? parseFloat(values.pricePerSmc) : undefined,
+      spread: values.spread ? parseFloat(values.spread) : undefined,
       contractDurationDays: values.contractDurationDays || 1,
       isGreenEnergy: values.isGreenEnergy ?? false,
       validFrom: dayjs(values.validFrom).format("YYYY-MM-DD"),
@@ -295,18 +307,26 @@ export const CreateOfferModal = ({
           </Form.Item>
         </div>
 
-        <div className="grid grid-cols-1 gap-x-3 gap-y-1 sm:grid-cols-2">
-          {(commodity === "electricity" || commodity === "dual" || !commodity) && (
-            <Form.Item name="pricePerKwh" label="Price per kWh (EUR)" rules={numericRule("price per kWh")}>
-              <NumericInput placeholder="e.g. 0.085" />
+        {priceType === "variable" || priceType === "indexed" ? (
+          <div className="grid grid-cols-1 gap-x-3 gap-y-1 sm:grid-cols-2">
+            <Form.Item name="spread" label="Spread (EUR)" rules={numericRule("spread")}>
+              <NumericInput placeholder="e.g. 0.012" />
             </Form.Item>
-          )}
-          {(commodity === "gas" || commodity === "dual" || !commodity) && (
-            <Form.Item name="pricePerSmc" label="Price per SMc (EUR)" rules={numericRule("price per SMc")}>
-              <NumericInput placeholder="e.g. 0.45" />
-            </Form.Item>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-x-3 gap-y-1 sm:grid-cols-2">
+            {(commodity === "electricity" || commodity === "dual" || !commodity) && (
+              <Form.Item name="pricePerKwh" label="Price per kWh (EUR)" rules={numericRule("price per kWh")}>
+                <NumericInput placeholder="e.g. 0.085" />
+              </Form.Item>
+            )}
+            {(commodity === "gas" || commodity === "dual" || !commodity) && (
+              <Form.Item name="pricePerSmc" label="Price per SMc (EUR)" rules={numericRule("price per SMc")}>
+                <NumericInput placeholder="e.g. 0.45" />
+              </Form.Item>
+            )}
+          </div>
+        )}
 
         {/* Contract & Validity */}
         <p className="mb-2 mt-3 text-xs font-bold uppercase tracking-wider text-slate-400">

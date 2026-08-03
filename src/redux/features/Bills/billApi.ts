@@ -143,6 +143,7 @@ export interface IOfferWithSavings {
   marketType: "fixed" | "variable" | "indexed";
   pricePerKwh: number | null;
   pricePerSmc: number | null;
+  spread: number | null;
   fixedMonthlyFee: number;
   activationCost: number;
   contractDurationDays: number;

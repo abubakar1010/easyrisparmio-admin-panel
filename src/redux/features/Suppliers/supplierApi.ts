@@ -7,6 +7,7 @@ export interface SupplierOffer {
   marketType: string;
   pricePerKwh: number | null;
   pricePerSmc: number | null;
+  spread: number | null;
   fixedMonthlyFee: number;
   activationCost: number;
   contractDurationDays: number;

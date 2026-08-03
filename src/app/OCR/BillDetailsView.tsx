@@ -812,7 +812,9 @@ const AvailableOffersCard = ({
       key: "price",
       width: 110,
       render: (_, record) => {
-        const price = isElectricity ? record.pricePerKwh : record.pricePerSmc;
+        const price = (record.marketType === "variable" || record.marketType === "indexed")
+          ? record.spread
+          : (isElectricity ? record.pricePerKwh : record.pricePerSmc);
         return (
           <span className="text-sm font-bold text-slate-700">
             {price != null ? `€ ${Number(price).toFixed(4)}` : "—"}
@@ -820,9 +822,11 @@ const AvailableOffersCard = ({
         );
       },
       sorter: (a, b) => {
-        const pa = isElectricity ? (a.pricePerKwh ?? 999) : (a.pricePerSmc ?? 999);
-        const pb = isElectricity ? (b.pricePerKwh ?? 999) : (b.pricePerSmc ?? 999);
-        return pa - pb;
+        const getPrice = (r: typeof a) =>
+          (r.marketType === "variable" || r.marketType === "indexed")
+            ? (r.spread ?? 999)
+            : (isElectricity ? (r.pricePerKwh ?? 999) : (r.pricePerSmc ?? 999));
+        return getPrice(a) - getPrice(b);
       },
       align: "right",
     },

@@ -127,11 +127,17 @@ export const OfferDetailsModal = ({ open, onClose, offer }: OfferDetailsModalPro
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
             <InfoRow label="Fixed Monthly Fee" value={formatCurrency(detail.fixedMonthlyFee)} />
             <InfoRow label="Activation Cost" value={formatCurrency(detail.activationCost)} />
-            {(detail.energyType === "electricity" || detail.energyType === "dual") && (
-              <InfoRow label="Price / kWh" value={formatPrice(detail.pricePerKwh)} />
-            )}
-            {(detail.energyType === "gas" || detail.energyType === "dual") && (
-              <InfoRow label="Price / SMc" value={formatPrice(detail.pricePerSmc)} />
+            {detail.marketType === "variable" || detail.marketType === "indexed" ? (
+              <InfoRow label="Spread" value={formatPrice(detail.spread)} />
+            ) : (
+              <>
+                {(detail.energyType === "electricity" || detail.energyType === "dual") && (
+                  <InfoRow label="Price / kWh" value={formatPrice(detail.pricePerKwh)} />
+                )}
+                {(detail.energyType === "gas" || detail.energyType === "dual") && (
+                  <InfoRow label="Price / SMc" value={formatPrice(detail.pricePerSmc)} />
+                )}
+              </>
             )}
           </div>
 

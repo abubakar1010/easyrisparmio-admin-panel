@@ -8,6 +8,7 @@ export interface IOffer {
   marketType: "fixed" | "variable" | "indexed";
   pricePerKwh: number | null;
   pricePerSmc: number | null;
+  spread: number | null;
   fixedMonthlyFee: number;
   activationCost: number;
   contractDurationDays: number;
@@ -58,6 +59,7 @@ export interface ICreateOffer {
   marketType: string;
   pricePerKwh?: number;
   pricePerSmc?: number;
+  spread?: number;
   fixedMonthlyFee?: number;
   activationCost?: number;
   contractDurationDays: number;
