@@ -18,6 +18,13 @@ const numericRule = (fieldLabel: string) => [
 
 const sanitizeNumeric = (raw: string) => raw.replace(/[^\d.]/g, "").replace(/(\..*?)\./g, "$1");
 
+/** Remove trailing zeros after decimal point: "340000.0000" → "340000", "0.08500" → "0.085", "10.10" → "10.1" */
+const trimTrailingZeros = (v: string) => {
+  if (!v || !v.includes(".")) return v;
+  const trimmed = v.replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "");
+  return trimmed || "0";
+};
+
 const NumericInput = ({ value, onChange, placeholder }: { value?: string; onChange?: (v: string) => void; placeholder?: string }) => (
   <Input
     value={value}
@@ -31,6 +38,9 @@ const NumericInput = ({ value, onChange, placeholder }: { value?: string; onChan
       e.preventDefault();
       const pasted = sanitizeNumeric(e.clipboardData.getData("text"));
       onChange?.(pasted);
+    }}
+    onBlur={() => {
+      if (value) onChange?.(trimTrailingZeros(value));
     }}
   />
 );

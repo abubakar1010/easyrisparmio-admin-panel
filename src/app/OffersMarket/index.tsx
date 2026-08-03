@@ -92,6 +92,10 @@ const OffersMarket = () => {
     setEditOfferOpen(true);
   };
 
+  /** Strip meaningless trailing zeros from decimal strings returned by the backend */
+  const cleanDecimal = (v: number | string | null | undefined) =>
+    v != null ? String(parseFloat(String(v))) : undefined;
+
   const getEditInitialValues = (offer: IOffer): Record<string, unknown> => ({
     offerName: offer.name,
     offerCode: offer.offerCode,
@@ -99,10 +103,10 @@ const OffersMarket = () => {
     commodity: offer.energyType,
     priceType: offer.marketType,
     status: offer.offerStatus,
-    activationCost: offer.activationCost != null ? String(offer.activationCost) : undefined,
-    fixedMonthlyFee: offer.fixedMonthlyFee != null ? String(offer.fixedMonthlyFee) : undefined,
-    pricePerKwh: offer.pricePerKwh != null ? String(offer.pricePerKwh) : undefined,
-    pricePerSmc: offer.pricePerSmc != null ? String(offer.pricePerSmc) : undefined,
+    activationCost: cleanDecimal(offer.activationCost),
+    fixedMonthlyFee: cleanDecimal(offer.fixedMonthlyFee),
+    pricePerKwh: cleanDecimal(offer.pricePerKwh),
+    pricePerSmc: cleanDecimal(offer.pricePerSmc),
     contractDurationDays: offer.contractDurationDays,
     isGreenEnergy: offer.isGreenEnergy,
     validFrom: offer.validFrom ? dayjs(offer.validFrom) : undefined,
