@@ -104,10 +104,10 @@ export const CreateOfferModal = ({
       energyType: values.commodity?.toLowerCase(),
       marketType: values.priceType?.toLowerCase(),
       offerStatus: values.status?.toLowerCase() || "draft",
-      activationCost: values.activationCost ?? 0,
-      fixedMonthlyFee: values.fixedMonthlyFee ?? 0,
-      pricePerKwh: values.pricePerKwh ?? undefined,
-      pricePerSmc: values.pricePerSmc ?? undefined,
+      activationCost: values.activationCost != null ? Number(values.activationCost) : 0,
+      fixedMonthlyFee: values.fixedMonthlyFee != null ? Number(values.fixedMonthlyFee) : 0,
+      pricePerKwh: values.pricePerKwh != null ? Number(values.pricePerKwh) : undefined,
+      pricePerSmc: values.pricePerSmc != null ? Number(values.pricePerSmc) : undefined,
       contractDurationDays: values.contractDurationDays || 1,
       isGreenEnergy: values.isGreenEnergy ?? false,
       validFrom: dayjs(values.validFrom).format("YYYY-MM-DD"),
@@ -248,6 +248,8 @@ export const CreateOfferModal = ({
             <InputNumber
               min={0}
               step={0.01}
+              precision={2}
+              decimalSeparator="."
               className="w-full! rounded-lg [&_.ant-input-number-input]:h-11"
               controls={false}
               placeholder="e.g. 9.90"
@@ -261,6 +263,8 @@ export const CreateOfferModal = ({
             <InputNumber
               min={0}
               step={0.01}
+              precision={2}
+              decimalSeparator="."
               className="w-full! rounded-lg [&_.ant-input-number-input]:h-11"
               controls={false}
               placeholder="e.g. 45"
@@ -274,6 +278,8 @@ export const CreateOfferModal = ({
               <InputNumber
                 min={0}
                 step={0.001}
+                precision={6}
+                decimalSeparator="."
                 className="w-full! rounded-lg [&_.ant-input-number-input]:h-11"
                 controls={false}
                 placeholder="e.g. 0.085"
@@ -285,6 +291,8 @@ export const CreateOfferModal = ({
               <InputNumber
                 min={0}
                 step={0.001}
+                precision={6}
+                decimalSeparator="."
                 className="w-full! rounded-lg [&_.ant-input-number-input]:h-11"
                 controls={false}
                 placeholder="e.g. 0.45"
