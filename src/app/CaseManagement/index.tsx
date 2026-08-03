@@ -12,34 +12,25 @@ import {
 import { debounce } from "../../utils/debounce";
 
 const billStatusConfig: Record<string, { color: string; label: string }> = {
-  // Bill statuses
   pending_email: { color: "purple", label: "Pending (Email)" },
   uploaded: { color: "blue", label: "Uploaded" },
   analyzing: { color: "orange", label: "Analyzing" },
   analyzed: { color: "green", label: "Analyzed" },
   error: { color: "red", label: "Error" },
+  verification_review: { color: "gold", label: "Verification Review" },
+  verification_required: { color: "volcano", label: "Verification Required" },
+  verified: { color: "green", label: "Verified" },
   offer_sent: { color: "cyan", label: "Offer Sent" },
-  case_created: { color: "purple", label: "Case Created" },
-  // Case statuses (shown when bill has a linked case)
-  new: { color: "blue", label: "New" },
-  in_progress: { color: "gold", label: "In Progress" },
-  documents_pending: { color: "default", label: "Docs Pending" },
+  offer_accepted: { color: "purple", label: "Offer Accepted" },
   contract_sent: { color: "gold", label: "Contract Sent" },
   contract_signed: { color: "orange", label: "Contract Signed" },
+  contract_review: { color: "gold", label: "Contract Review" },
+  contract_verification_required: { color: "volcano", label: "Contract Verification Required" },
+  contract_verified: { color: "green", label: "Contract Verified" },
+  awaiting_activation: { color: "processing", label: "Awaiting Activation" },
   activated: { color: "green", label: "Activated" },
-  rejected: { color: "red", label: "Rejected" },
   cancelled: { color: "default", label: "Cancelled" },
 };
-
-function getEffectiveStatus(bill: IBill): string {
-  if (bill.switchCases?.length) {
-    const latestCase = [...bill.switchCases].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    )[0];
-    return latestCase.status;
-  }
-  return bill.status;
-}
 
 const CaseManagement = () => {
   const navigate = useNavigate();
@@ -74,12 +65,7 @@ const CaseManagement = () => {
 
   const handleStatusFilter = (value: string | undefined) => {
     setStatusFilter(value);
-    if (value?.startsWith("case:")) {
-      const caseStatus = value.replace("case:", "");
-      setQueryParams((prev) => ({ ...prev, page: 1, status: undefined, caseStatus }));
-    } else {
-      setQueryParams((prev) => ({ ...prev, page: 1, status: value, caseStatus: undefined }));
-    }
+    setQueryParams((prev) => ({ ...prev, page: 1, status: value }));
   };
 
   const formatCurrency = (val: number | null) =>
@@ -178,8 +164,7 @@ const CaseManagement = () => {
       key: "status",
       width: 130,
       render: (_: unknown, record: IBill) => {
-        const effectiveStatus = getEffectiveStatus(record);
-        const cfg = billStatusConfig[effectiveStatus] || { color: "default", label: effectiveStatus };
+        const cfg = billStatusConfig[record.status] || { color: "default", label: record.status };
         return (
           <Tag
             color={cfg.color}
@@ -252,25 +237,23 @@ const CaseManagement = () => {
             style={{ height: "44px" }}
             className="w-48 [&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-xl [&_.ant-select-selector]:border-slate-200"
             options={[
-              { label: "Bill Statuses", options: [
-                { value: "uploaded", label: "Uploaded" },
-                { value: "analyzing", label: "Analyzing" },
-                { value: "analyzed", label: "Analyzed" },
-                { value: "error", label: "Error" },
-                { value: "offer_sent", label: "Offer Sent" },
-                { value: "case_created", label: "Case Created" },
-                { value: "contract_sent", label: "Contract Sent" },
-                { value: "contract_signed", label: "Contract Signed" },
-                { value: "activated", label: "Activated" },
-                { value: "cancelled", label: "Cancelled" },
-              ]},
-              { label: "Case Statuses", options: [
-                { value: "case:in_progress", label: "In Progress" },
-                { value: "case:documents_pending", label: "Docs Pending" },
-                { value: "case:contract_sent", label: "Contract Sent" },
-                { value: "case:contract_signed", label: "Contract Signed" },
-                { value: "case:activated", label: "Activated" },
-              ]},
+              { value: "uploaded", label: "Uploaded" },
+              { value: "analyzing", label: "Analyzing" },
+              { value: "analyzed", label: "Analyzed" },
+              { value: "verification_review", label: "Verification Review" },
+              { value: "verification_required", label: "Verification Required" },
+              { value: "verified", label: "Verified" },
+              { value: "offer_sent", label: "Offer Sent" },
+              { value: "offer_accepted", label: "Offer Accepted" },
+              { value: "contract_sent", label: "Contract Sent" },
+              { value: "contract_signed", label: "Contract Signed" },
+              { value: "contract_review", label: "Contract Review" },
+              { value: "contract_verification_required", label: "Contract Verification Required" },
+              { value: "contract_verified", label: "Contract Verified" },
+              { value: "awaiting_activation", label: "Awaiting Activation" },
+              { value: "activated", label: "Activated" },
+              { value: "cancelled", label: "Cancelled" },
+              { value: "error", label: "Error" },
             ]}
           />
         </div>

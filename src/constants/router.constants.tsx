@@ -22,7 +22,6 @@ import {
 import Settings from "../app/Settings/Settings";
 import ClientManagement from "../app/ClientManagement";
 import CaseManagement from "../app/CaseManagement";
-import CaseDetailsView from "../app/CaseManagement/CaseDetailsView";
 import BillRequestDetailView from "../app/CaseManagement/BillRequestDetailView";
 import MeterReading from "../app/MetterReading";
 import MeterDetails from "../app/MetterReading/MeterDetails";
@@ -110,10 +109,6 @@ export const dashboardItems: DashboardItem[] = [
   {
     path: "case-management/:billId",
     element: <BillRequestDetailView />,
-  },
-  {
-    path: "case-management/case/:caseId",
-    element: <CaseDetailsView />,
   },
   {
     name: "Utilities / Services",

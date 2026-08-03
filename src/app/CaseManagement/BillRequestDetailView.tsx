@@ -33,6 +33,7 @@ import {
   useGetBillByIdAdminQuery,
   useGetAllOffersForBillQuery,
   useSendSelectedOffersMutation,
+  useTransitionBillStatusMutation,
   type IOfferWithSavings,
   type IBill,
   type IBillFile,
@@ -58,24 +59,20 @@ import { server_url, server_origin } from "../../config";
 /* ── Status & Step Configuration ─────────────────────────── */
 
 const billStatusOrder = [
-  "pending_email",
-  "uploaded",
-  "analyzing",
-  "analyzed",
-  "offer_sent",
-  "case_created",
-  "contract_sent",
-  "contract_signed",
-  "activated",
+  "pending_email", "uploaded", "analyzing", "analyzed",
+  "verification_review", "verification_required", "verified",
+  "offer_sent", "offer_accepted",
+  "contract_sent", "contract_signed", "contract_review", "contract_verification_required", "contract_verified",
+  "awaiting_activation", "activated",
   "cancelled",
 ];
 
 const stepConfig = [
-  { label: "Uploaded", statuses: ["pending_email", "uploaded", "analyzing"] },
-  { label: "Offer Sent", statuses: ["analyzed", "offer_sent"] },
-  { label: "Case Processing", statuses: ["case_created", "new", "in_progress", "documents_pending"] },
-  { label: "Contract", statuses: ["contract_sent", "contract_signed"] },
-  { label: "Activated", statuses: ["activated"] },
+  { label: "Upload & Analysis", statuses: ["pending_email", "uploaded", "analyzing", "analyzed"] },
+  { label: "Verification", statuses: ["verification_review", "verification_required", "verified"] },
+  { label: "Offers", statuses: ["offer_sent", "offer_accepted"] },
+  { label: "Contract", statuses: ["contract_sent", "contract_signed", "contract_review", "contract_verification_required", "contract_verified"] },
+  { label: "Activation", statuses: ["awaiting_activation", "activated"] },
 ];
 
 const statusLabel: Record<string, string> = {
@@ -84,16 +81,18 @@ const statusLabel: Record<string, string> = {
   analyzing: "Analyzing",
   analyzed: "Analyzed",
   error: "Error",
+  verification_review: "Verification Review",
   verification_required: "Verification Required",
+  verified: "Verified",
   offer_sent: "Offer Sent",
-  case_created: "Case Created",
-  new: "New",
-  in_progress: "In Progress",
-  documents_pending: "Documents Pending",
+  offer_accepted: "Offer Accepted",
   contract_sent: "Contract Sent",
   contract_signed: "Contract Signed",
+  contract_review: "Contract Review",
+  contract_verification_required: "Contract Verification Required",
+  contract_verified: "Contract Verified",
+  awaiting_activation: "Awaiting Activation",
   activated: "Activated",
-  rejected: "Rejected",
   cancelled: "Cancelled",
 };
 
@@ -103,32 +102,32 @@ const statusTagColor: Record<string, string> = {
   analyzing: "orange",
   analyzed: "green",
   error: "red",
+  verification_review: "gold",
   verification_required: "volcano",
+  verified: "green",
   offer_sent: "cyan",
-  case_created: "purple",
-  new: "blue",
-  in_progress: "gold",
-  documents_pending: "default",
+  offer_accepted: "purple",
   contract_sent: "gold",
   contract_signed: "orange",
+  contract_review: "gold",
+  contract_verification_required: "volcano",
+  contract_verified: "green",
+  awaiting_activation: "processing",
   activated: "green",
-  rejected: "red",
   cancelled: "default",
 };
 
 /* ── Helpers ──────────────────────────────────────────────── */
 
-function getStepIndex(billStatus: string, caseStatus?: string | null): number {
-  // Always prefer case status when available — it reflects the true progression
-  const status = caseStatus || billStatus;
+function getStepIndex(billStatus: string): number {
   for (let i = 0; i < stepConfig.length; i++) {
-    if (stepConfig[i].statuses.includes(status)) return i;
+    if (stepConfig[i].statuses.includes(billStatus)) return i;
   }
   return -1;
 }
 
-function getStepStates(billStatus: string, caseStatus?: string | null): ("done" | "current" | "pending")[] {
-  const currentStep = getStepIndex(billStatus, caseStatus);
+function getStepStates(billStatus: string): ("done" | "current" | "pending")[] {
+  const currentStep = getStepIndex(billStatus);
   if (currentStep < 0) return stepConfig.map(() => "pending");
   return stepConfig.map((_, i) => {
     if (i < currentStep) return "done";
@@ -161,8 +160,10 @@ const fmtNum = (val: number | null | undefined, unit = ""): string | null =>
 /* ── Tab definitions ─────────────────────────────────────── */
 
 const tabKeys = [
-  { key: "available_offers", label: "Available Offers" },
+  { key: "overview", label: "Overview" },
+  { key: "available_offers", label: "Offers" },
   { key: "bill_data", label: "Bill Data" },
+  { key: "verification", label: "Verification" },
   { key: "case_details", label: "Case Details" },
 ] as const;
 
@@ -180,9 +181,57 @@ const BillRequestDetailView = () => {
     skip: !billId || bill?.status === "pending_email",
   });
   const [sendSelectedOffers, { isLoading: isSending }] = useSendSelectedOffersMutation();
-  const [activeTab, setActiveTab] = useState("available_offers");
+  const [transitionBillStatus] = useTransitionBillStatusMutation();
+  const [activeTab, setActiveTab] = useState("overview");
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [savingsOverrides, setSavingsOverrides] = useState<Record<string, number>>({});
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [showContractVerificationModal, setShowContractVerificationModal] = useState(false);
+  const [verificationMessage, setVerificationMessage] = useState("");
+  const [verificationFields, setVerificationFields] = useState<string[]>([]);
+  const [requireReupload, setRequireReupload] = useState(false);
+
+  const handleTransition = async (targetStatus: string) => {
+    setIsTransitioning(true);
+    try {
+      await transitionBillStatus({ billId: bill.id, targetStatus }).unwrap();
+      message.success(`Status updated to ${statusLabel[targetStatus] || targetStatus}`);
+      refetch();
+    } catch (err: any) {
+      message.error(err?.data?.message?.[0] || err?.data?.message || "Failed to update status");
+    } finally {
+      setIsTransitioning(false);
+    }
+  };
+
+  const handleSendVerificationRequest = async (isContract = false) => {
+    if (!verificationMessage.trim()) {
+      message.warning("Please enter a message");
+      return;
+    }
+    setIsTransitioning(true);
+    try {
+      await transitionBillStatus({
+        billId: bill.id,
+        targetStatus: isContract ? "contract_verification_required" : "verification_required",
+        message: verificationMessage,
+        missingFields: verificationFields,
+        requireReupload,
+      }).unwrap();
+      message.success("Verification request sent");
+      setShowVerificationModal(false);
+      setShowContractVerificationModal(false);
+      setVerificationMessage("");
+      setVerificationFields([]);
+      setRequireReupload(false);
+      refetch();
+    } catch (err: any) {
+      message.error(err?.data?.message?.[0] || err?.data?.message || "Failed to send request");
+    } finally {
+      setIsTransitioning(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -207,7 +256,7 @@ const BillRequestDetailView = () => {
   const activeCase = bill.switchCases?.length
     ? [...bill.switchCases].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]
     : null;
-  const stepStates = getStepStates(bill.status, activeCase?.status);
+  const stepStates = getStepStates(bill.status);
   const currentStepIdx = stepStates.indexOf("current");
   const doneCount = stepStates.filter((s) => s === "done").length;
   const progressPct =
@@ -247,6 +296,154 @@ const BillRequestDetailView = () => {
 
   const renderTab = () => {
     switch (activeTab) {
+      case "overview":
+        return (
+          <div className="space-y-6">
+            {/* Current Status */}
+            <div className="bg-white rounded-xl border border-slate-200 p-5">
+              <h3 className="text-sm font-bold text-slate-700 mb-3">Current Status</h3>
+              <Tag color={statusTagColor[bill.status]} className="rounded-full! px-4! py-1! text-sm! font-semibold! border-0!">
+                {statusLabel[bill.status] || bill.status}
+              </Tag>
+              <p className="text-sm text-slate-500 mt-2">
+                {bill.status === "verification_review" && "Review the extracted bill data. Approve or request corrections from the user."}
+                {bill.status === "verified" && "Bill data verified. You can now send offers to the user."}
+                {bill.status === "offer_sent" && "Offers have been sent. Waiting for the user to select an offer."}
+                {bill.status === "offer_accepted" && "User has accepted an offer. Create and send the contract."}
+                {bill.status === "contract_sent" && "Contract sent to user. Waiting for signed contract."}
+                {bill.status === "contract_signed" && "User signed the contract. It's now in review."}
+                {bill.status === "contract_review" && "Review the signed contract. Approve or request corrections."}
+                {bill.status === "contract_verified" && "Contract approved. Move to awaiting activation."}
+                {bill.status === "awaiting_activation" && "Waiting for supplier activation. Mark as activated when ready."}
+                {bill.status === "activated" && "Utility is activated and live."}
+                {bill.status === "analyzing" && "Bill is being analyzed by the system."}
+                {bill.status === "analyzed" && "Analysis complete. Moving to verification review."}
+                {bill.status === "verification_required" && "Waiting for user to provide requested information."}
+                {bill.status === "contract_verification_required" && "Waiting for user to re-submit corrected contract."}
+              </p>
+            </div>
+
+            {/* Contextual Admin Actions */}
+            {["verification_review", "verified", "offer_accepted", "contract_review", "contract_verified", "awaiting_activation"].includes(bill.status) && (
+              <div className="bg-white rounded-xl border border-slate-200 p-5">
+                <h3 className="text-sm font-bold text-slate-700 mb-4">Actions</h3>
+                <div className="flex flex-wrap gap-3">
+                  {bill.status === "verification_review" && (
+                    <>
+                      <Button
+                        type="primary"
+                        icon={<FiCheck />}
+                        loading={isTransitioning}
+                        onClick={() => handleTransition("verified")}
+                        className="bg-emerald-500 hover:bg-emerald-600 border-0"
+                      >
+                        Approve — Mark Verified
+                      </Button>
+                      <Button
+                        danger
+                        icon={<FiSend />}
+                        onClick={() => setShowVerificationModal(true)}
+                      >
+                        Request Corrections
+                      </Button>
+                    </>
+                  )}
+                  {bill.status === "verified" && (
+                    <Button
+                      type="primary"
+                      icon={<FiSend />}
+                      onClick={() => setActiveTab("available_offers")}
+                    >
+                      Send Offers
+                    </Button>
+                  )}
+                  {bill.status === "offer_accepted" && (
+                    <Button
+                      type="primary"
+                      icon={<FiSend />}
+                      onClick={() => setActiveTab("case_details")}
+                    >
+                      Create & Send Contract
+                    </Button>
+                  )}
+                  {bill.status === "contract_review" && (
+                    <>
+                      <Button
+                        type="primary"
+                        icon={<FiCheck />}
+                        loading={isTransitioning}
+                        onClick={() => handleTransition("contract_verified")}
+                        className="bg-emerald-500 hover:bg-emerald-600 border-0"
+                      >
+                        Approve Contract
+                      </Button>
+                      <Button
+                        danger
+                        icon={<FiSend />}
+                        onClick={() => setShowContractVerificationModal(true)}
+                      >
+                        Request Re-submission
+                      </Button>
+                    </>
+                  )}
+                  {bill.status === "contract_verified" && (
+                    <Button
+                      type="primary"
+                      icon={<FiCheckCircle />}
+                      loading={isTransitioning}
+                      onClick={() => handleTransition("awaiting_activation")}
+                    >
+                      Move to Awaiting Activation
+                    </Button>
+                  )}
+                  {bill.status === "awaiting_activation" && (
+                    <Button
+                      type="primary"
+                      icon={<FiCheckCircle />}
+                      loading={isTransitioning}
+                      onClick={() => handleTransition("activated")}
+                      className="bg-emerald-500 hover:bg-emerald-600 border-0"
+                    >
+                      Activate Utility
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Activated success banner */}
+            {bill.status === "activated" && (
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5 flex items-center gap-3">
+                <FiCheckCircle className="text-emerald-500 h-6 w-6 flex-shrink-0" />
+                <div>
+                  <p className="text-emerald-700 font-semibold">Utility Activated</p>
+                  <p className="text-emerald-600 text-sm">This utility has been successfully activated.</p>
+                </div>
+              </div>
+            )}
+
+            {/* Case info section (visible from offer_accepted onward) */}
+            {activeCase && (
+              <div className="bg-white rounded-xl border border-slate-200 p-5">
+                <h3 className="text-sm font-bold text-slate-700 mb-3">Case Information</h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <span className="text-slate-400">Case Number</span>
+                    <p className="font-semibold text-slate-700">{activeCase.caseNumber || "—"}</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-400">Type</span>
+                    <p className="font-semibold text-slate-700 capitalize">{activeCase.caseType || "—"}</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-400">Priority</span>
+                    <p className="font-semibold text-slate-700 capitalize">{activeCase.priority || "—"}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        );
       case "available_offers":
         return (
           <AvailableOffersTab
@@ -268,6 +465,59 @@ const BillRequestDetailView = () => {
         );
       case "bill_data":
         return <BillDataTab bill={bill} />;
+      case "verification":
+        return (
+          <div className="space-y-4">
+            <h3 className="text-base font-bold text-slate-700">Verification History</h3>
+            {bill.verifications && bill.verifications.length > 0 ? (
+              bill.verifications.map((v: any) => (
+                <div key={v.id} className="bg-white rounded-xl border border-slate-200 p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <Tag color={v.status === "pending" ? "orange" : v.status === "submitted" ? "blue" : "green"} className="rounded-full! border-0! text-xs!">
+                      {v.status.toUpperCase()}
+                    </Tag>
+                    <span className="text-xs text-slate-400">{fmtDate(v.createdAt)}</span>
+                  </div>
+                  <div className="mb-3">
+                    <p className="text-xs text-slate-400 mb-1">Admin Message</p>
+                    <p className="text-sm text-slate-700">{v.adminMessage}</p>
+                  </div>
+                  {v.missingFields?.length > 0 && (
+                    <div className="mb-3">
+                      <p className="text-xs text-slate-400 mb-1">Missing Fields</p>
+                      <div className="flex flex-wrap gap-1">
+                        {v.missingFields.map((f: string) => (
+                          <Tag key={f} className="text-xs!">{f}</Tag>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {v.userMessage && (
+                    <div className="mb-3">
+                      <p className="text-xs text-slate-400 mb-1">User Response</p>
+                      <p className="text-sm text-slate-700">{v.userMessage}</p>
+                    </div>
+                  )}
+                  {v.userData && Object.keys(v.userData).length > 0 && (
+                    <div>
+                      <p className="text-xs text-slate-400 mb-1">Submitted Data</p>
+                      <div className="bg-slate-50 rounded-lg p-3 text-xs font-mono">
+                        {Object.entries(v.userData).map(([key, value]) => (
+                          <div key={key} className="flex gap-2">
+                            <span className="text-slate-400">{key}:</span>
+                            <span className="text-slate-700">{String(value)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))
+            ) : (
+              <Empty description="No verification history" />
+            )}
+          </div>
+        );
       case "case_details":
         return <CaseDetailsTab caseId={activeCase?.id ?? null} />;
       default:
@@ -306,10 +556,10 @@ const BillRequestDetailView = () => {
               </span>
             </Tag>
             <Tag
-              color={statusTagColor[activeCase?.status || bill.status] || "default"}
+              color={statusTagColor[bill.status] || "default"}
               className="m-0! rounded-md! border-0! px-2.5! py-0.5! text-xs! font-semibold!"
             >
-              {statusLabel[activeCase?.status || bill.status] || bill.status}
+              {statusLabel[bill.status] || bill.status}
             </Tag>
             {activeCase && (
               <Tag className="m-0! rounded-md! border-0! bg-purple-50! px-2.5! py-0.5! text-xs! font-semibold! text-purple-600!">
@@ -408,6 +658,88 @@ const BillRequestDetailView = () => {
         {/* ── Tab Content ──────────────────────────────── */}
         <div className="p-6">{renderTab()}</div>
       </div>
+
+      {/* Verification Request Modal */}
+      <Modal
+        title="Request Verification from User"
+        open={showVerificationModal}
+        onCancel={() => { setShowVerificationModal(false); setVerificationMessage(""); setVerificationFields([]); setRequireReupload(false); }}
+        onOk={() => handleSendVerificationRequest(false)}
+        confirmLoading={isTransitioning}
+        okText="Send Request"
+      >
+        <div className="space-y-4 mt-4">
+          <div>
+            <label className="text-sm font-medium text-slate-700">Message to User *</label>
+            <Input.TextArea
+              rows={3}
+              value={verificationMessage}
+              onChange={(e) => setVerificationMessage(e.target.value)}
+              placeholder="Explain what information is missing or incorrect..."
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-slate-700">Missing Fields</label>
+            <Select
+              mode="multiple"
+              className="w-full mt-1"
+              value={verificationFields}
+              onChange={setVerificationFields}
+              placeholder="Select fields that need correction"
+              options={[
+                { value: "podNumber", label: "POD Number" },
+                { value: "pdrNumber", label: "PDR Number" },
+                { value: "totalAmount", label: "Total Amount" },
+                { value: "consumptionKwh", label: "Consumption (kWh)" },
+                { value: "consumptionSmc", label: "Consumption (Smc)" },
+                { value: "costPerUnit", label: "Cost Per Unit" },
+                { value: "fixedCharges", label: "Fixed Charges" },
+                { value: "taxes", label: "Taxes" },
+                { value: "billingPeriodStart", label: "Billing Period Start" },
+                { value: "billingPeriodEnd", label: "Billing Period End" },
+                { value: "supplyAddress", label: "Supply Address" },
+                { value: "codiceFiscale", label: "Codice Fiscale" },
+                { value: "partitaIva", label: "Partita IVA" },
+                { value: "contractNumber", label: "Contract Number" },
+                { value: "meterNumber", label: "Meter Number" },
+                { value: "customerName", label: "Customer Name" },
+                { value: "supplierName", label: "Supplier Name" },
+              ]}
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={requireReupload}
+              onChange={(e) => setRequireReupload(e.target.checked)}
+              id="requireReupload"
+            />
+            <label htmlFor="requireReupload" className="text-sm text-slate-700">Require document re-upload</label>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Contract Verification Request Modal */}
+      <Modal
+        title="Request Contract Re-submission"
+        open={showContractVerificationModal}
+        onCancel={() => { setShowContractVerificationModal(false); setVerificationMessage(""); }}
+        onOk={() => handleSendVerificationRequest(true)}
+        confirmLoading={isTransitioning}
+        okText="Send Request"
+      >
+        <div className="space-y-4 mt-4">
+          <div>
+            <label className="text-sm font-medium text-slate-700">Message to User *</label>
+            <Input.TextArea
+              rows={3}
+              value={verificationMessage}
+              onChange={(e) => setVerificationMessage(e.target.value)}
+              placeholder="Explain what needs to be corrected in the contract..."
+            />
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

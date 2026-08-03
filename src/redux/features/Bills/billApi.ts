@@ -81,7 +81,7 @@ export interface IBill {
   id: string;
   fileUrl: string | null;
   billType: "electricity" | "gas";
-  status: "pending_email" | "uploaded" | "analyzing" | "analyzed" | "error" | "verification_required" | "offer_sent" | "case_created" | "contract_sent" | "contract_signed" | "activated" | "cancelled";
+  status: "pending_email" | "uploaded" | "analyzing" | "analyzed" | "error" | "verification_review" | "verification_required" | "verified" | "offer_sent" | "offer_accepted" | "contract_sent" | "contract_signed" | "contract_review" | "contract_verification_required" | "contract_verified" | "awaiting_activation" | "activated" | "cancelled";
   source?: "upload" | "email";
   podNumber: string | null;
   pdrNumber: string | null;
@@ -128,7 +128,6 @@ export interface IBillQuery {
   search?: string;
   billType?: string;
   status?: string;
-  caseStatus?: string;
   dateFrom?: string;
   dateTo?: string;
   source?: string;
@@ -172,7 +171,6 @@ const billApi = baseApi.injectEndpoints({
           if (params.search) qp.set("search", params.search);
           if (params.billType) qp.set("billType", params.billType);
           if (params.status) qp.set("status", params.status);
-          if (params.caseStatus) qp.set("caseStatus", params.caseStatus);
           if (params.dateFrom) qp.set("dateFrom", params.dateFrom);
           if (params.dateTo) qp.set("dateTo", params.dateTo);
           if (params.source) qp.set("source", params.source);
@@ -302,6 +300,24 @@ const billApi = baseApi.injectEndpoints({
         { type: "activityLog" as const, id: "LIST" },
       ],
     }),
+
+    transitionBillStatus: builder.mutation<
+      IBill,
+      { billId: string; targetStatus: string; message?: string; missingFields?: string[]; requireReupload?: boolean }
+    >({
+      query: ({ billId, ...body }) => ({
+        url: `bills/admin/${billId}/transition`,
+        method: "POST",
+        body,
+      }),
+      transformResponse: (response: { success: boolean; data: IBill }) => response.data,
+      invalidatesTags: (_r, _e, { billId }) => [
+        { type: "bill", id: billId },
+        { type: "bill", id: "LIST" },
+        { type: "dashboard", id: "ADMIN" },
+        { type: "activityLog", id: "LIST" },
+      ],
+    }),
   }),
 });
 
@@ -318,4 +334,5 @@ export const {
   useAdminUploadEmailBillMutation,
   useAssociateBillWithUserMutation,
   useRequestVerificationMutation,
+  useTransitionBillStatusMutation,
 } = billApi;
