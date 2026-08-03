@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Avatar, Button, Divider, Form, Input, Modal, Spin, Tabs, Tag } from "antd";
 import { FiEdit3, FiFileText, FiLock, FiMail, FiMapPin, FiPhone, FiUnlock, FiZap } from "react-icons/fi";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router";
 import type { CustomerStatus, IClient } from "../types";
 import { statusClass, statusToDisplay } from "../types";
 import { useLazyGetClientByIdQuery, useToggleClientStatusMutation, useResetClientPasswordMutation } from "../../../redux/features/Users/clientApi";
@@ -52,6 +53,7 @@ const caseStatusColors: Record<string, string> = {
 
 export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModalProps) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("anagrafica");
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [resetForm] = Form.useForm();
@@ -77,12 +79,13 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
 
   // Extract unique supplies from bills (grouped by POD/PDR)
   const supplies = useMemo(() => {
-    const supplyMap = new Map<string, { id: string; type: "electricity" | "gas"; podPdr: string; address: string | null; meter: string | null; contract: string | null; supplier: string | null }>();
+    const supplyMap = new Map<string, { id: string; billId: string; type: "electricity" | "gas"; podPdr: string; address: string | null; meter: string | null; contract: string | null; supplier: string | null }>();
     for (const bill of bills) {
       const key = bill.podNumber || bill.pdrNumber;
       if (!key || supplyMap.has(key)) continue;
       supplyMap.set(key, {
         id: key,
+        billId: bill.id,
         type: bill.billType,
         podPdr: key,
         address: bill.supplyAddress,
@@ -206,7 +209,11 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
     return (
       <div className="space-y-3">
         {supplies.map((supply) => (
-          <div key={supply.id} className="rounded-lg border border-cborder/45 p-3">
+          <div
+            key={supply.id}
+            className="rounded-lg border border-cborder/45 p-3 cursor-pointer transition-colors hover:border-[#7061ED] hover:bg-[#7061ED]/5"
+            onClick={() => { onClose(); navigate(`/case-management/${supply.billId}`); }}
+          >
             <div className="flex items-center gap-2 mb-2">
               <FiZap className={`h-4 w-4 ${supply.type === "electricity" ? "text-yellow-500" : "text-blue-500"}`} />
               <span className="font-semibold text-brand">
@@ -254,7 +261,11 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
     return (
       <div className="space-y-2">
         {bills.map((bill: IBill) => (
-          <div key={bill.id} className="flex items-center justify-between rounded-lg border border-cborder/45 p-3">
+          <div
+            key={bill.id}
+            className="flex items-center justify-between rounded-lg border border-cborder/45 p-3 cursor-pointer transition-colors hover:border-[#7061ED] hover:bg-[#7061ED]/5"
+            onClick={() => { onClose(); navigate(`/case-management/${bill.id}`); }}
+          >
             <div className="flex items-center gap-3">
               <div className={`flex h-8 w-8 items-center justify-center rounded-full ${bill.billType === "electricity" ? "bg-yellow-50 text-yellow-600" : "bg-blue-50 text-blue-600"}`}>
                 <FiZap className="h-4 w-4" />
@@ -296,7 +307,11 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
     return (
       <div className="space-y-2">
         {cases.map((c: ICase) => (
-          <div key={c.id} className="rounded-lg border border-cborder/45 p-3">
+          <div
+            key={c.id}
+            className="rounded-lg border border-cborder/45 p-3 cursor-pointer transition-colors hover:border-[#7061ED] hover:bg-[#7061ED]/5"
+            onClick={() => { onClose(); navigate(`/case-management/case/${c.id}`); }}
+          >
             <div className="flex items-center justify-between mb-1">
               <span className="text-sm font-semibold text-brand">
                 {c.caseNumber || c.id.slice(0, 8)}
