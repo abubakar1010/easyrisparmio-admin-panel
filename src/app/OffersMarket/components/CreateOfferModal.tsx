@@ -6,17 +6,17 @@ import { useCreateOfferMutation, useUpdateOfferMutation } from "../../../redux/f
 import { useGetSuppliersQuery } from "../../../redux/features/Suppliers/supplierApi";
 import { server_origin } from "../../../config";
 
-const numericRule = (requiredMsg?: string) => [
-  ...(requiredMsg ? [{ required: true, message: requiredMsg }] : []),
+const numericRule = (fieldLabel: string) => [
   {
     validator: (_: unknown, value: string) => {
-      if (!value && value !== "0") return requiredMsg ? Promise.reject(requiredMsg) : Promise.resolve();
-      if (!/^\d*\.?\d*$/.test(value)) return Promise.reject("Please enter a valid number");
-      if (parseFloat(value) < 0) return Promise.reject("Value must be 0 or greater");
+      if (!value && value !== "0") return Promise.reject(`Please enter ${fieldLabel}`);
+      if (!/^\d+(\.\d+)?$/.test(value)) return Promise.reject(`Please enter a valid ${fieldLabel}`);
       return Promise.resolve();
     },
   },
 ];
+
+const sanitizeNumeric = (raw: string) => raw.replace(/[^\d.]/g, "").replace(/(\..*?)\./g, "$1");
 
 const NumericInput = ({ value, onChange, placeholder }: { value?: string; onChange?: (v: string) => void; placeholder?: string }) => (
   <Input
@@ -24,11 +24,13 @@ const NumericInput = ({ value, onChange, placeholder }: { value?: string; onChan
     placeholder={placeholder}
     className="h-11 rounded-lg"
     onChange={(e) => {
-      const v = e.target.value;
-      // Allow empty, digits, and a single decimal point — block everything else
-      if (v === "" || /^\d*\.?\d*$/.test(v)) {
-        onChange?.(v);
-      }
+      const v = sanitizeNumeric(e.target.value);
+      onChange?.(v);
+    }}
+    onPaste={(e) => {
+      e.preventDefault();
+      const pasted = sanitizeNumeric(e.clipboardData.getData("text"));
+      onChange?.(pasted);
     }}
   />
 );
@@ -270,14 +272,14 @@ export const CreateOfferModal = ({
           <Form.Item
             name="fixedMonthlyFee"
             label="Fixed Monthly Fee (EUR)"
-            rules={numericRule("Required")}
+            rules={numericRule("fixed monthly fee")}
           >
             <NumericInput placeholder="e.g. 9.90" />
           </Form.Item>
           <Form.Item
             name="activationCost"
             label="Activation Cost (EUR)"
-            rules={numericRule("Required")}
+            rules={numericRule("activation cost")}
           >
             <NumericInput placeholder="e.g. 45" />
           </Form.Item>
@@ -285,12 +287,12 @@ export const CreateOfferModal = ({
 
         <div className="grid grid-cols-1 gap-x-3 gap-y-1 sm:grid-cols-2">
           {(commodity === "electricity" || commodity === "dual" || !commodity) && (
-            <Form.Item name="pricePerKwh" label="Price per kWh (EUR)" rules={numericRule("Please enter price per kWh")}>
+            <Form.Item name="pricePerKwh" label="Price per kWh (EUR)" rules={numericRule("price per kWh")}>
               <NumericInput placeholder="e.g. 0.085" />
             </Form.Item>
           )}
           {(commodity === "gas" || commodity === "dual" || !commodity) && (
-            <Form.Item name="pricePerSmc" label="Price per SMc (EUR)" rules={numericRule("Please enter price per SMc")}>
+            <Form.Item name="pricePerSmc" label="Price per SMc (EUR)" rules={numericRule("price per SMc")}>
               <NumericInput placeholder="e.g. 0.45" />
             </Form.Item>
           )}
