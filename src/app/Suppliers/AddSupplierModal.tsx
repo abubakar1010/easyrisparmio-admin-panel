@@ -6,6 +6,7 @@ import {
   useCreateSupplierMutation,
   useUpdateSupplierMutation,
 } from "../../redux/features/Suppliers/supplierApi";
+import { PhoneInput, phoneValidationRule } from "../../components/ui/PhoneInput";
 
 interface AddSupplierModalProps {
   isOpen: boolean;
@@ -138,8 +139,8 @@ const AddSupplierModal = ({ isOpen, onClose, mode = "add", supplierId, initialVa
             <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Email</span>} name="email" rules={[{ required: true, message: "Email is required" }, { type: "email", message: "Enter a valid email" }]}>
               <Input placeholder="Enter email" className="rounded-lg h-10 border-slate-200" />
             </Form.Item>
-            <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Phone Number</span>} name="phoneNumber">
-              <Input placeholder="+39 800 123 456" className="rounded-lg h-10 border-slate-200" />
+            <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Phone Number</span>} name="phoneNumber" rules={[phoneValidationRule("Enter a valid phone number")]}>
+              <PhoneInput />
             </Form.Item>
           </div>
         </section>

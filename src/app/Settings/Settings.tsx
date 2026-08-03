@@ -8,6 +8,7 @@ import type { TUserRole } from "../../types/common.type";
 import { useUpdateProfileMutation, useChangePasswordMutation } from "../../redux/features/Auth/authApi";
 import { setUser } from "../../redux/features/Auth/authSlice";
 import { useTranslation } from "react-i18next";
+import { PhoneInput, phoneValidationRule } from "../../components/ui/PhoneInput";
 import { supportedLanguages } from "../../constants/language.contants";
 import { errorAlert } from "../../lib/helpers/alert";
 
@@ -163,8 +164,9 @@ const Settings = () => {
               <Form.Item
                 name="phone"
                 label={<span className="text-[14px] font-medium text-slate-600">{t("settings.phone_number")}</span>}
+                rules={[phoneValidationRule(t("settings.invalid_phone"))]}
               >
-                <Input placeholder="+1 234 567 8900" className="h-11 rounded-lg border-slate-200" />
+                <PhoneInput />
               </Form.Item>
 
               <Form.Item

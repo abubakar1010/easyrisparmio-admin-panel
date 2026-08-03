@@ -8,6 +8,7 @@ import { useLazyGetClientByIdQuery, useToggleClientStatusMutation, useResetClien
 import { useGetBillsAdminQuery, type IBill } from "../../../redux/features/Bills/billApi";
 import { useGetCasesQuery, type ICase } from "../../../redux/features/Cases/caseApi";
 import { sweetAlertConfirmation } from "../../../lib/helpers/sweetAlertConfirmation";
+import { formatPhone } from "../../../utils/formatPhone";
 import { successAlert, errorAlert } from "../../../lib/helpers/alert";
 
 type ClientDetailsModalProps = {
@@ -163,7 +164,7 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
         {detail!.phone && (
           <>
             <p className="text-sm text-owngray">{t("client_management.telephone")}</p>
-            <p className="mb-2 text-[15px] font-semibold text-brand">{detail!.phone}</p>
+            <p className="mb-2 text-[15px] font-semibold text-brand">{formatPhone(detail!.phone)}</p>
           </>
         )}
         {detail!.codiceFiscale && (
@@ -409,7 +410,7 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
           <div className="mt-4 space-y-1.5 text-[14px] text-gray-700">
             {detail.phone && (
               <p className="flex items-center gap-2">
-                <FiPhone className="h-3.5 w-3.5 text-owngray" /> {detail.phone}
+                <FiPhone className="h-3.5 w-3.5 text-owngray" /> {formatPhone(detail.phone)}
               </p>
             )}
             <p className="flex items-center gap-2">

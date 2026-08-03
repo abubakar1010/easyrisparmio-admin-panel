@@ -8,6 +8,7 @@ import {
   FiClock,
   FiPaperclip,
 } from "react-icons/fi";
+import { formatPhone } from "../../utils/formatPhone";
 import { LuDownload, LuMessageCircle } from "react-icons/lu";
 import { useNavigate, useParams } from "react-router";
 import {
@@ -359,7 +360,7 @@ const TicketDetailsView = () => {
               {ticket.user?.phone && (
                 <div className="flex items-center gap-2 text-slate-600">
                   <FiPhone className="h-4 w-4 text-slate-400 shrink-0" />
-                  {ticket.user.phone}
+                  {formatPhone(ticket.user.phone)}
                 </div>
               )}
             </div>

@@ -5,6 +5,7 @@ import type { CustomerType, IClient, ICreateClient, IUpdateClient } from "../typ
 import { typeToRole } from "../types";
 import { useCreateClientMutation, useUpdateClientMutation } from "../../../redux/features/Users/clientApi";
 import { successAlert, errorAlert } from "../../../lib/helpers/alert";
+import { PhoneInput, phoneValidationRule } from "../../../components/ui/PhoneInput";
 
 type ClientFormModalProps = {
   open: boolean;
@@ -155,8 +156,8 @@ export function ClientFormModal({ open, onClose, mode, client = null }: ClientFo
           <Form.Item name="email" label={`${t("client_management.email_label")} *`} className="mb-3" rules={[{ required: true, type: "email", message: t("client_management.valid_email_required") }]}>
             <Input />
           </Form.Item>
-          <Form.Item name="phone" label={t("client_management.phone")} className="mb-3">
-            <Input />
+          <Form.Item name="phone" label={t("client_management.phone")} className="mb-3" rules={[phoneValidationRule(t("client_management.invalid_phone"))]}>
+            <PhoneInput />
           </Form.Item>
         </div>
 
