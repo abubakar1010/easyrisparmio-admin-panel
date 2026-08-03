@@ -1,10 +1,37 @@
-import { Alert, Button, DatePicker, Form, Input, InputNumber, Modal, Select, Switch, Upload, message } from "antd";
+import { Alert, Button, DatePicker, Form, Input, Modal, Select, Switch, Upload, message } from "antd";
 import dayjs from "dayjs";
 import { useEffect, useState } from "react";
 import { LuUpload, LuFile, LuTrash2 } from "react-icons/lu";
 import { useCreateOfferMutation, useUpdateOfferMutation } from "../../../redux/features/Offers/offerApi";
 import { useGetSuppliersQuery } from "../../../redux/features/Suppliers/supplierApi";
 import { server_origin } from "../../../config";
+
+const numericRule = (requiredMsg?: string) => [
+  ...(requiredMsg ? [{ required: true, message: requiredMsg }] : []),
+  {
+    validator: (_: unknown, value: string) => {
+      if (!value && value !== "0") return requiredMsg ? Promise.reject(requiredMsg) : Promise.resolve();
+      if (!/^\d*\.?\d*$/.test(value)) return Promise.reject("Please enter a valid number");
+      if (parseFloat(value) < 0) return Promise.reject("Value must be 0 or greater");
+      return Promise.resolve();
+    },
+  },
+];
+
+const NumericInput = ({ value, onChange, placeholder }: { value?: string; onChange?: (v: string) => void; placeholder?: string }) => (
+  <Input
+    value={value}
+    placeholder={placeholder}
+    className="h-11 rounded-lg"
+    onChange={(e) => {
+      const v = e.target.value;
+      // Allow empty, digits, and a single decimal point — block everything else
+      if (v === "" || /^\d*\.?\d*$/.test(v)) {
+        onChange?.(v);
+      }
+    }}
+  />
+);
 
 type CreateOfferModalProps = {
   open: boolean;
@@ -104,10 +131,10 @@ export const CreateOfferModal = ({
       energyType: values.commodity?.toLowerCase(),
       marketType: values.priceType?.toLowerCase(),
       offerStatus: values.status?.toLowerCase() || "draft",
-      activationCost: values.activationCost != null ? Number(values.activationCost) : 0,
-      fixedMonthlyFee: values.fixedMonthlyFee != null ? Number(values.fixedMonthlyFee) : 0,
-      pricePerKwh: values.pricePerKwh != null ? Number(values.pricePerKwh) : undefined,
-      pricePerSmc: values.pricePerSmc != null ? Number(values.pricePerSmc) : undefined,
+      activationCost: values.activationCost ? parseFloat(values.activationCost) : 0,
+      fixedMonthlyFee: values.fixedMonthlyFee ? parseFloat(values.fixedMonthlyFee) : 0,
+      pricePerKwh: values.pricePerKwh ? parseFloat(values.pricePerKwh) : undefined,
+      pricePerSmc: values.pricePerSmc ? parseFloat(values.pricePerSmc) : undefined,
       contractDurationDays: values.contractDurationDays || 1,
       isGreenEnergy: values.isGreenEnergy ?? false,
       validFrom: dayjs(values.validFrom).format("YYYY-MM-DD"),
@@ -243,60 +270,28 @@ export const CreateOfferModal = ({
           <Form.Item
             name="fixedMonthlyFee"
             label="Fixed Monthly Fee (EUR)"
-            rules={[{ required: true, message: "Required" }]}
+            rules={numericRule("Required")}
           >
-            <InputNumber
-              min={0}
-              step={0.01}
-              precision={2}
-              decimalSeparator="."
-              className="w-full! rounded-lg [&_.ant-input-number-input]:h-11"
-              controls={false}
-              placeholder="e.g. 9.90"
-            />
+            <NumericInput placeholder="e.g. 9.90" />
           </Form.Item>
           <Form.Item
             name="activationCost"
             label="Activation Cost (EUR)"
-            rules={[{ required: true, message: "Required" }]}
+            rules={numericRule("Required")}
           >
-            <InputNumber
-              min={0}
-              step={0.01}
-              precision={2}
-              decimalSeparator="."
-              className="w-full! rounded-lg [&_.ant-input-number-input]:h-11"
-              controls={false}
-              placeholder="e.g. 45"
-            />
+            <NumericInput placeholder="e.g. 45" />
           </Form.Item>
         </div>
 
         <div className="grid grid-cols-1 gap-x-3 gap-y-1 sm:grid-cols-2">
           {(commodity === "electricity" || commodity === "dual" || !commodity) && (
-            <Form.Item name="pricePerKwh" label="Price per kWh (EUR)" rules={[{ required: true, message: "Please enter price per kWh" }]}>
-              <InputNumber
-                min={0}
-                step={0.001}
-                precision={6}
-                decimalSeparator="."
-                className="w-full! rounded-lg [&_.ant-input-number-input]:h-11"
-                controls={false}
-                placeholder="e.g. 0.085"
-              />
+            <Form.Item name="pricePerKwh" label="Price per kWh (EUR)" rules={numericRule("Please enter price per kWh")}>
+              <NumericInput placeholder="e.g. 0.085" />
             </Form.Item>
           )}
           {(commodity === "gas" || commodity === "dual" || !commodity) && (
-            <Form.Item name="pricePerSmc" label="Price per SMc (EUR)" rules={[{ required: true, message: "Please enter price per SMc" }]}>
-              <InputNumber
-                min={0}
-                step={0.001}
-                precision={6}
-                decimalSeparator="."
-                className="w-full! rounded-lg [&_.ant-input-number-input]:h-11"
-                controls={false}
-                placeholder="e.g. 0.45"
-              />
+            <Form.Item name="pricePerSmc" label="Price per SMc (EUR)" rules={numericRule("Please enter price per SMc")}>
+              <NumericInput placeholder="e.g. 0.45" />
             </Form.Item>
           )}
         </div>
