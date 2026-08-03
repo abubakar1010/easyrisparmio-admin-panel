@@ -424,6 +424,7 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
             {primaryAddress && (
               <p className="flex items-center gap-2">
                 <FiMapPin className="h-3.5 w-3.5 text-owngray" /> {primaryAddress.streetAddress}, {primaryAddress.city}
+                {primaryAddress.province ? ` (${primaryAddress.province})` : ""}
                 {primaryAddress.postalCode ? ` ${primaryAddress.postalCode}` : ""}
               </p>
             )}

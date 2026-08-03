@@ -36,6 +36,7 @@ export interface ISupplier {
   website: string | null;
   streetAddress: string | null;
   city: string | null;
+  province: string | null;
   zipCode: string | null;
   country: string | null;
   iban: string | null;
@@ -71,6 +72,7 @@ export interface ICreateSupplier {
   website?: string;
   streetAddress?: string;
   city?: string;
+  province?: string;
   zipCode?: string;
   country?: string;
   iban?: string;

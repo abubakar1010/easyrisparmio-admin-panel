@@ -103,6 +103,7 @@ const SupplierDetails = () => {
     phoneNumber: supplier.contactPhone,
     streetAddress: supplier.streetAddress,
     city: supplier.city,
+    province: supplier.province,
     zipCode: supplier.zipCode,
     country: supplier.country,
     iban: supplier.iban,
@@ -292,7 +293,7 @@ const SupplierDetails = () => {
               icon={<FiMapPin className="h-4 w-4" />}
               label="Address"
               value={
-                [supplier.streetAddress, supplier.zipCode, supplier.city, supplier.country]
+                [supplier.streetAddress, supplier.city, supplier.province, supplier.zipCode, supplier.country]
                   .filter(Boolean)
                   .join(", ") || null
               }

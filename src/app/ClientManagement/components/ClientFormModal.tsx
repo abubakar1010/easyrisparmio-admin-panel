@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { Button, Form, Input, Modal } from "antd";
+import { Button, Form, Input, Modal, Select } from "antd";
 import { useTranslation } from "react-i18next";
 import type { CustomerType, IClient, ICreateClient, IUpdateClient } from "../types";
 import { typeToRole } from "../types";
 import { useCreateClientMutation, useUpdateClientMutation } from "../../../redux/features/Users/clientApi";
 import { successAlert, errorAlert } from "../../../lib/helpers/alert";
 import { PhoneInput, phoneValidationRule } from "../../../components/ui/PhoneInput";
+import { PROVINCE_OPTIONS } from "../../../constants/italianProvinces";
 
 type ClientFormModalProps = {
   open: boolean;
@@ -41,6 +42,7 @@ export function ClientFormModal({ open, onClose, mode, client = null }: ClientFo
         fiscalCode: client.codiceFiscale,
         streetAddress: primaryAddress?.streetAddress,
         city: primaryAddress?.city,
+        province: primaryAddress?.province,
         postalCode: primaryAddress?.postalCode,
         companyName: client.businessProfile?.companyName,
         partitaIva: client.businessProfile?.partitaIva,
@@ -90,6 +92,7 @@ export function ClientFormModal({ open, onClose, mode, client = null }: ClientFo
           createData.address = {
             streetAddress: values.streetAddress,
             city: values.city,
+            province: values.province || undefined,
             postalCode: values.postalCode,
           };
         }
@@ -202,6 +205,19 @@ export function ClientFormModal({ open, onClose, mode, client = null }: ClientFo
           <Form.Item name="city" label={t("client_management.city")} className="mb-3">
             <Input />
           </Form.Item>
+          <Form.Item name="province" label={t("client_management.province")} className="mb-3">
+            <Select
+              showSearch
+              allowClear
+              placeholder={t("client_management.province")}
+              options={PROVINCE_OPTIONS}
+              filterOption={(input, option) =>
+                (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
+              }
+            />
+          </Form.Item>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
           <Form.Item name="postalCode" label={t("client_management.postal_code")} className="mb-4">
             <Input />
           </Form.Item>

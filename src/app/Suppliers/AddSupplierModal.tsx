@@ -7,6 +7,7 @@ import {
   useUpdateSupplierMutation,
 } from "../../redux/features/Suppliers/supplierApi";
 import { PhoneInput, phoneValidationRule } from "../../components/ui/PhoneInput";
+import { PROVINCE_OPTIONS } from "../../constants/italianProvinces";
 
 interface AddSupplierModalProps {
   isOpen: boolean;
@@ -48,6 +49,7 @@ const AddSupplierModal = ({ isOpen, onClose, mode = "add", supplierId, initialVa
       contactPhone: values.phoneNumber || undefined,
       streetAddress: values.streetAddress || undefined,
       city: values.city || undefined,
+      province: values.province || undefined,
       zipCode: values.zipCode || undefined,
       country: values.country || undefined,
       iban: values.iban || undefined,
@@ -154,6 +156,19 @@ const AddSupplierModal = ({ isOpen, onClose, mode = "add", supplierId, initialVa
             </Form.Item>
             <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">City</span>} name="city">
               <Input placeholder="Enter city" className="rounded-lg h-10 border-slate-200" />
+            </Form.Item>
+            <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Province</span>} name="province">
+              <Select
+                showSearch
+                allowClear
+                placeholder="Select province"
+                options={PROVINCE_OPTIONS}
+                filterOption={(input, option) =>
+                  (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
+                }
+                className="[&_.ant-select-selector]:rounded-lg [&_.ant-select-selector]:!h-10 [&_.ant-select-selector]:border-slate-200"
+                popupClassName="rounded-xl"
+              />
             </Form.Item>
             <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">ZIP Code</span>} name="zipCode">
               <Input placeholder="Enter ZIP code" className="rounded-lg h-10 border-slate-200" />
