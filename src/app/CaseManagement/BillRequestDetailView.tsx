@@ -25,7 +25,6 @@ import {
   LuScanLine,
   LuClock3,
   LuDownload,
-  LuBrain,
 } from "react-icons/lu";
 import { FiDownload } from "react-icons/fi";
 import { useNavigate, useParams } from "react-router";
@@ -1022,7 +1021,6 @@ function AvailableOffersTab({
 function BillDataTab({ bill }: { bill: IBill }) {
   const isElectricity = bill.billType === "electricity";
   const token = useAppSelector((state) => state.auth.token);
-  const analysis = bill.analysis;
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState<string | null>(null);
@@ -1087,12 +1085,6 @@ function BillDataTab({ bill }: { bill: IBill }) {
       URL.revokeObjectURL(previewUrl);
       setPreviewUrl(null);
     }
-  };
-
-  const marketTypeLabel: Record<string, string> = {
-    fixed: "Fixed",
-    variable: "Variable",
-    indexed: "Indexed",
   };
 
   const groups = [
@@ -1230,52 +1222,6 @@ function BillDataTab({ bill }: { bill: IBill }) {
           </div>
         </div>
       ))}
-
-      {/* Analysis Results */}
-      {analysis && (
-        <div>
-          <h4 className="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
-            <LuBrain className="h-4 w-4 text-indigo-500" />
-            Analysis Results
-          </h4>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-4">
-            <div>
-              <span className="text-xs text-slate-400">Potential Savings</span>
-              <p className="text-sm font-semibold text-emerald-600">{fmt(analysis.potentialSavings) ?? "€ 0.00"}/year</p>
-            </div>
-            <div>
-              <span className="text-xs text-slate-400">Current Monthly Average</span>
-              <p className="text-sm font-medium text-slate-700">{fmt(analysis.currentMonthlyAvg) ?? "€ 0.00"}</p>
-            </div>
-            <div>
-              <span className="text-xs text-slate-400">Recommended Market Type</span>
-              <p className="text-sm font-medium text-slate-700">
-                <Tag color="purple" className="m-0!">
-                  {marketTypeLabel[analysis.recommendedMarketType] || analysis.recommendedMarketType}
-                </Tag>
-              </p>
-            </div>
-            {analysis.confidenceScore != null && (
-              <div>
-                <span className="text-xs text-slate-400">Confidence Score</span>
-                <p className="text-sm font-medium text-slate-700">{Number(analysis.confidenceScore).toFixed(0)}%</p>
-              </div>
-            )}
-            <div>
-              <span className="text-xs text-slate-400">Offers Sent</span>
-              <p className="text-sm font-medium text-slate-700">
-                <Tag color={analysis.offersSentToUser ? "green" : "default"} className="m-0!">
-                  {analysis.offersSentToUser ? "Yes" : "No"}
-                </Tag>
-              </p>
-            </div>
-            <div>
-              <span className="text-xs text-slate-400">Analysis Date</span>
-              <p className="text-sm font-medium text-slate-700">{fmtDate(analysis.createdAt)}</p>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Document Preview Modal */}
       <Modal

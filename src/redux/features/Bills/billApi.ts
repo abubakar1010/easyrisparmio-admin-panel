@@ -42,18 +42,6 @@ export interface IBillExtractionResult {
   overallConfidence: "high" | "medium" | "low";
 }
 
-export interface IBillAnalysis {
-  id: string;
-  potentialSavings: number;
-  currentMonthlyAvg: number;
-  recommendedMarketType: string;
-  analysisDetails: Record<string, unknown> | null;
-  confidenceScore: number | null;
-  recommendedOffers: unknown[] | null;
-  offersSentToUser: boolean;
-  createdAt: string;
-}
-
 export interface IBillVerification {
   id: string;
   billId: string;
@@ -110,7 +98,6 @@ export interface IBill {
   supplier?: { id: string; name: string } | null;
   files?: IBillFile[] | null;
   verifications?: IBillVerification[] | null;
-  analysis?: IBillAnalysis | null;
   switchCases?: Array<{
     id: string;
     caseNumber: string | null;
@@ -202,22 +189,6 @@ const billApi = baseApi.injectEndpoints({
         body: formData,
       }),
       invalidatesTags: [{ type: "bill", id: "LIST" }],
-    }),
-
-    reanalyzeBill: builder.mutation<IBillAnalysis, string>({
-      query: (id) => ({ url: `bills/admin/${id}/reanalyze`, method: "POST" }),
-      transformResponse: (response: { success: boolean; data: IBillAnalysis }) => response.data,
-      invalidatesTags: (_r, _e, id) => [{ type: "bill", id }, { type: "bill", id: "LIST" }],
-    }),
-
-    getRecommendedOffersAdmin: builder.query<unknown[], string>({
-      query: (billId) => ({ url: `bills/admin/${billId}/recommended-offers`, method: "GET" }),
-      transformResponse: (response: { success: boolean; data: unknown[] }) => response.data,
-    }),
-
-    sendOffersToUser: builder.mutation<{ message: string }, string>({
-      query: (billId) => ({ url: `bills/admin/${billId}/send-offers`, method: "POST" }),
-      invalidatesTags: (_r, _e, id) => [{ type: "bill", id }, { type: "bill", id: "LIST" }, { type: "dashboard", id: "ADMIN" }, { type: "activityLog", id: "LIST" }],
     }),
 
     getAllOffersForBill: builder.query<IOfferWithSavings[], string>({
@@ -325,9 +296,6 @@ export const {
   useGetBillsAdminQuery,
   useGetBillByIdAdminQuery,
   useUploadBillMutation,
-  useReanalyzeBillMutation,
-  useGetRecommendedOffersAdminQuery,
-  useSendOffersToUserMutation,
   useGetAllOffersForBillQuery,
   useSendSelectedOffersMutation,
   useExtractBillDataMutation,
