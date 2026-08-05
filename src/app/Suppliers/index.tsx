@@ -65,8 +65,9 @@ const Suppliers = () => {
           {suppliers.map((supplier) => {
             const { iconKey, color, bg, displayStatus } = getSupplierVisuals(supplier);
             const activeOffers = supplier.offers?.filter((o) => o.isActive)?.length || 0;
+            const isPendingDeletion = supplier.status === "pending_deletion";
             return (
-              <div key={supplier.id} className="bg-white rounded-2xl border border-slate-200/60 p-6 shadow-sm hover:shadow-md transition-all duration-300">
+              <div key={supplier.id} className={`bg-white rounded-2xl border p-6 shadow-sm hover:shadow-md transition-all duration-300 ${isPendingDeletion ? "border-red-300 bg-red-50/30" : "border-slate-200/60"}`}>
                 <div className="flex items-start justify-between mb-4">
                   <div className={`h-12 w-12 rounded-xl ${bg} ${color} flex items-center justify-center border border-current/10`}>
                     {iconMap[iconKey]}
@@ -79,6 +80,11 @@ const Suppliers = () => {
                 <div className="mb-6">
                   <h3 className="text-xl font-bold text-slate-800">{supplier.name}</h3>
                   <p className="text-sm text-slate-400 font-medium mt-0.5">{activeOffers} active offers</p>
+                  {isPendingDeletion && supplier.scheduledDeletionDate && (
+                    <p className="text-xs text-red-500 font-medium mt-1">
+                      Deletion scheduled: {new Date(supplier.scheduledDeletionDate).toLocaleDateString("it-IT")}
+                    </p>
+                  )}
                 </div>
 
                 <Button

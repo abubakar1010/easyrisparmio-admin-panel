@@ -28,8 +28,9 @@ export interface ISupplier {
   description: string | null;
   rating: number;
   isActive: boolean;
-  status: "active" | "warning" | "inactive";
+  status: "active" | "warning" | "inactive" | "pending_deletion";
   commodity: "electricity" | "gas" | "dual" | null;
+  scheduledDeletionDate: string | null;
   contactName: string | null;
   contactEmail: string | null;
   contactPhone: string | null;
@@ -139,9 +140,31 @@ const supplierApi = baseApi.injectEndpoints({
       ],
     }),
 
-    deleteSupplier: builder.mutation<void, string>({
+    deleteSupplier: builder.mutation<
+      { message: string; scheduledDeletionDate?: string; cancelledCases?: number },
+      string
+    >({
       query: (id) => ({ url: `suppliers/${id}`, method: "DELETE" }),
-      invalidatesTags: [{ type: "supplier", id: "LIST" }, { type: "dashboard", id: "ADMIN" }, { type: "activityLog", id: "LIST" }],
+      transformResponse: (response: { success: boolean; data: { message: string; scheduledDeletionDate?: string; cancelledCases?: number } }) =>
+        response.data,
+      invalidatesTags: (_r, _e, id) => [
+        { type: "supplier", id },
+        { type: "supplier", id: "LIST" },
+        { type: "dashboard", id: "ADMIN" },
+        { type: "activityLog", id: "LIST" },
+      ],
+    }),
+
+    cancelDeletion: builder.mutation<{ message: string }, string>({
+      query: (id) => ({ url: `suppliers/${id}/cancel-deletion`, method: "POST" }),
+      transformResponse: (response: { success: boolean; data: { message: string } }) =>
+        response.data,
+      invalidatesTags: (_r, _e, id) => [
+        { type: "supplier", id },
+        { type: "supplier", id: "LIST" },
+        { type: "dashboard", id: "ADMIN" },
+        { type: "activityLog", id: "LIST" },
+      ],
     }),
 
     toggleSupplierStatus: builder.mutation<ISupplier, { id: string; isActive: boolean }>({
@@ -167,5 +190,6 @@ export const {
   useCreateSupplierMutation,
   useUpdateSupplierMutation,
   useDeleteSupplierMutation,
+  useCancelDeletionMutation,
   useToggleSupplierStatusMutation,
 } = supplierApi;

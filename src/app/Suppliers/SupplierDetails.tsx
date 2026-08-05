@@ -19,6 +19,7 @@ import {
   useGetSupplierByIdQuery,
   useUpdateSupplierMutation,
   useDeleteSupplierMutation,
+  useCancelDeletionMutation,
   type ISupplier,
   type SupplierOffer,
 } from "../../redux/features/Suppliers/supplierApi";
@@ -65,6 +66,7 @@ const SupplierDetails = () => {
   const { data: supplier, isLoading } = useGetSupplierByIdQuery(supplierId!, { skip: !supplierId });
   const [updateSupplier] = useUpdateSupplierMutation();
   const [deleteSupplier] = useDeleteSupplierMutation();
+  const [cancelDeletion, { isLoading: isCancelling }] = useCancelDeletionMutation();
 
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const [editOpen, setEditOpen] = useState(false);
@@ -88,6 +90,7 @@ const SupplierDetails = () => {
     );
   }
 
+  const isPendingDeletion = supplier.status === "pending_deletion";
   const { iconKey, color, bg, displayStatus } = getVisuals(supplier);
   const offers = supplier.offers || [];
   const activeOffers = offers.filter((o) => o.isActive);
@@ -122,20 +125,35 @@ const SupplierDetails = () => {
   const handleDeleteSupplier = () => {
     Modal.confirm({
       title: "Delete supplier?",
-      content: `"${supplier.name}" will be permanently removed.`,
+      content: `"${supplier.name}" will be permanently removed. If this supplier has active contracts, deletion will be scheduled until those contracts expire.`,
       okText: "Delete",
       okButtonProps: { danger: true },
       centered: true,
       onOk: async () => {
         try {
-          await deleteSupplier(supplier.id).unwrap();
-          message.success("Supplier deleted");
-          navigate("/suppliers");
+          const result = await deleteSupplier(supplier.id).unwrap();
+          if (result.scheduledDeletionDate) {
+            message.success(
+              `Supplier deletion scheduled for ${dayjs(result.scheduledDeletionDate).format("DD/MM/YYYY")}${result.cancelledCases ? `. ${result.cancelledCases} early-stage case(s) cancelled.` : ""}`,
+            );
+          } else {
+            message.success("Supplier deleted");
+            navigate("/suppliers");
+          }
         } catch {
           message.error("Failed to delete supplier");
         }
       },
     });
+  };
+
+  const handleCancelDeletion = async () => {
+    try {
+      await cancelDeletion(supplier.id).unwrap();
+      message.success("Supplier deletion cancelled");
+    } catch {
+      message.error("Failed to cancel deletion");
+    }
   };
 
   const offerColumns: ColumnsType<SupplierOffer> = [
@@ -191,6 +209,33 @@ const SupplierDetails = () => {
         Back to Suppliers
       </Button>
 
+      {/* Pending Deletion Banner */}
+      {isPendingDeletion && (
+        <div className="flex items-center justify-between rounded-2xl border border-red-200 bg-red-50 p-4 shadow-sm">
+          <div>
+            <p className="text-sm font-bold text-red-700">Supplier Scheduled for Deletion</p>
+            <p className="mt-0.5 text-sm text-red-600">
+              This supplier will be automatically deleted on{" "}
+              <span className="font-semibold">
+                {supplier.scheduledDeletionDate
+                  ? dayjs(supplier.scheduledDeletionDate).format("DD/MM/YYYY")
+                  : "N/A"}
+              </span>
+              . No new offers can be created or sent during this period.
+            </p>
+          </div>
+          <Button
+            danger
+            type="primary"
+            onClick={handleCancelDeletion}
+            loading={isCancelling}
+            className="shrink-0 rounded-lg"
+          >
+            Cancel Deletion
+          </Button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col gap-4 rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
@@ -209,14 +254,23 @@ const SupplierDetails = () => {
           <Select
             value={supplier.status}
             onChange={handleStatusChange}
+            disabled={isPendingDeletion}
             options={[
               { value: "active", label: "Good" },
               { value: "warning", label: "Warning" },
               { value: "inactive", label: "Inactive" },
+              ...(isPendingDeletion
+                ? [{ value: "pending_deletion", label: "Pending Deletion", disabled: true }]
+                : []),
             ]}
             className="min-w-[130px] [&_.ant-select-selector]:h-10! [&_.ant-select-selector]:rounded-lg [&_.ant-select-selection-item]:leading-[40px]!"
           />
-          <Button icon={<FiEdit2 />} onClick={() => setEditOpen(true)} className="h-10 rounded-lg font-medium">
+          <Button
+            icon={<FiEdit2 />}
+            onClick={() => setEditOpen(true)}
+            disabled={isPendingDeletion}
+            className="h-10 rounded-lg font-medium"
+          >
             Edit Supplier
           </Button>
         </div>
