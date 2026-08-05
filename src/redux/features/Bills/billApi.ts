@@ -207,13 +207,16 @@ const billApi = baseApi.injectEndpoints({
         method: "POST",
         body: { offers },
       }),
-      invalidatesTags: (_r, _e, { billId }) => [
-        { type: "bill", id: billId },
-        { type: "bill", id: "LIST" },
-        { type: "offer", id: `bill-offers-${billId}` },
-        { type: "dashboard", id: "ADMIN" },
-        { type: "activityLog", id: "LIST" },
-      ],
+      invalidatesTags: (result, error, { billId }) =>
+        error
+          ? []
+          : [
+              { type: "bill", id: billId },
+              { type: "bill", id: "LIST" },
+              { type: "offer", id: `bill-offers-${billId}` },
+              { type: "dashboard", id: "ADMIN" },
+              { type: "activityLog", id: "LIST" },
+            ],
     }),
 
     extractBillData: builder.mutation<IBillExtractionResult, FormData>({

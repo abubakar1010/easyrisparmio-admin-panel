@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { Button, Input, InputNumber, Spin, Empty, Tag, Select, Table, Upload, message, notification, Tooltip, DatePicker, Modal } from "antd";
+import { App, Button, Input, InputNumber, Spin, Empty, Tag, Select, Table, Upload, Tooltip, DatePicker, Modal } from "antd";
 import type { Dayjs } from "dayjs";
 import type { ColumnsType } from "antd/es/table";
 import {
@@ -169,6 +169,7 @@ const tabKeys = [
 /* ── Main Component ──────────────────────────────────────── */
 
 const BillRequestDetailView = () => {
+  const { message, notification } = App.useApp();
   const navigate = useNavigate();
   const { billId } = useParams();
   const {
@@ -283,20 +284,21 @@ const BillRequestDetailView = () => {
         : { offerId: id };
     });
 
-    try {
-      await sendSelectedOffers({ billId: bill.id, offers: offersPayload }).unwrap();
-      message.success(`${selectedRowKeys.length} offer(s) sent to user`);
-      setSelectedRowKeys([]);
-      refetch();
-    } catch (err: unknown) {
-      const apiError = err as { status?: number; data?: { message?: string | string[] } };
-      const msg = apiError?.data?.message;
-      const errorText = Array.isArray(msg) ? msg.join(", ") : msg || "Failed to send offers";
+    const result = await sendSelectedOffers({ billId: bill.id, offers: offersPayload });
+
+    if ("error" in result) {
+      const errData = (result.error as { data?: { message?: string | string[] } })?.data;
+      const msg = errData?.message;
+      const errorText = Array.isArray(msg) ? msg.join(", ") : typeof msg === "string" ? msg : "Failed to send offers";
       notification.error({
         message: "Cannot send offers",
         description: errorText,
-        duration: 5,
+        duration: 6,
       });
+    } else {
+      message.success(`${selectedRowKeys.length} offer(s) sent to user`);
+      setSelectedRowKeys([]);
+      refetch();
     }
   };
 
