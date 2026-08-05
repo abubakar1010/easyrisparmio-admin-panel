@@ -24,6 +24,7 @@ import {
   type SupplierOffer,
 } from "../../redux/features/Suppliers/supplierApi";
 import { statusDisplayMap, statusTagClass, commodityIconMap, commodityColorMap } from "./types";
+import { server_origin } from "../../config";
 
 type TabKey = "overview" | "offers" | "billing";
 
@@ -112,6 +113,7 @@ const SupplierDetails = () => {
     iban: supplier.iban,
     startDate: supplier.contractStartDate ? dayjs(supplier.contractStartDate) : undefined,
     notes: supplier.notes,
+    logoUrl: supplier.logoUrl,
   };
 
   const handleStatusChange = async (status: string) => {
@@ -312,7 +314,15 @@ const SupplierDetails = () => {
       {/* Header */}
       <div className="flex flex-col gap-4 rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
-          <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${bg} ${color} border border-current/10`}>
+          {supplier.logoUrl ? (
+            <img
+              src={supplier.logoUrl.startsWith("http") ? supplier.logoUrl : `${server_origin}${supplier.logoUrl}`}
+              alt={supplier.name}
+              className="h-14 w-14 rounded-2xl object-cover border border-slate-200"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }}
+            />
+          ) : null}
+          <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${bg} ${color} border border-current/10 ${supplier.logoUrl ? "hidden" : ""}`}>
             {iconMap[iconKey]}
           </div>
           <div>

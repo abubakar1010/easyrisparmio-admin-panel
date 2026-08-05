@@ -1,6 +1,7 @@
-import { useEffect } from "react";
-import { Modal, Form, Input, Select, DatePicker, Button, message } from "antd";
+import { useEffect, useState } from "react";
+import { Modal, Form, Input, Select, DatePicker, Button, Upload, message } from "antd";
 import { FiX } from "react-icons/fi";
+import { LuUpload, LuTrash2 } from "react-icons/lu";
 import dayjs from "dayjs";
 import {
   useCreateSupplierMutation,
@@ -8,6 +9,7 @@ import {
 } from "../../redux/features/Suppliers/supplierApi";
 import { PhoneInput, phoneValidationRule } from "../../components/ui/PhoneInput";
 import { PROVINCE_OPTIONS } from "../../constants/italianProvinces";
+import { server_origin } from "../../config";
 
 interface AddSupplierModalProps {
   isOpen: boolean;
@@ -130,15 +132,46 @@ const AddSupplierModal = ({ isOpen, onClose, mode = "add", supplierId, initialVa
 
   const [createSupplier, { isLoading: isCreating }] = useCreateSupplierMutation();
   const [updateSupplier, { isLoading: isUpdating }] = useUpdateSupplierMutation();
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
     if (isEdit && initialValues) {
       form.setFieldsValue(initialValues);
+      setLogoUrl((initialValues.logoUrl as string) || null);
     } else {
       form.resetFields();
+      setLogoUrl(null);
     }
   }, [isOpen, isEdit, initialValues, form]);
+
+  const handleLogoUpload = async (file: File) => {
+    setUploadingLogo(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const token = localStorage.getItem("auth_token");
+      const res = await fetch(`${server_origin}/api/v1/upload`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      const result = await res.json();
+      const url = result?.data?.url || result?.url;
+      if (res.ok && url) {
+        setLogoUrl(url);
+        message.success("Icon uploaded successfully");
+      } else {
+        message.error(result?.message || result?.data?.message || "Upload failed");
+      }
+    } catch {
+      message.error("Upload failed");
+    } finally {
+      setUploadingLogo(false);
+    }
+    return false;
+  };
 
   const handleFinish = async (values: Record<string, any>) => {
     const payload: Record<string, any> = {
@@ -158,6 +191,7 @@ const AddSupplierModal = ({ isOpen, onClose, mode = "add", supplierId, initialVa
       iban: values.iban?.replace(/\s+/g, "").toUpperCase(),
       contractStartDate: values.startDate ? dayjs(values.startDate).format("YYYY-MM-DD") : undefined,
       notes: values.notes || undefined,
+      logoUrl: logoUrl || undefined,
     };
 
     // Remove undefined keys
@@ -201,6 +235,49 @@ const AddSupplierModal = ({ isOpen, onClose, mode = "add", supplierId, initialVa
         className="mt-6 space-y-8"
         requiredMark={false}
       >
+        {/* Supplier Icon */}
+        <section>
+          <h3 className="text-[15px] font-bold text-slate-800 mb-4 px-1">Supplier Icon</h3>
+          <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-100 flex items-center gap-4">
+            {logoUrl ? (
+              <div className="relative">
+                <img
+                  src={logoUrl.startsWith("http") ? logoUrl : `${server_origin}${logoUrl}`}
+                  alt="Supplier icon"
+                  className="h-16 w-16 rounded-xl object-cover border border-slate-200"
+                />
+                <button
+                  type="button"
+                  onClick={() => setLogoUrl(null)}
+                  className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-600 transition-colors"
+                >
+                  <LuTrash2 className="h-3 w-3" />
+                </button>
+              </div>
+            ) : (
+              <div className="h-16 w-16 rounded-xl bg-slate-200 flex items-center justify-center">
+                <LuUpload className="h-6 w-6 text-slate-400" />
+              </div>
+            )}
+            <div className="flex-1">
+              <Upload
+                accept="image/jpeg,image/png,image/webp"
+                showUploadList={false}
+                beforeUpload={(file) => handleLogoUpload(file)}
+              >
+                <Button
+                  icon={<LuUpload className="h-4 w-4" />}
+                  loading={uploadingLogo}
+                  className="rounded-lg h-9 border-slate-200"
+                >
+                  {logoUrl ? "Replace Icon" : "Upload Icon"}
+                </Button>
+              </Upload>
+              <p className="text-[11px] text-slate-400 mt-1">JPG, PNG or WebP. Max 10MB.</p>
+            </div>
+          </div>
+        </section>
+
         {/* General Information */}
         <section>
           <h3 className="text-[15px] font-bold text-slate-800 mb-4 px-1">General Information</h3>

@@ -6,6 +6,7 @@ import { useNavigate } from "react-router";
 import AddSupplierModal from "./AddSupplierModal";
 import { useGetSuppliersQuery, type ISupplier } from "../../redux/features/Suppliers/supplierApi";
 import { statusDisplayMap, statusTagClass, commodityIconMap, commodityColorMap } from "./types";
+import { server_origin } from "../../config";
 
 const iconMap: Record<string, React.ReactNode> = {
   database: <LuDatabase className="h-6 w-6" />,
@@ -69,7 +70,15 @@ const Suppliers = () => {
             return (
               <div key={supplier.id} className={`bg-white rounded-2xl border p-6 shadow-sm hover:shadow-md transition-all duration-300 ${isPendingDeletion ? "border-red-300 bg-red-50/30" : "border-slate-200/60"}`}>
                 <div className="flex items-start justify-between mb-4">
-                  <div className={`h-12 w-12 rounded-xl ${bg} ${color} flex items-center justify-center border border-current/10`}>
+                  {supplier.logoUrl ? (
+                    <img
+                      src={supplier.logoUrl.startsWith("http") ? supplier.logoUrl : `${server_origin}${supplier.logoUrl}`}
+                      alt={supplier.name}
+                      className="h-12 w-12 rounded-xl object-cover border border-slate-200"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }}
+                    />
+                  ) : null}
+                  <div className={`h-12 w-12 rounded-xl ${bg} ${color} flex items-center justify-center border border-current/10 ${supplier.logoUrl ? "hidden" : ""}`}>
                     {iconMap[iconKey]}
                   </div>
                   <Tag className={`m-0 rounded-full px-3 py-0.5 font-bold text-[10px] border-0 ${statusTagClass[displayStatus] || "bg-slate-100 text-slate-500"}`}>
