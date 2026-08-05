@@ -25,7 +25,7 @@ const { TextArea } = Input;
  */
 const italianTaxIdRule = {
   validator: (_: unknown, value: string) => {
-    if (!value) return Promise.reject(new Error("Tax ID is required"));
+    if (!value) return Promise.resolve();
     const cleaned = value.trim().toUpperCase();
 
     // Partita IVA: 11 digits, optionally prefixed with "IT"
@@ -81,7 +81,7 @@ const italianTaxIdRule = {
  */
 const italianIbanRule = {
   validator: (_: unknown, value: string) => {
-    if (!value) return Promise.reject(new Error("IBAN is required"));
+    if (!value) return Promise.resolve();
     const cleaned = value.replace(/\s+/g, "").toUpperCase();
 
     if (!/^IT\d{2}[A-Z]\d{10}[A-Z0-9]{12}$/.test(cleaned)) {
@@ -117,7 +117,7 @@ const italianIbanRule = {
  */
 const italianZipRule = {
   validator: (_: unknown, value: string) => {
-    if (!value) return Promise.reject(new Error("ZIP code is required"));
+    if (!value) return Promise.resolve();
     return /^\d{5}$/.test(value.trim())
       ? Promise.resolve()
       : Promise.reject(new Error("Enter a valid 5-digit Italian CAP code"));
@@ -204,7 +204,7 @@ const AddSupplierModal = ({ isOpen, onClose, mode = "add", supplierId, initialVa
         {/* General Information */}
         <section>
           <h3 className="text-[15px] font-bold text-slate-800 mb-4 px-1">General Information</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
             <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Brand Name</span>} name="brandName" rules={[{ required: true, message: "Brand name is required" }]}>
               <Input placeholder="Enter brand name" className="rounded-lg h-10 border-slate-200" />
             </Form.Item>
@@ -237,7 +237,7 @@ const AddSupplierModal = ({ isOpen, onClose, mode = "add", supplierId, initialVa
         {/* Primary Contact */}
         <section>
           <h3 className="text-[15px] font-bold text-slate-800 mb-4 px-1">Primary Contact</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
             <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Contact Name</span>} name="contactName" rules={[{ required: true, message: "Contact name is required" }]}>
               <Input placeholder="Enter contact name" className="rounded-lg h-10 border-slate-200" />
             </Form.Item>
@@ -253,7 +253,7 @@ const AddSupplierModal = ({ isOpen, onClose, mode = "add", supplierId, initialVa
         {/* Address */}
         <section>
           <h3 className="text-[15px] font-bold text-slate-800 mb-4 px-1">Address</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
             <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Street Address</span>} name="streetAddress" className="md:col-span-2" rules={[{ required: true, message: "Street address is required" }]}>
               <Input placeholder="Enter street address" className="rounded-lg h-10 border-slate-200" />
             </Form.Item>
@@ -281,7 +281,7 @@ const AddSupplierModal = ({ isOpen, onClose, mode = "add", supplierId, initialVa
         {/* Billing */}
         <section>
           <h3 className="text-[15px] font-bold text-slate-800 mb-4 px-1">Billing</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
             <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">IBAN</span>} name="iban" className="md:col-span-2" rules={[{ required: true, message: "IBAN is required" }, italianIbanRule]}>
               <Input placeholder="e.g., IT60X0542811101000000123456" className="rounded-lg h-10 border-slate-200 font-mono" />
             </Form.Item>
