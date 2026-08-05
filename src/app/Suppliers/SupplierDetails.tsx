@@ -105,7 +105,6 @@ const SupplierDetails = () => {
     city: supplier.city,
     province: supplier.province,
     zipCode: supplier.zipCode,
-    country: supplier.country,
     iban: supplier.iban,
     startDate: supplier.contractStartDate ? dayjs(supplier.contractStartDate) : undefined,
     notes: supplier.notes,

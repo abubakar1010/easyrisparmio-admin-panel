@@ -59,23 +59,22 @@ export interface ISupplierQuery {
 
 export interface ICreateSupplier {
   name: string;
-  legalName?: string;
-  taxId?: string;
+  legalName: string;
+  taxId: string;
+  commodity: string;
+  status: string;
+  contactName: string;
+  contactEmail: string;
+  contactPhone: string;
+  streetAddress: string;
+  city: string;
+  province: string;
+  zipCode: string;
+  iban: string;
   logoUrl?: string;
   description?: string;
   rating?: number;
-  status?: string;
-  commodity?: string;
-  contactName?: string;
-  contactEmail?: string;
-  contactPhone?: string;
   website?: string;
-  streetAddress?: string;
-  city?: string;
-  province?: string;
-  zipCode?: string;
-  country?: string;
-  iban?: string;
   contractStartDate?: string;
   notes?: string;
   supplierCode?: string;
