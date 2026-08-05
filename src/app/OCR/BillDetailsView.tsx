@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { Button, Spin, Empty, Tag, message, Tooltip, InputNumber, Table, Modal, Input, Checkbox } from "antd";
+import { Button, Spin, Empty, Tag, message, notification, Tooltip, InputNumber, Table, Modal, Input, Checkbox } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import {
   FiArrowLeft,
@@ -274,10 +274,14 @@ const BillDetailsView = () => {
       setSelectedRowKeys([]);
       refetch();
     } catch (err: unknown) {
-      const apiError = err as { data?: { message?: string | string[] } };
+      const apiError = err as { status?: number; data?: { message?: string | string[] } };
       const msg = apiError?.data?.message;
       const errorText = Array.isArray(msg) ? msg.join(", ") : msg || "Failed to send offers";
-      message.error(errorText);
+      notification.error({
+        message: "Cannot send offers",
+        description: errorText,
+        duration: 5,
+      });
     }
   };
 
