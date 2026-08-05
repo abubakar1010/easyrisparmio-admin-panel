@@ -2,7 +2,7 @@ import { Provider } from "react-redux";
 import { store } from "../../redux/store";
 import type { TCommonProps } from "../../types/common.type";
 import { mainTheme } from "../antTheme";
-import { ConfigProvider } from "antd";
+import { App, ConfigProvider } from "antd";
 import { useTranslation } from "react-i18next";
 import itIT from "antd/locale/it_IT";
 import enUS from "antd/locale/en_US";
@@ -19,7 +19,9 @@ const MainProvider = ({ children }: TCommonProps) => {
   return (
     <Provider store={store}>
       <ConfigProvider theme={mainTheme} locale={antLocale}>
-        {children}
+        <App>
+          {children}
+        </App>
       </ConfigProvider>
     </Provider>
   );

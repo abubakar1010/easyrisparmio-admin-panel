@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button, Empty, Select, Table, Tag, Tooltip, message, Modal, Spin } from "antd";
+import { App, Button, Empty, Select, Table, Tag, Tooltip, Spin } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import {
   FiArrowLeft,
@@ -61,6 +61,7 @@ const InfoRow = ({ icon, label, value }: { icon?: React.ReactNode; label: string
 );
 
 const SupplierDetails = () => {
+  const { modal, message } = App.useApp();
   const navigate = useNavigate();
   const { supplierId } = useParams();
   const { data: supplier, isLoading } = useGetSupplierByIdQuery(supplierId!, { skip: !supplierId });
@@ -123,7 +124,7 @@ const SupplierDetails = () => {
   };
 
   const handleDeleteSupplier = () => {
-    Modal.confirm({
+    modal.confirm({
       title: `Delete "${supplier.name}"?`,
       icon: null,
       width: 520,
@@ -180,7 +181,7 @@ const SupplierDetails = () => {
           const result = await deleteSupplier(supplier.id).unwrap();
           if (result.scheduledDeletionDate) {
             const dateStr = dayjs(result.scheduledDeletionDate).format("DD/MM/YYYY");
-            Modal.info({
+            modal.info({
               title: "Deletion Scheduled",
               centered: true,
               content: (
