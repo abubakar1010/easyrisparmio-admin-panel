@@ -3,6 +3,7 @@ import { createElement, useState } from "react";
 import Swal from "sweetalert2";
 import { FiLogOut, FiX } from "react-icons/fi";
 import { MdOutlineArrowRight } from "react-icons/md";
+import { LuLayoutDashboard } from "react-icons/lu";
 import { routeLinkGenerators } from "../../lib/helpers/generateLink";
 import { useAppSelector, useAppDispatch } from "../../redux/hooks";
 import { logout } from "../../redux/features/Auth/authSlice";
@@ -91,12 +92,13 @@ const Sidebar = ({ mobileOpen = false, onMobileClose }: SidebarProps) => {
             <FiX className="h-5 w-5" strokeWidth={2} />
           </button>
         </div>
-        <div className="shrink-0 flex flex-col items-center px-4 pt-2 pb-3 md:px-5 md:pt-3 md:pb-3">
-            <img
-              className="w-full max-h-9 object-contain md:max-h-none"
-              src={"/statics/dash-log.png"}
-              alt="EasyRisparmio"
-            />
+        <div className="shrink-0 flex items-center gap-2.5 px-5 pt-4 pb-5 md:pt-5 md:pb-6 border-b border-cborder/40">
+          <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[#eef0ff] text-[#6366f1]">
+            <LuLayoutDashboard size={18} />
+          </span>
+          <span className="text-lg font-bold text-[#6366f1] tracking-tight">
+            {t("sidebar.admin_portal")}
+          </span>
         </div>
         <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain space-y-1 px-2.5 py-1 scroll-py-2 [scrollbar-width:thin] [scrollbar-color:oklch(0.68_0_0)_transparent]">
             {routeLinkGenerators(dashboardItems, user?.role as TUserRole).map(
@@ -183,15 +185,15 @@ const Sidebar = ({ mobileOpen = false, onMobileClose }: SidebarProps) => {
                       onClick={() => onMobileClose?.()}
                       className={({ isActive }) =>
                         cn(
-                          "hover:text-primary hover:bg-primary/5 text-brand w-full pl-5 pr-4 py-3 flex items-center justify-start gap-2.5 2xl:text-lg rounded-xl transition-colors duration-200 ease-[cubic-bezier(0.3,0,0,1)]",
+                          "w-full pl-4 pr-4 py-3 flex items-center justify-start gap-3 text-[15px] rounded-xl transition-colors duration-200 ease-[cubic-bezier(0.3,0,0,1)] text-[#373643] hover:bg-primary/5",
                           {
-                            "text-primary bg-primary/10 relative before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-full before:bg-primary":
+                            "!bg-[#6366f1] !text-white shadow-[0_8px_20px_-10px_rgba(99,102,241,0.6)]":
                               isActive,
                           }
                         )
                       }
                     >
-                      <div>{createElement(icon, { size: "17" })}</div>
+                      <div>{createElement(icon, { size: "18" })}</div>
                       <span> {translateName(name)}</span>
                     </NavLink>
                   </li>
