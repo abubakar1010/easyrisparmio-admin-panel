@@ -273,8 +273,11 @@ const BillDetailsView = () => {
       message.success(`${selectedRowKeys.length} offer(s) sent to user`);
       setSelectedRowKeys([]);
       refetch();
-    } catch {
-      message.error("Failed to send offers");
+    } catch (err: unknown) {
+      const apiError = err as { data?: { message?: string | string[] } };
+      const msg = apiError?.data?.message;
+      const errorText = Array.isArray(msg) ? msg.join(", ") : msg || "Failed to send offers";
+      message.error(errorText);
     }
   };
 
