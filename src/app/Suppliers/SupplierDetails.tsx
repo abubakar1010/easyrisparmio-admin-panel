@@ -124,20 +124,92 @@ const SupplierDetails = () => {
 
   const handleDeleteSupplier = () => {
     Modal.confirm({
-      title: "Delete supplier?",
-      content: `"${supplier.name}" will be permanently removed. If this supplier has active contracts, deletion will be scheduled until those contracts expire.`,
-      okText: "Delete",
-      okButtonProps: { danger: true },
+      title: `Delete "${supplier.name}"?`,
+      icon: null,
+      width: 520,
       centered: true,
+      content: (
+        <div className="mt-2 space-y-3">
+          <p className="text-sm text-slate-600">
+            Please review the following consequences before proceeding:
+          </p>
+          <ul className="list-disc space-y-1.5 pl-5 text-sm text-slate-600">
+            <li>
+              If this supplier has <strong>active user contracts</strong>, the
+              deletion will be <strong>scheduled</strong> until the last contract
+              expires. The supplier will not be removed immediately.
+            </li>
+            <li>
+              All <strong>offers</strong> from this supplier will be{" "}
+              <strong>removed</strong> from public listings and can no longer be
+              sent to users.
+            </li>
+            <li>
+              <strong>No new offers</strong> can be created for this supplier
+              during the pending deletion period.
+            </li>
+            <li>
+              Users will <strong>no longer be able to accept</strong> any
+              existing offers from this supplier.
+            </li>
+            <li>
+              Any <strong>early-stage cases</strong> (New, In Progress,
+              Documents Pending) for this supplier will be{" "}
+              <strong>automatically cancelled</strong>.
+            </li>
+            <li>
+              Cases that are already in <strong>contract stage</strong>{" "}
+              (Contract Sent, Contract Signed, Activated) will{" "}
+              <strong>continue normally</strong> until completion.
+            </li>
+            <li>
+              Once the supplier is fully deleted, all associated data
+              (offers, price history) will be <strong>permanently removed</strong>.
+            </li>
+          </ul>
+          <p className="text-xs text-slate-400">
+            You can cancel a scheduled deletion at any time before it executes.
+          </p>
+        </div>
+      ),
+      okText: "Yes, Delete Supplier",
+      cancelText: "Cancel",
+      okButtonProps: { danger: true },
       onOk: async () => {
         try {
           const result = await deleteSupplier(supplier.id).unwrap();
           if (result.scheduledDeletionDate) {
-            message.success(
-              `Supplier deletion scheduled for ${dayjs(result.scheduledDeletionDate).format("DD/MM/YYYY")}${result.cancelledCases ? `. ${result.cancelledCases} early-stage case(s) cancelled.` : ""}`,
-            );
+            const dateStr = dayjs(result.scheduledDeletionDate).format("DD/MM/YYYY");
+            Modal.info({
+              title: "Deletion Scheduled",
+              centered: true,
+              content: (
+                <div className="mt-2 space-y-2">
+                  <p className="text-sm text-slate-600">
+                    <strong>{supplier.name}</strong> has active contracts that
+                    must complete first. The supplier is now marked as{" "}
+                    <strong>Pending Deletion</strong>.
+                  </p>
+                  <ul className="list-disc space-y-1 pl-5 text-sm text-slate-600">
+                    <li>
+                      Scheduled deletion date:{" "}
+                      <strong>{dateStr}</strong>
+                    </li>
+                    {result.cancelledCases && result.cancelledCases > 0 ? (
+                      <li>
+                        <strong>{result.cancelledCases}</strong> early-stage
+                        case(s) have been cancelled
+                      </li>
+                    ) : null}
+                    <li>No new offers can be created or sent</li>
+                    <li>You can cancel this deletion at any time</li>
+                  </ul>
+                </div>
+              ),
+              okText: "Understood",
+            });
           } else {
-            message.success("Supplier deleted");
+            message.success("Supplier deleted successfully");
             navigate("/suppliers");
           }
         } catch {
@@ -273,6 +345,16 @@ const SupplierDetails = () => {
           >
             Edit Supplier
           </Button>
+          {!isPendingDeletion && (
+            <Button
+              danger
+              icon={<FiTrash2 />}
+              onClick={handleDeleteSupplier}
+              className="h-10 rounded-lg font-medium"
+            >
+              Delete
+            </Button>
+          )}
         </div>
       </div>
 
