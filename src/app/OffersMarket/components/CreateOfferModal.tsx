@@ -72,9 +72,21 @@ export const CreateOfferModal = ({
   const [createOffer, { isLoading: isCreating }] = useCreateOfferMutation();
   const [updateOffer, { isLoading: isUpdating }] = useUpdateOfferMutation();
   const { data: suppliersData } = useGetSuppliersQuery({ limit: 100 });
-  const suppliers = suppliersData?.data || [];
+  const allSuppliers = suppliersData?.data || [];
 
   const commodity = Form.useWatch("commodity", form);
+  const selectedSupplier = Form.useWatch("supplier", form);
+
+  // Filter suppliers: only active, not pending deletion, and matching commodity
+  const filteredSuppliers = allSuppliers.filter((s) => {
+    if (!s.isActive || s.status === "pending_deletion") return false;
+    if (!commodity || !s.commodity) return true;
+    // dual supplier can serve any commodity
+    if (s.commodity === "dual") return true;
+    // non-dual supplier must match exactly (or offer is dual → needs dual supplier)
+    if (commodity === "dual") return s.commodity === "dual";
+    return s.commodity === commodity;
+  });
   const priceType = Form.useWatch("priceType", form);
   const validFrom = Form.useWatch("validFrom", form);
   const validUntil = Form.useWatch("validity", form);
@@ -96,6 +108,15 @@ export const CreateOfferModal = ({
       setTermsDocUrl(null);
     }
   }, [open, isEdit, initialValues, form]);
+
+  // Reset supplier selection when commodity changes and current supplier doesn't match
+  useEffect(() => {
+    if (!open || !commodity || !selectedSupplier) return;
+    const stillValid = filteredSuppliers.some((s) => s.id === selectedSupplier);
+    if (!stillValid) {
+      form.setFieldsValue({ supplier: undefined });
+    }
+  }, [commodity, filteredSuppliers, selectedSupplier, form, open]);
 
   // Clear irrelevant pricing fields when price type changes
   useEffect(() => {
@@ -253,14 +274,25 @@ export const CreateOfferModal = ({
             name="supplier"
             label="Supplier"
             rules={[{ required: true, message: "Please select supplier" }]}
+            help={
+              commodity && filteredSuppliers.length === 0
+                ? "No suppliers available for the selected commodity"
+                : undefined
+            }
           >
             <Select
               size="large"
-              placeholder="Select supplier"
+              placeholder={commodity ? `Select ${commodity} supplier` : "Select supplier"}
               showSearch
               optionFilterProp="label"
               className="[&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-lg"
-              options={suppliers?.map((s) => ({ value: s.id, label: s.name })) || []}
+              notFoundContent={commodity ? `No ${commodity} suppliers found` : "No suppliers found"}
+              options={filteredSuppliers.map((s) => ({
+                value: s.id,
+                label: s.commodity
+                  ? `${s.name} (${s.commodity.charAt(0).toUpperCase() + s.commodity.slice(1)})`
+                  : s.name,
+              }))}
             />
           </Form.Item>
           <Form.Item

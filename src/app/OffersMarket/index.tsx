@@ -121,17 +121,50 @@ const OffersMarket = () => {
 
   const handleDelete = (offer: IOffer) => {
     Modal.confirm({
-      title: "Delete offer?",
-      content: `"${offer.name}" will be permanently removed.`,
-      okText: "Delete",
-      okButtonProps: { danger: true },
+      title: `Delete "${offer.name}"?`,
+      icon: null,
+      width: 500,
       centered: true,
+      content: (
+        <div className="mt-2 space-y-3">
+          <p className="text-sm text-slate-600">
+            Please review the following consequences before proceeding:
+          </p>
+          <ul className="list-disc space-y-1.5 pl-5 text-sm text-slate-600">
+            <li>
+              This offer will be <strong>permanently removed</strong> from all
+              listings and can no longer be sent to users.
+            </li>
+            <li>
+              If this offer has <strong>active contracts</strong>, the deletion
+              will be <strong>blocked</strong> — you must wait for contracts to
+              expire or cancel them first.
+            </li>
+            <li>
+              If this offer has <strong>cases in progress</strong> (New, In
+              Progress, Documents Pending, Contract Sent, or Contract Signed),
+              the deletion will be <strong>blocked</strong>.
+            </li>
+            <li>
+              Users who previously received this offer will still see their{" "}
+              <strong>historical records</strong>, but the offer details will no
+              longer be accessible.
+            </li>
+          </ul>
+        </div>
+      ),
+      okText: "Yes, Delete Offer",
+      cancelText: "Cancel",
+      okButtonProps: { danger: true },
       onOk: async () => {
         try {
           await deleteOffer(offer.id).unwrap();
-          message.success("Offer deleted");
-        } catch {
-          message.error("Failed to delete offer");
+          message.success("Offer deleted successfully");
+        } catch (err: any) {
+          const msg = Array.isArray(err?.data?.message)
+            ? err.data.message[0]
+            : err?.data?.message || "Failed to delete offer";
+          message.error(msg);
         }
       },
     });
