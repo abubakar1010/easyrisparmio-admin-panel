@@ -6,11 +6,16 @@ import { useCreateOfferMutation, useUpdateOfferMutation } from "../../../redux/f
 import { useGetSuppliersQuery } from "../../../redux/features/Suppliers/supplierApi";
 import { server_origin } from "../../../config";
 
-const numericRule = (fieldLabel: string) => [
+const numericRule = (fieldLabel: string, maxDecimals?: number) => [
   {
     validator: (_: unknown, value: string) => {
       if (!value && value !== "0") return Promise.reject(`Please enter ${fieldLabel}`);
       if (!/^\d+(\.\d+)?$/.test(value)) return Promise.reject(`Please enter a valid ${fieldLabel}`);
+      if (maxDecimals !== undefined && value.includes(".")) {
+        const decimals = value.split(".")[1]?.length || 0;
+        if (decimals > maxDecimals)
+          return Promise.reject(`${fieldLabel} allows up to ${maxDecimals} decimal places`);
+      }
       return Promise.resolve();
     },
   },
@@ -183,10 +188,16 @@ export const CreateOfferModal = ({
       form.resetFields();
       onClose();
     } catch (err: any) {
-      message.error(
-        err?.data?.message?.[0] || err?.data?.message || `Failed to ${isEdit ? "update" : "create"} offer`
-      );
+      console.error("Offer save error:", err);
+      const msg = Array.isArray(err?.data?.message)
+        ? err.data.message.join(", ")
+        : err?.data?.message || err?.message || `Failed to ${isEdit ? "update" : "create"} offer`;
+      message.error(msg);
     }
+  };
+
+  const handleFinishFailed = () => {
+    message.error("Please fill in all required fields correctly");
   };
 
   const handleCancel = () => {
@@ -211,7 +222,7 @@ export const CreateOfferModal = ({
       }
       className="[&_.ant-modal-content]:rounded-2xl [&_.ant-modal-content]:p-4 sm:[&_.ant-modal-content]:p-6 [&_.ant-modal-header]:rounded-t-2xl [&_.ant-modal-body]:pt-3"
     >
-      <Form form={form} layout="vertical" onFinish={handleSubmit} className="pt-1" disabled={isImmutable}>
+      <Form form={form} layout="vertical" onFinish={handleSubmit} onFinishFailed={handleFinishFailed} className="pt-1" disabled={isImmutable}>
         {isImmutable && (
           <Alert
             type="warning"
@@ -294,14 +305,14 @@ export const CreateOfferModal = ({
           <Form.Item
             name="fixedMonthlyFee"
             label="Fixed Monthly Fee (EUR)"
-            rules={numericRule("fixed monthly fee")}
+            rules={numericRule("fixed monthly fee", 2)}
           >
             <NumericInput placeholder="e.g. 9.90" />
           </Form.Item>
           <Form.Item
             name="activationCost"
             label="Activation Cost (EUR)"
-            rules={numericRule("activation cost")}
+            rules={numericRule("activation cost", 2)}
           >
             <NumericInput placeholder="e.g. 45" />
           </Form.Item>
@@ -393,7 +404,7 @@ export const CreateOfferModal = ({
               }
             />
           </Form.Item>
-          <Form.Item name="isGreenEnergy" label="Green Energy" valuePropName="checked" rules={[{ required: true, message: "Please select green energy" }]}>
+          <Form.Item name="isGreenEnergy" label="Green Energy" valuePropName="checked" initialValue={false}>
             <Switch />
           </Form.Item>
         </div>
