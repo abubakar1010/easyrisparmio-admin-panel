@@ -62,12 +62,7 @@ const priorityLabel: Record<string, string> = {
   urgent: "Urgent",
 };
 
-const validTransitions: Record<string, string[]> = {
-  open: ["in_progress", "closed"],
-  in_progress: ["resolved", "closed"],
-  resolved: ["closed"],
-  closed: [],
-};
+const allStatuses = ["open", "in_progress", "resolved", "closed"];
 
 /* ── Helpers ───────────────────────────────────────────────── */
 
@@ -221,7 +216,7 @@ const TicketDetailsView = () => {
   const customerName = ticket.user
     ? `${ticket.user.firstName} ${ticket.user.lastName}`
     : "Unknown";
-  const transitions = validTransitions[ticket.status] || [];
+
   const firstMessage =
     messages.length > 0 && messages[0].senderId === ticket.userId ? messages[0] : null;
 
@@ -274,15 +269,12 @@ const TicketDetailsView = () => {
                     value={ticket.status}
                     onChange={handleStatusChange}
                     loading={isUpdating}
-                    disabled={isClosed}
                     className="w-full [&_.ant-select-selector]:h-9! [&_.ant-select-selector]:rounded-lg! [&_.ant-select-selector]:border-slate-200! [&_.ant-select-selector]:bg-white!"
                     popupClassName="rounded-lg"
-                    options={[
-                      { value: ticket.status, label: statusLabel[ticket.status] },
-                      ...transitions
-                        .filter((s) => s !== ticket.status)
-                        .map((s) => ({ value: s, label: statusLabel[s] })),
-                    ]}
+                    options={allStatuses.map((s) => ({
+                      value: s,
+                      label: statusLabel[s],
+                    }))}
                     optionRender={(option) => (
                       <span className="flex items-center gap-2 text-sm text-slate-700">
                         <span className={`h-2 w-2 rounded-full ${statusDot[option.value as string] || ""}`} />
