@@ -210,6 +210,17 @@ export const OfferDetailsModal = ({ open, onClose, offer }: OfferDetailsModalPro
             <InfoRow label="Version" value={detail.version} />
           </div>
 
+          {/* Compensation */}
+          {detail.compensation && (
+            <>
+              <hr className="my-4 border-slate-100" />
+              <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">
+                Compensation
+              </p>
+              <p className="text-sm leading-relaxed text-slate-600">{detail.compensation}</p>
+            </>
+          )}
+
           {/* Highlights */}
           {detail.highlights && detail.highlights.length > 0 && (
             <>

@@ -126,6 +126,7 @@ export interface IOfferWithSavings {
   id: string;
   name: string;
   description: string | null;
+  compensation: string;
   energyType: "electricity" | "gas" | "dual";
   marketType: "fixed" | "variable" | "indexed";
   pricePerKwh: number | null;

@@ -195,6 +195,7 @@ export const CreateOfferModal = ({
       highlights: values.highlights?.length ? values.highlights : undefined,
       termsUrl: termsDocUrl || undefined,
       economicConditionsUrl: economicConditionsUrl || undefined,
+      compensation: values.compensation,
       description: values.notes || undefined,
     };
 
@@ -555,6 +556,18 @@ export const CreateOfferModal = ({
             placeholder="Type and press Enter to add"
             className="[&_.ant-select-selector]:min-h-11 [&_.ant-select-selector]:rounded-lg"
             open={false}
+          />
+        </Form.Item>
+
+        <Form.Item
+          name="compensation"
+          label="Compensation"
+          rules={[{ required: true, message: "Please enter compensation details" }]}
+        >
+          <Input.TextArea
+            rows={2}
+            placeholder="e.g. €50 bonus on first bill, cashback, etc."
+            className="rounded-lg"
           />
         </Form.Item>
 

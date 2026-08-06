@@ -246,6 +246,12 @@ const SupplierDetails = () => {
       render: (v) => <span className="capitalize">{v}</span>,
     },
     {
+      title: "COMPENSATION",
+      dataIndex: "compensation",
+      key: "compensation",
+      render: (v) => <span className="text-xs text-slate-600 line-clamp-2">{v || "—"}</span>,
+    },
+    {
       title: "STATUS",
       dataIndex: "offerStatus",
       key: "offerStatus",

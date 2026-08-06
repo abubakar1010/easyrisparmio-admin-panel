@@ -870,6 +870,14 @@ const AvailableOffersCard = ({
       align: "center",
     },
     {
+      title: "COMPENSATION",
+      key: "compensation",
+      width: 150,
+      render: (_, record) => (
+        <span className="text-xs text-slate-600 line-clamp-2">{record.compensation || "—"}</span>
+      ),
+    },
+    {
       title: "EST. SAVINGS",
       key: "savings",
       width: 140,

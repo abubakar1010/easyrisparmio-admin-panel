@@ -276,6 +276,14 @@ const OfferDetailsPage = () => {
         )}
       </div>
 
+      {/* Compensation */}
+      {detail.compensation && (
+        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
+          <h3 className="mb-3 text-base font-semibold text-slate-800">Compensation</h3>
+          <p className="text-sm leading-relaxed text-slate-600">{detail.compensation}</p>
+        </div>
+      )}
+
       {/* Highlights */}
       {detail.highlights && detail.highlights.length > 0 && (
         <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">

@@ -3,6 +3,7 @@ import { baseApi } from "../../api/baseApi";
 export interface SupplierOffer {
   id: string;
   name: string;
+  compensation: string;
   energyType: string;
   marketType: string;
   pricePerKwh: number | null;

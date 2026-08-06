@@ -4,6 +4,7 @@ export interface IOffer {
   id: string;
   name: string;
   description: string | null;
+  compensation: string;
   energyType: "electricity" | "gas" | "dual";
   marketType: "fixed" | "variable" | "indexed";
   pricePerKwh: number | null;
@@ -55,6 +56,7 @@ export interface IOfferQuery {
 export interface ICreateOffer {
   name: string;
   description?: string;
+  compensation: string;
   energyType: string;
   marketType: string;
   pricePerKwh?: number;

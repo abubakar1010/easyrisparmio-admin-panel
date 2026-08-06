@@ -116,6 +116,7 @@ const OffersMarket = () => {
     highlights: offer.highlights,
     termsUrl: offer.termsUrl,
     economicConditionsUrl: offer.economicConditionsUrl,
+    compensation: offer.compensation,
     notes: offer.description,
   });
 
@@ -244,6 +245,15 @@ const OffersMarket = () => {
         <span className="text-emerald-600 font-bold">
           {val != null ? `\u20AC ${Number(val).toFixed(2)}` : "—"}
         </span>
+      ),
+    },
+    {
+      title: "COMPENSATION",
+      dataIndex: "compensation",
+      key: "compensation",
+      className: "text-slate-600",
+      render: (val) => (
+        <span className="text-sm text-slate-600 line-clamp-2">{val || "—"}</span>
       ),
     },
     {
