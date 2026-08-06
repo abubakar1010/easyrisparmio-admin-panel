@@ -51,6 +51,7 @@ export interface IBillVerification {
   status: "pending" | "submitted" | "resolved";
   userMessage: string | null;
   userData: Record<string, unknown> | null;
+  files: IBillFile[];
   resolvedAt: string | null;
   createdAt: string;
 }

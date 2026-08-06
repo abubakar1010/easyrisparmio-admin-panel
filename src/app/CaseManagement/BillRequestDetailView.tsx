@@ -55,6 +55,30 @@ import {
 import { useAppSelector } from "../../redux/hooks";
 import { server_url, server_origin } from "../../config";
 
+/* ── Field Labels ───────────────────────────────────────── */
+
+const FIELD_LABELS: Record<string, string> = {
+  podNumber: "POD Number",
+  pdrNumber: "PDR Number",
+  totalAmount: "Total Amount",
+  consumptionKwh: "Consumption (kWh)",
+  consumptionSmc: "Consumption (Smc)",
+  costPerUnit: "Cost Per Unit",
+  fixedCharges: "Fixed Charges",
+  taxes: "Taxes",
+  billingPeriodStart: "Billing Period Start",
+  billingPeriodEnd: "Billing Period End",
+  supplyAddress: "Supply Address",
+  codiceFiscale: "Codice Fiscale",
+  partitaIva: "Partita IVA",
+  contractNumber: "Contract Number",
+  meterNumber: "Meter Number",
+  customerName: "Customer Name",
+  supplierName: "Supplier Name",
+};
+
+const FIELD_OPTIONS = Object.entries(FIELD_LABELS).map(([value, label]) => ({ value, label }));
+
 /* ── Status & Step Configuration ─────────────────────────── */
 
 const billStatusOrder = [
@@ -476,49 +500,119 @@ const BillRequestDetailView = () => {
       case "verification":
         return (
           <div className="space-y-4">
-            <h3 className="text-base font-bold text-slate-700">Verification History</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold text-slate-700">Verification History</h3>
+              {bill.status === "verification_review" && bill.verifications?.some((v: any) => v.status === "submitted") && (
+                <Button danger size="small" onClick={() => setShowVerificationModal(true)}>
+                  Request Further Corrections
+                </Button>
+              )}
+            </div>
             {bill.verifications && bill.verifications.length > 0 ? (
-              bill.verifications.map((v: any) => (
-                <div key={v.id} className="bg-white rounded-xl border border-slate-200 p-5">
-                  <div className="flex items-center justify-between mb-3">
-                    <Tag color={v.status === "pending" ? "orange" : v.status === "submitted" ? "blue" : "green"} className="rounded-full! border-0! text-xs!">
-                      {v.status.toUpperCase()}
-                    </Tag>
+              [...bill.verifications].sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()).map((v: any, idx: number) => (
+                <div key={v.id} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                  {/* Round header */}
+                  <div className="flex items-center justify-between px-5 py-3 bg-slate-50 border-b border-slate-200">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold text-slate-500">Round {idx + 1}</span>
+                      <Tag color={v.status === "pending" ? "orange" : v.status === "submitted" ? "blue" : "green"} className="rounded-full! border-0! text-xs!">
+                        {v.status === "pending" ? "AWAITING USER" : v.status === "submitted" ? "USER RESPONDED" : "RESOLVED"}
+                      </Tag>
+                    </div>
                     <span className="text-xs text-slate-400">{fmtDate(v.createdAt)}</span>
                   </div>
-                  <div className="mb-3">
-                    <p className="text-xs text-slate-400 mb-1">Admin Message</p>
-                    <p className="text-sm text-slate-700">{v.adminMessage}</p>
-                  </div>
-                  {v.missingFields?.length > 0 && (
-                    <div className="mb-3">
-                      <p className="text-xs text-slate-400 mb-1">Missing Fields</p>
-                      <div className="flex flex-wrap gap-1">
-                        {v.missingFields.map((f: string) => (
-                          <Tag key={f} className="text-xs!">{f}</Tag>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {v.userMessage && (
-                    <div className="mb-3">
-                      <p className="text-xs text-slate-400 mb-1">User Response</p>
-                      <p className="text-sm text-slate-700">{v.userMessage}</p>
-                    </div>
-                  )}
-                  {v.userData && Object.keys(v.userData).length > 0 && (
-                    <div>
-                      <p className="text-xs text-slate-400 mb-1">Submitted Data</p>
-                      <div className="bg-slate-50 rounded-lg p-3 text-xs font-mono">
-                        {Object.entries(v.userData).map(([key, value]) => (
-                          <div key={key} className="flex gap-2">
-                            <span className="text-slate-400">{key}:</span>
-                            <span className="text-slate-700">{String(value)}</span>
+
+                  <div className="p-5 space-y-4">
+                    {/* Admin request */}
+                    <div className="bg-orange-50 rounded-lg p-4 border border-orange-100">
+                      <p className="text-xs font-semibold text-orange-700 mb-2 flex items-center gap-1">
+                        <FiSend className="h-3 w-3" /> Admin Request
+                      </p>
+                      <p className="text-sm text-slate-700 mb-3">{v.adminMessage}</p>
+
+                      <div className="flex flex-wrap gap-3">
+                        {v.missingFields?.length > 0 && (
+                          <div>
+                            <p className="text-xs text-slate-400 mb-1">Missing Fields</p>
+                            <div className="flex flex-wrap gap-1">
+                              {v.missingFields.map((f: string) => (
+                                <Tag key={f} color="volcano" className="text-xs!">{FIELD_LABELS[f] || f}</Tag>
+                              ))}
+                            </div>
                           </div>
-                        ))}
+                        )}
+                        {v.requireReupload && (
+                          <div>
+                            <Tag color="red" className="text-xs!">Re-upload Required</Tag>
+                          </div>
+                        )}
                       </div>
                     </div>
-                  )}
+
+                    {/* User response */}
+                    {v.status !== "pending" && (
+                      <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
+                        <p className="text-xs font-semibold text-blue-700 mb-2 flex items-center gap-1">
+                          <LuMessageSquare className="h-3 w-3" /> User Response
+                        </p>
+
+                        {v.userMessage && (
+                          <p className="text-sm text-slate-700 mb-3">{v.userMessage}</p>
+                        )}
+
+                        {v.userData && Object.keys(v.userData).length > 0 && (
+                          <div className="mb-3">
+                            <p className="text-xs text-slate-400 mb-1">Submitted Data</p>
+                            <div className="bg-white rounded-lg border border-blue-100 divide-y divide-blue-50">
+                              {Object.entries(v.userData).map(([key, value]) => (
+                                <div key={key} className="flex justify-between px-3 py-2 text-sm">
+                                  <span className="text-slate-500">{FIELD_LABELS[key] || key}</span>
+                                  <span className="text-slate-800 font-medium">{String(value)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {v.files && v.files.length > 0 && (
+                          <div>
+                            <p className="text-xs text-slate-400 mb-1">Uploaded Documents ({v.files.length})</p>
+                            <div className="space-y-1">
+                              {v.files.map((f: any) => (
+                                <div key={f.id} className="flex items-center justify-between bg-white rounded-lg border border-blue-100 px-3 py-2">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    {f.mimeType?.startsWith("image/") ? (
+                                      <LuScanLine className="h-4 w-4 text-indigo-500 shrink-0" />
+                                    ) : (
+                                      <FiFileText className="h-4 w-4 text-red-500 shrink-0" />
+                                    )}
+                                    <span className="text-sm text-slate-700 truncate">{f.originalName || f.fileUrl.split("/").pop()}</span>
+                                    {f.fileSize && <span className="text-xs text-slate-400 shrink-0">{(f.fileSize / 1024).toFixed(0)} KB</span>}
+                                  </div>
+                                  <a
+                                    href={`${server_origin}${f.fileUrl}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800 shrink-0 ml-2"
+                                  >
+                                    <FiEye className="h-3 w-3" /> View
+                                  </a>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {!v.userMessage && (!v.userData || Object.keys(v.userData).length === 0) && (!v.files || v.files.length === 0) && (
+                          <p className="text-sm text-slate-400 italic">No details submitted by user.</p>
+                        )}
+                      </div>
+                    )}
+
+                    {v.resolvedAt && (
+                      <p className="text-xs text-slate-400">Resolved: {fmtDate(v.resolvedAt)}</p>
+                    )}
+                  </div>
                 </div>
               ))
             ) : (
@@ -694,25 +788,7 @@ const BillRequestDetailView = () => {
               value={verificationFields}
               onChange={setVerificationFields}
               placeholder="Select fields that need correction"
-              options={[
-                { value: "podNumber", label: "POD Number" },
-                { value: "pdrNumber", label: "PDR Number" },
-                { value: "totalAmount", label: "Total Amount" },
-                { value: "consumptionKwh", label: "Consumption (kWh)" },
-                { value: "consumptionSmc", label: "Consumption (Smc)" },
-                { value: "costPerUnit", label: "Cost Per Unit" },
-                { value: "fixedCharges", label: "Fixed Charges" },
-                { value: "taxes", label: "Taxes" },
-                { value: "billingPeriodStart", label: "Billing Period Start" },
-                { value: "billingPeriodEnd", label: "Billing Period End" },
-                { value: "supplyAddress", label: "Supply Address" },
-                { value: "codiceFiscale", label: "Codice Fiscale" },
-                { value: "partitaIva", label: "Partita IVA" },
-                { value: "contractNumber", label: "Contract Number" },
-                { value: "meterNumber", label: "Meter Number" },
-                { value: "customerName", label: "Customer Name" },
-                { value: "supplierName", label: "Supplier Name" },
-              ]}
+              options={FIELD_OPTIONS}
             />
           </div>
           <div className="flex items-center gap-2">
@@ -731,7 +807,7 @@ const BillRequestDetailView = () => {
       <Modal
         title="Request Contract Re-submission"
         open={showContractVerificationModal}
-        onCancel={() => { setShowContractVerificationModal(false); setVerificationMessage(""); }}
+        onCancel={() => { setShowContractVerificationModal(false); setVerificationMessage(""); setVerificationFields([]); setRequireReupload(false); }}
         onOk={() => handleSendVerificationRequest(true)}
         confirmLoading={isTransitioning}
         okText="Send Request"
@@ -745,6 +821,26 @@ const BillRequestDetailView = () => {
               onChange={(e) => setVerificationMessage(e.target.value)}
               placeholder="Explain what needs to be corrected in the contract..."
             />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-slate-700">Missing Fields</label>
+            <Select
+              mode="multiple"
+              className="w-full mt-1"
+              value={verificationFields}
+              onChange={setVerificationFields}
+              placeholder="Select fields that need correction"
+              options={FIELD_OPTIONS}
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={requireReupload}
+              onChange={(e) => setRequireReupload(e.target.checked)}
+              id="contractRequireReupload"
+            />
+            <label htmlFor="contractRequireReupload" className="text-sm text-slate-700">Require document re-upload</label>
           </div>
         </div>
       </Modal>
