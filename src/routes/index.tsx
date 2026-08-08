@@ -2,7 +2,9 @@ import { createBrowserRouter, Navigate } from "react-router";
 import { useEffect } from "react";
 import Main from "../layouts/Main/Main";
 import Auth from "../layouts/Auth/Auth";
+import PublicLayout from "../layouts/Public/PublicLayout";
 import NotFoundPage from "../app/NotFoundPage";
+import PublicPage from "../app/Public/PublicPage";
 import { dashboardItems } from "../constants/router.constants";
 import { routesGenerators } from "../lib/helpers/routesGenerators";
 import SignIn from "../app/Authentication/SignIn";
@@ -102,6 +104,20 @@ const router = createBrowserRouter([
       {
         path: "/auth/reset-password",
         element: <ResetPassword />,
+      },
+    ],
+  },
+  {
+    path: "/pages",
+    element: <PublicLayout />,
+    children: [
+      {
+        path: "/pages",
+        element: <Navigate to="/pages/about-us" />,
+      },
+      {
+        path: "/pages/:slug",
+        element: <PublicPage />,
       },
     ],
   },

@@ -70,6 +70,15 @@ const staticPagesApi = baseApi.injectEndpoints({
       query: (id) => ({ url: `static-pages/${id}`, method: "DELETE" }),
       invalidatesTags: [{ type: "static-page", id: "LIST" }],
     }),
+
+    getPublicStaticPage: builder.query<IStaticPage, { slug: string; locale?: string }>({
+      query: ({ slug, locale }) => {
+        const qp = new URLSearchParams();
+        if (locale) qp.set("locale", locale);
+        return { url: `static-pages/${slug}?${qp.toString()}`, method: "GET" };
+      },
+      transformResponse: (response: { success: boolean; data: IStaticPage }) => response.data,
+    }),
   }),
 });
 
@@ -78,4 +87,5 @@ export const {
   useCreateStaticPageMutation,
   useUpdateStaticPageMutation,
   useDeleteStaticPageMutation,
+  useGetPublicStaticPageQuery,
 } = staticPagesApi;
