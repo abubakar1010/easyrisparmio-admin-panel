@@ -294,6 +294,24 @@ const billApi = baseApi.injectEndpoints({
         { type: "activityLog", id: "LIST" },
       ],
     }),
+
+    updateBillAdmin: builder.mutation<
+      IBill,
+      { billId: string; data: Partial<Omit<IBill, "id" | "status" | "userId" | "source" | "rawAnalysisData" | "createdAt" | "updatedAt" | "user" | "supplier" | "files" | "verifications" | "switchCases">> }
+    >({
+      query: ({ billId, data }) => ({
+        url: `bills/admin/${billId}`,
+        method: "PATCH",
+        body: data,
+      }),
+      transformResponse: (response: { success: boolean; data: IBill }) => response.data,
+      invalidatesTags: (_r, _e, { billId }) => [
+        { type: "bill", id: billId },
+        { type: "bill", id: "LIST" },
+        { type: "dashboard", id: "ADMIN" },
+        { type: "activityLog", id: "LIST" },
+      ],
+    }),
   }),
 });
 
@@ -308,4 +326,5 @@ export const {
   useAssociateBillWithUserMutation,
   useRequestVerificationMutation,
   useTransitionBillStatusMutation,
+  useUpdateBillAdminMutation,
 } = billApi;

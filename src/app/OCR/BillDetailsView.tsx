@@ -4,6 +4,7 @@ import type { ColumnsType } from "antd/es/table";
 import {
   FiArrowLeft,
   FiDownload,
+  FiEdit2,
   FiEye,
   FiSend,
   FiUser,
@@ -31,6 +32,7 @@ import {
 } from "../../redux/features/Bills/billApi";
 import { useAppSelector } from "../../redux/hooks";
 import { server_url } from "../../config";
+import EditBillModal from "../CaseManagement/EditBillModal";
 
 const statusConfig: Record<string, { color: string; label: string }> = {
   pending_email: { color: "purple", label: "Pending (Email)" },
@@ -89,6 +91,7 @@ const BillDetailsView = () => {
   const [verifyMessage, setVerifyMessage] = useState("");
   const [verifyFields, setVerifyFields] = useState<string[]>([]);
   const [verifyReupload, setVerifyReupload] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -331,6 +334,14 @@ const BillDetailsView = () => {
             </p>
           </div>
         </div>
+        <Button
+          type="primary"
+          size="small"
+          icon={<FiEdit2 className="h-3 w-3" />}
+          onClick={() => setEditOpen(true)}
+        >
+          Edit Bill Data
+        </Button>
       </div>
 
       {/* ── Main Grid ── */}
@@ -703,6 +714,8 @@ const BillDetailsView = () => {
           </div>
         )}
       </Modal>
+
+      <EditBillModal bill={bill} open={editOpen} onClose={() => setEditOpen(false)} />
     </div>
   );
 };

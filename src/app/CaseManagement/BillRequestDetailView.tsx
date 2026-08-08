@@ -54,6 +54,7 @@ import {
 } from "../../redux/features/Contracts/contractApi";
 import { useAppSelector } from "../../redux/hooks";
 import { server_url, server_origin } from "../../config";
+import EditBillModal from "./EditBillModal";
 
 /* ── Field Labels ───────────────────────────────────────── */
 
@@ -1135,6 +1136,7 @@ function AvailableOffersTab({
 function BillDataTab({ bill }: { bill: IBill }) {
   const isElectricity = bill.billType === "electricity";
   const token = useAppSelector((state) => state.auth.token);
+  const [editOpen, setEditOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState<string | null>(null);
@@ -1319,6 +1321,18 @@ function BillDataTab({ bill }: { bill: IBill }) {
 
   return (
     <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <h4 className="text-sm font-semibold text-slate-800">Bill Data</h4>
+        <Button
+          type="primary"
+          size="small"
+          icon={<FiEdit2 className="h-3 w-3" />}
+          onClick={() => setEditOpen(true)}
+        >
+          Edit Bill Data
+        </Button>
+      </div>
+
       {groups.map((g) => (
         <div key={g.title}>
           <h4 className="text-sm font-semibold text-slate-800 mb-4">{g.title}</h4>
@@ -1336,6 +1350,8 @@ function BillDataTab({ bill }: { bill: IBill }) {
           </div>
         </div>
       ))}
+
+      <EditBillModal bill={bill} open={editOpen} onClose={() => setEditOpen(false)} />
 
       {/* Document Preview Modal */}
       <Modal
