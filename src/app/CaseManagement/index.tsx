@@ -27,7 +27,7 @@ const billStatusConfig: Record<string, { color: string; label: string }> = {
   contract_review: { color: "gold", label: "Contract Review" },
   contract_verification_required: { color: "volcano", label: "Contract Verification Required" },
   contract_verified: { color: "green", label: "Contract Verified" },
-  awaiting_activation: { color: "processing", label: "Awaiting Activation" },
+  awaiting_activation: { color: "processing", label: "In Activation" },
   activated: { color: "green", label: "Activated" },
   cancelled: { color: "default", label: "Cancelled" },
 };
@@ -250,7 +250,7 @@ const CaseManagement = () => {
               { value: "contract_review", label: "Contract Review" },
               { value: "contract_verification_required", label: "Contract Verification Required" },
               { value: "contract_verified", label: "Contract Verified" },
-              { value: "awaiting_activation", label: "Awaiting Activation" },
+              { value: "awaiting_activation", label: "In Activation" },
               { value: "activated", label: "Activated" },
               { value: "cancelled", label: "Cancelled" },
               { value: "error", label: "Error" },

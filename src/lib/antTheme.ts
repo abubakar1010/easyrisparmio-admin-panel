@@ -5,6 +5,9 @@ export const mainTheme: ThemeConfig = {
   token: {
     colorPrimary: "#7061ED",
     colorInfo: "#61D0FF",
+    colorLink: "#373643",
+    colorLinkHover: "#373643",
+    colorLinkActive: "#373643",
   },
   components: {
     //   Table: {

@@ -19,7 +19,7 @@ const Main = () => {
   }, [mobileNavOpen]);
 
   return (
-    <div className="min-h-screen bg-playground/35">
+    <div className="min-h-screen bg-playground">
       {mobileNavOpen ? (
         <button
           type="button"

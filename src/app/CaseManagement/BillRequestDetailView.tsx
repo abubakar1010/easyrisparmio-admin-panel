@@ -95,7 +95,8 @@ const stepConfig = [
   { label: "Verification", statuses: ["verification_review", "verification_required", "verified"] },
   { label: "Offers", statuses: ["offer_sent", "offer_accepted"] },
   { label: "Contract", statuses: ["contract_sent", "contract_signed", "contract_review", "contract_verification_required", "contract_verified"] },
-  { label: "Activation", statuses: ["awaiting_activation", "activated"] },
+  { label: "In Activation", statuses: ["awaiting_activation"] },
+  { label: "Activated", statuses: ["activated"] },
 ];
 
 const statusLabel: Record<string, string> = {
@@ -114,7 +115,7 @@ const statusLabel: Record<string, string> = {
   contract_review: "Contract Review",
   contract_verification_required: "Contract Verification Required",
   contract_verified: "Contract Verified",
-  awaiting_activation: "Awaiting Activation",
+  awaiting_activation: "In Activation",
   activated: "Activated",
   cancelled: "Cancelled",
 };
@@ -345,8 +346,8 @@ const BillRequestDetailView = () => {
                 {bill.status === "contract_sent" && "Contract sent to user. Waiting for signed contract."}
                 {bill.status === "contract_signed" && "User signed the contract. It's now in review."}
                 {bill.status === "contract_review" && "Review the signed contract. Approve or request corrections."}
-                {bill.status === "contract_verified" && "Contract approved. Move to awaiting activation."}
-                {bill.status === "awaiting_activation" && "Waiting for supplier activation. Mark as activated when ready."}
+                {bill.status === "contract_verified" && "Contract approved. Move to in activation."}
+                {bill.status === "awaiting_activation" && "Utility is in activation. Mark as activated when ready."}
                 {bill.status === "activated" && "Utility is activated and live."}
                 {bill.status === "analyzing" && "Bill is being analyzed by the system."}
                 {bill.status === "analyzed" && "Analysis complete. Moving to verification review."}
@@ -425,7 +426,7 @@ const BillRequestDetailView = () => {
                       loading={isTransitioning}
                       onClick={() => handleTransition("awaiting_activation")}
                     >
-                      Move to Awaiting Activation
+                      Move to In Activation
                     </Button>
                   )}
                   {bill.status === "awaiting_activation" && (

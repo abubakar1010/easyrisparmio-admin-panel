@@ -81,7 +81,7 @@ const Sidebar = ({ mobileOpen = false, onMobileClose }: SidebarProps) => {
         mobileOpen && "max-md:translate-x-0"
       )}
     >
-      <div className="flex h-full min-h-0 w-full flex-col bg-gradient-to-b from-white via-playground/40 to-playground/70 border-r border-cborder/55 shadow-[6px_0_40px_-20px_rgba(15,23,42,0.12)]">
+      <div className="flex h-full min-h-0 w-full flex-col bg-gradient-to-b from-white via-[oklch(0.97_0_0)] to-playground border-r border-cborder/55 shadow-[6px_0_40px_-20px_rgba(15,23,42,0.12)]">
         <div className="flex md:hidden shrink-0 items-center justify-end px-3 pt-3 pb-1">
           <button
             type="button"
@@ -200,7 +200,7 @@ const Sidebar = ({ mobileOpen = false, onMobileClose }: SidebarProps) => {
                 )
             )}
         </ul>
-        <div className="shrink-0 px-2.5 pt-2 pb-4 border-t border-cborder/50 bg-gradient-to-t from-playground/50 to-transparent">
+        <div className="shrink-0 px-2.5 pt-2 pb-4 border-t border-cborder/50 bg-gradient-to-t from-[oklch(0.96_0_0)] to-playground">
           <button
             onClick={handleLogOut}
             type="button"

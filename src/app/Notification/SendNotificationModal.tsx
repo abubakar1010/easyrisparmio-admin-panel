@@ -16,7 +16,10 @@ const notificationTypes = [
   "offer_available",
   "case_update",
   "contract_status",
+  "contract_verification",
+  "activation_complete",
   "referral_status",
+  "support_reply",
 ] as const;
 
 const SendNotificationModal = ({ isOpen, onClose }: SendNotificationModalProps) => {

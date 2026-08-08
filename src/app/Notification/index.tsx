@@ -17,7 +17,10 @@ const typeColor: Record<string, string> = {
   offer_available: "green",
   case_update: "gold",
   contract_status: "purple",
+  contract_verification: "magenta",
+  activation_complete: "lime",
   referral_status: "cyan",
+  support_reply: "volcano",
   general: "default",
 };
 
@@ -27,7 +30,10 @@ const notificationTypes = [
   "offer_available",
   "case_update",
   "contract_status",
+  "contract_verification",
+  "activation_complete",
   "referral_status",
+  "support_reply",
   "general",
 ] as const;
 
