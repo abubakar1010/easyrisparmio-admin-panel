@@ -8,7 +8,7 @@ import {
   useUpdateSupplierMutation,
 } from "../../redux/features/Suppliers/supplierApi";
 import { PhoneInput, phoneValidationRule } from "../../components/ui/PhoneInput";
-import { PROVINCE_OPTIONS } from "../../constants/italianProvinces";
+
 import { server_origin } from "../../config";
 
 interface AddSupplierModalProps {
@@ -338,16 +338,7 @@ const AddSupplierModal = ({ isOpen, onClose, mode = "add", supplierId, initialVa
               <Input placeholder="Enter city" className="rounded-lg h-10 border-slate-200" />
             </Form.Item>
             <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Province</span>} name="province" rules={[{ required: true, message: "Province is required" }]}>
-              <Select
-                showSearch
-                placeholder="Select province"
-                options={PROVINCE_OPTIONS}
-                filterOption={(input, option) =>
-                  (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
-                }
-                className="[&_.ant-select-selector]:rounded-lg [&_.ant-select-selector]:!h-10 [&_.ant-select-selector]:border-slate-200"
-                popupClassName="rounded-xl"
-              />
+              <Input placeholder="Enter province" className="rounded-lg h-10 border-slate-200" />
             </Form.Item>
             <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">ZIP Code (CAP)</span>} name="zipCode" rules={[{ required: true, message: "ZIP code is required" }, italianZipRule]}>
               <Input placeholder="e.g., 00198" maxLength={5} className="rounded-lg h-10 border-slate-200" />
