@@ -502,7 +502,17 @@ const BillRequestDetailView = () => {
           />
         );
       case "bill_data":
-        return <BillDataTab bill={bill} />;
+        return (
+          <BillDataTab
+            bill={bill}
+            isTransitioning={isTransitioning}
+            handleTransition={handleTransition}
+            setShowVerificationModal={setShowVerificationModal}
+            setShowContractVerificationModal={setShowContractVerificationModal}
+            setActiveTab={setActiveTab}
+            activeCase={activeCase}
+          />
+        );
       case "verification":
         return (
           <div className="space-y-4">
@@ -1139,7 +1149,23 @@ function AvailableOffersTab({
 
 /* ── Bill Data Tab ──────────────────────────────────────── */
 
-function BillDataTab({ bill }: { bill: IBill }) {
+function BillDataTab({
+  bill,
+  isTransitioning,
+  handleTransition,
+  setShowVerificationModal,
+  setShowContractVerificationModal,
+  setActiveTab,
+  activeCase,
+}: {
+  bill: IBill;
+  isTransitioning: boolean;
+  handleTransition: (status: string) => void;
+  setShowVerificationModal: (v: boolean) => void;
+  setShowContractVerificationModal: (v: boolean) => void;
+  setActiveTab: (tab: string) => void;
+  activeCase: ICase | null | undefined;
+}) {
   const isElectricity = bill.billType === "electricity";
   const token = useAppSelector((state) => state.auth.token);
   const [editOpen, setEditOpen] = useState(false);
@@ -1338,6 +1364,105 @@ function BillDataTab({ bill }: { bill: IBill }) {
           Edit Bill Data
         </Button>
       </div>
+
+      {/* Actions section */}
+      {["verification_review", "verified", "offer_accepted", "contract_review", "contract_verified", "awaiting_activation"].includes(bill.status) && (
+        <div className="bg-white rounded-xl border border-slate-200 p-5">
+          <h3 className="text-sm font-bold text-slate-700 mb-4">Actions</h3>
+          <div className="flex flex-wrap gap-3">
+            {bill.status === "verification_review" && (
+              <>
+                <Button
+                  type="primary"
+                  icon={<FiCheck />}
+                  loading={isTransitioning}
+                  onClick={() => handleTransition("verified")}
+                  className="bg-emerald-500 hover:bg-emerald-600 border-0"
+                >
+                  Approve — Mark Verified
+                </Button>
+                <Button
+                  danger
+                  icon={<FiSend />}
+                  onClick={() => setShowVerificationModal(true)}
+                >
+                  Request Corrections
+                </Button>
+              </>
+            )}
+            {bill.status === "verified" && (
+              <Button
+                type="primary"
+                icon={<FiSend />}
+                onClick={() => setActiveTab("available_offers")}
+              >
+                Send Offers
+              </Button>
+            )}
+            {bill.status === "offer_accepted" && (
+              <Button
+                type="primary"
+                icon={<FiSend />}
+                onClick={() => setActiveTab("case_details")}
+              >
+                Create & Send Contract
+              </Button>
+            )}
+            {bill.status === "contract_review" && (
+              <>
+                <Button
+                  type="primary"
+                  icon={<FiCheck />}
+                  loading={isTransitioning}
+                  onClick={() => handleTransition("contract_verified")}
+                  className="bg-emerald-500 hover:bg-emerald-600 border-0"
+                >
+                  Approve Contract
+                </Button>
+                <Button
+                  danger
+                  icon={<FiSend />}
+                  onClick={() => setShowContractVerificationModal(true)}
+                >
+                  Request Re-submission
+                </Button>
+              </>
+            )}
+            {bill.status === "contract_verified" && (
+              <Button
+                type="primary"
+                icon={<FiCheckCircle />}
+                loading={isTransitioning}
+                onClick={() => handleTransition("awaiting_activation")}
+              >
+                Move to In Activation
+              </Button>
+            )}
+            {bill.status === "awaiting_activation" && (
+              <Button
+                type="primary"
+                icon={<FiCheckCircle />}
+                loading={isTransitioning}
+                onClick={() => handleTransition("activated")}
+                className="bg-emerald-500 hover:bg-emerald-600 border-0"
+              >
+                Activate Utility
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Activated success banner */}
+      {bill.status === "activated" && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5 flex items-center gap-3">
+          <FiCheckCircle className="text-emerald-500 h-6 w-6 flex-shrink-0" />
+          <div>
+            <p className="text-emerald-700 font-semibold">Utility Activated</p>
+            <p className="text-emerald-600 text-sm">This utility has been successfully activated.</p>
+          </div>
+        </div>
+      )}
 
       {groups.map((g) => (
         <div key={g.title}>
