@@ -509,23 +509,11 @@ function CaseDataTab({ caseData }: { caseData: ICase }) {
         { label: "From Supplier", value: caseData.fromSupplier?.name || "—" },
         { label: "To Supplier", value: caseData.toSupplier?.name || "—" },
         { label: "Selected Offer", value: caseData.selectedOffer?.name || "—" },
-        {
-          label: "SLA Deadline",
-          value: caseData.slaDeadline
-            ? new Date(caseData.slaDeadline).toLocaleDateString("en-US")
-            : "—",
-        },
       ],
     },
     {
       title: "Assignment & Dates",
       rows: [
-        {
-          label: "Assigned Agent",
-          value: caseData.assignedAgent
-            ? `${caseData.assignedAgent.firstName} ${caseData.assignedAgent.lastName}`
-            : "Unassigned",
-        },
         { label: "Case Number", value: caseData.caseNumber || "—" },
         { label: "Created", value: new Date(caseData.createdAt).toLocaleDateString("en-US") },
         { label: "Last Updated", value: new Date(caseData.updatedAt).toLocaleDateString("en-US") },
