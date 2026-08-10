@@ -69,6 +69,16 @@ export interface ICase {
   events?: ICaseEvent[];
 }
 
+export interface ICaseNote {
+  id: string;
+  caseId: string;
+  content: string;
+  createdById: string;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: ICaseUser;
+}
+
 export interface ICaseQuery {
   page?: number;
   limit?: number;
@@ -168,6 +178,36 @@ const caseApi = baseApi.injectEndpoints({
         { type: "activityLog", id: "LIST" },
       ],
     }),
+
+    getCaseNotes: builder.query<ICaseNote[], string>({
+      query: (caseId) => ({ url: `cases/${caseId}/notes`, method: "GET" }),
+      transformResponse: (response: { success: boolean; data: ICaseNote[] }) => response.data,
+      providesTags: (_r, _e, caseId) => [{ type: "case" as const, id: `${caseId}-notes` }],
+    }),
+
+    addCaseNote: builder.mutation<ICaseNote, { caseId: string; content: string }>({
+      query: ({ caseId, content }) => ({
+        url: `cases/${caseId}/notes`,
+        method: "POST",
+        body: { content },
+      }),
+      transformResponse: (response: { success: boolean; data: ICaseNote }) => response.data,
+      invalidatesTags: (_r, _e, { caseId }) => [
+        { type: "case", id: `${caseId}-notes` },
+        { type: "case", id: caseId },
+      ],
+    }),
+
+    deleteCaseNote: builder.mutation<void, { caseId: string; noteId: string }>({
+      query: ({ caseId, noteId }) => ({
+        url: `cases/${caseId}/notes/${noteId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: (_r, _e, { caseId }) => [
+        { type: "case", id: `${caseId}-notes` },
+        { type: "case", id: caseId },
+      ],
+    }),
   }),
 });
 
@@ -178,4 +218,7 @@ export const {
   useGetCaseDocumentsQuery,
   useUploadCaseDocumentMutation,
   useVerifyDocumentMutation,
+  useGetCaseNotesQuery,
+  useAddCaseNoteMutation,
+  useDeleteCaseNoteMutation,
 } = caseApi;

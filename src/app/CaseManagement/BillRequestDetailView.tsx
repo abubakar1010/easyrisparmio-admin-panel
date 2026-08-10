@@ -42,9 +42,13 @@ import {
   useUpdateCaseMutation,
   useVerifyDocumentMutation,
   useUploadCaseDocumentMutation,
+  useGetCaseNotesQuery,
+  useAddCaseNoteMutation,
+  useDeleteCaseNoteMutation,
   type ICase,
   type ICaseEvent,
   type ICaseDocument,
+  type ICaseNote,
 } from "../../redux/features/Cases/caseApi";
 import {
   useGetContractByCaseQuery,
@@ -189,6 +193,7 @@ const tabKeys = [
   { key: "available_offers", label: "Offers" },
   { key: "bill_data", label: "Bill Data" },
   { key: "verification", label: "Verification" },
+  { key: "notes", label: "Notes" },
   { key: "case_details", label: "Case Details" },
 ] as const;
 
@@ -622,6 +627,8 @@ const BillRequestDetailView = () => {
             )}
           </div>
         );
+      case "notes":
+        return <NotesTab billId={bill.id} caseId={activeCase?.id ?? null} />;
       case "case_details":
         return <CaseDetailsTab caseId={activeCase?.id ?? null} />;
       default:
@@ -2455,6 +2462,123 @@ function CaseContractSection({ caseData }: { caseData: ICase }) {
           <p className="text-sm text-emerald-600 mt-1">
             The utility has been activated. The customer can see it in their My Utilities section.
           </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Notes Tab ─────────────────────────────────────────── */
+
+function NotesTab({ billId, caseId }: { billId: string; caseId: string | null }) {
+  const { message } = App.useApp();
+  const effectiveId = caseId || billId;
+  const { data: notes, isLoading } = useGetCaseNotesQuery(effectiveId, { skip: !caseId });
+  const [addNote, { isLoading: isAdding }] = useAddCaseNoteMutation();
+  const [deleteNote] = useDeleteCaseNoteMutation();
+  const [content, setContent] = useState("");
+
+  const handleAdd = async () => {
+    if (!content.trim() || !caseId) return;
+    try {
+      await addNote({ caseId, content: content.trim() }).unwrap();
+      message.success("Note added");
+      setContent("");
+    } catch {
+      message.error("Failed to add note");
+    }
+  };
+
+  const handleDelete = async (noteId: string) => {
+    if (!caseId) return;
+    try {
+      await deleteNote({ caseId, noteId }).unwrap();
+      message.success("Note deleted");
+    } catch {
+      message.error("Failed to delete note");
+    }
+  };
+
+  if (!caseId) {
+    return (
+      <div className="py-12">
+        <Empty description="No case created yet. Notes will be available once a case is created for this bill." />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      {/* Add note form */}
+      <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-3">
+        <h3 className="text-sm font-bold text-slate-700">Add Note</h3>
+        <Input.TextArea
+          rows={3}
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          placeholder="Write a note about this case..."
+          className="resize-none rounded-xl! border-slate-200"
+        />
+        <div className="flex justify-end">
+          <Button
+            type="primary"
+            disabled={!content.trim()}
+            onClick={handleAdd}
+            loading={isAdding}
+            size="small"
+            className="rounded-lg bg-[#7061ED]! hover:bg-[#5f52d4]! font-semibold"
+          >
+            Add Note
+          </Button>
+        </div>
+      </div>
+
+      {/* Notes list */}
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Spin size="large" />
+        </div>
+      ) : !notes || notes.length === 0 ? (
+        <Empty description="No notes yet" />
+      ) : (
+        <div className="space-y-3">
+          {notes.map((note) => (
+            <div key={note.id} className="bg-white rounded-xl border border-slate-200 p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-slate-700 whitespace-pre-wrap">{note.content}</p>
+                  <p className="mt-2 text-xs text-slate-400">
+                    <span className="text-[#7061ED] font-medium">
+                      {note.createdBy
+                        ? `${note.createdBy.firstName} ${note.createdBy.lastName}`
+                        : "Admin"}
+                    </span>
+                    {" · "}
+                    {new Date(note.createdAt).toLocaleDateString("en-GB", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                    {" "}
+                    {new Date(note.createdAt).toLocaleTimeString("en-US", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: false,
+                    })}
+                  </p>
+                </div>
+                <Button
+                  type="text"
+                  danger
+                  size="small"
+                  onClick={() => handleDelete(note.id)}
+                  className="shrink-0 text-xs"
+                >
+                  Delete
+                </Button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
