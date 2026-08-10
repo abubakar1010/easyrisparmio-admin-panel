@@ -35,6 +35,7 @@ import {
   useTransitionBillStatusMutation,
   useGetBillNotesQuery,
   useAddBillNoteMutation,
+  useUpdateBillNoteMutation,
   useDeleteBillNoteMutation,
   type IOfferWithSavings,
   type IBill,
@@ -2602,8 +2603,11 @@ function NotesTab({ billId }: { billId: string }) {
   const { message } = App.useApp();
   const { data: notes, isLoading } = useGetBillNotesQuery(billId);
   const [addNote, { isLoading: isAdding }] = useAddBillNoteMutation();
+  const [updateNote] = useUpdateBillNoteMutation();
   const [deleteNote] = useDeleteBillNoteMutation();
   const [content, setContent] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState("");
 
   const handleAdd = async () => {
     if (!content.trim()) return;
@@ -2613,6 +2617,28 @@ function NotesTab({ billId }: { billId: string }) {
       setContent("");
     } catch {
       message.error("Failed to add note");
+    }
+  };
+
+  const handleEdit = (noteId: string, currentContent: string) => {
+    setEditingId(noteId);
+    setEditContent(currentContent);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditContent("");
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingId || !editContent.trim()) return;
+    try {
+      await updateNote({ billId, noteId: editingId, content: editContent.trim() }).unwrap();
+      message.success("Note updated");
+      setEditingId(null);
+      setEditContent("");
+    } catch {
+      message.error("Failed to update note");
     }
   };
 
@@ -2662,39 +2688,75 @@ function NotesTab({ billId }: { billId: string }) {
         <div className="space-y-3">
           {notes.map((note) => (
             <div key={note.id} className="bg-white rounded-xl border border-slate-200 p-5">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-slate-700 whitespace-pre-wrap">{note.content}</p>
-                  <p className="mt-2 text-xs text-slate-400">
-                    <span className="text-[#7061ED] font-medium">
-                      {note.createdBy
-                        ? `${note.createdBy.firstName} ${note.createdBy.lastName}`
-                        : "Admin"}
-                    </span>
-                    {" · "}
-                    {new Date(note.createdAt).toLocaleDateString("en-GB", {
-                      day: "2-digit",
-                      month: "short",
-                      year: "numeric",
-                    })}
-                    {" "}
-                    {new Date(note.createdAt).toLocaleTimeString("en-US", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      hour12: false,
-                    })}
-                  </p>
+              {editingId === note.id ? (
+                <div className="space-y-3">
+                  <Input.TextArea
+                    rows={3}
+                    value={editContent}
+                    onChange={(e) => setEditContent(e.target.value)}
+                    className="resize-none rounded-xl! border-slate-200"
+                    autoFocus
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button size="small" onClick={handleCancelEdit}>
+                      Cancel
+                    </Button>
+                    <Button
+                      type="primary"
+                      size="small"
+                      disabled={!editContent.trim()}
+                      onClick={handleSaveEdit}
+                      className="rounded-lg bg-[#7061ED]! hover:bg-[#5f52d4]! font-semibold"
+                    >
+                      Save
+                    </Button>
+                  </div>
                 </div>
-                <Button
-                  type="text"
-                  danger
-                  size="small"
-                  onClick={() => handleDelete(note.id)}
-                  className="shrink-0 text-xs"
-                >
-                  Delete
-                </Button>
-              </div>
+              ) : (
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-slate-700 whitespace-pre-wrap">{note.content}</p>
+                    <p className="mt-2 text-xs text-slate-400">
+                      <span className="text-[#7061ED] font-medium">
+                        {note.createdBy
+                          ? `${note.createdBy.firstName} ${note.createdBy.lastName}`
+                          : "Admin"}
+                      </span>
+                      {" · "}
+                      {new Date(note.createdAt).toLocaleDateString("en-GB", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                      {" "}
+                      {new Date(note.createdAt).toLocaleTimeString("en-US", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: false,
+                      })}
+                    </p>
+                  </div>
+                  <div className="flex gap-1 shrink-0">
+                    <Button
+                      type="text"
+                      size="small"
+                      onClick={() => handleEdit(note.id, note.content)}
+                      className="text-xs text-[#7061ED]"
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      type="text"
+                      danger
+                      size="small"
+                      onClick={() => handleDelete(note.id)}
+                      className="text-xs"
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
