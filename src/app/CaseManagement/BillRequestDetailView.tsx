@@ -221,6 +221,27 @@ const BillRequestDetailView = () => {
   const [verificationMessage, setVerificationMessage] = useState("");
   const [verificationFields, setVerificationFields] = useState<string[]>([]);
   const [requireReupload, setRequireReupload] = useState(false);
+  const token = useAppSelector((state) => state.auth.token);
+
+  const handleVerificationFileDownload = async (billId: string, f: { id: string; fileUrl: string; originalName?: string | null }) => {
+    try {
+      const url = `${server_url}bills/${billId}/files/${f.id}`;
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error("Failed to fetch file");
+      const blob = await res.blob();
+      const objUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objUrl;
+      const ext = f.fileUrl?.split(".").pop() || "pdf";
+      a.download = f.originalName || `file-${f.id.slice(0, 8)}.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(objUrl);
+    } catch {
+      message.error("Failed to download file");
+    }
+  };
 
   const handleTransition = async (targetStatus: string) => {
     setIsTransitioning(true);
@@ -605,14 +626,23 @@ const BillRequestDetailView = () => {
                                     <span className="text-sm text-slate-700 truncate">{f.originalName || f.fileUrl.split("/").pop()}</span>
                                     {f.fileSize && <span className="text-xs text-slate-400 shrink-0">{(f.fileSize / 1024).toFixed(0)} KB</span>}
                                   </div>
-                                  <a
-                                    href={`${server_origin}${f.fileUrl}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800 shrink-0 ml-2"
-                                  >
-                                    <FiEye className="h-3 w-3" /> View
-                                  </a>
+                                  <div className="flex items-center gap-2 shrink-0 ml-2">
+                                    <a
+                                      href={`${server_origin}${f.fileUrl}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800"
+                                    >
+                                      <FiEye className="h-3 w-3" /> View
+                                    </a>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleVerificationFileDownload(bill.id, f)}
+                                      className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-800 cursor-pointer bg-transparent border-0 p-0"
+                                    >
+                                      <FiDownload className="h-3 w-3" /> Download
+                                    </button>
+                                  </div>
                                 </div>
                               ))}
                             </div>
@@ -1175,6 +1205,8 @@ function BillDataTab({
   const [previewType, setPreviewType] = useState<"pdf" | "image" | "other">("other");
 
   const billFiles: IBillFile[] = bill.files ?? [];
+  const originalFiles = billFiles.filter((f) => !f.verificationId);
+  const reuploadedFiles = billFiles.filter((f) => !!f.verificationId);
 
   const fetchFileBlobByUrl = useCallback(async (url: string) => {
     const res = await fetch(url, {
@@ -1263,32 +1295,76 @@ function BillDataTab({
         {
           label: `Uploaded Documents${billFiles.length > 0 ? ` (${billFiles.length})` : ""}`,
           value: billFiles.length > 0 ? (
-            <div className="space-y-2">
-              {billFiles.map((bf, idx) => (
-                <div key={bf.id} className="flex items-center gap-3">
-                  <span className="text-xs text-slate-500 font-mono w-4">{idx + 1}.</span>
-                  <span className="text-xs text-slate-600 truncate max-w-[120px]">
-                    {bf.originalName || bf.fileUrl.split("/").pop()}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => handleView(bf)}
-                    disabled={previewLoading === bf.id}
-                    className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors disabled:opacity-50"
-                  >
-                    <FiEye className="h-3 w-3" />
-                    {previewLoading === bf.id ? "..." : "View"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDownload(bf)}
-                    className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-800 transition-colors"
-                  >
-                    <LuDownload className="h-3 w-3" />
-                    Download
-                  </button>
+            <div className="space-y-3">
+              {/* Original Upload */}
+              {originalFiles.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 mb-1">Original Upload</p>
+                  <div className="space-y-2">
+                    {originalFiles.map((bf, idx) => (
+                      <div key={bf.id} className="flex items-center gap-3">
+                        <span className="text-xs text-slate-500 font-mono w-4">{idx + 1}.</span>
+                        <span className="text-xs text-slate-600 truncate max-w-[120px]">
+                          {bf.originalName || bf.fileUrl.split("/").pop()}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleView(bf)}
+                          disabled={previewLoading === bf.id}
+                          className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors disabled:opacity-50"
+                        >
+                          <FiEye className="h-3 w-3" />
+                          {previewLoading === bf.id ? "..." : "View"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDownload(bf)}
+                          className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-800 transition-colors"
+                        >
+                          <LuDownload className="h-3 w-3" />
+                          Download
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              ))}
+              )}
+
+              {/* Re-uploaded Documents */}
+              {reuploadedFiles.length > 0 && (
+                <div>
+                  {originalFiles.length > 0 && <div className="border-t border-slate-200 my-2" />}
+                  <p className="text-xs font-semibold text-slate-500 mb-1">Re-uploaded Documents</p>
+                  <div className="space-y-2">
+                    {reuploadedFiles.map((bf, idx) => (
+                      <div key={bf.id} className="flex items-center gap-3">
+                        <span className="text-xs text-slate-500 font-mono w-4">{idx + 1}.</span>
+                        <span className="text-xs text-slate-600 truncate max-w-[120px]">
+                          {bf.originalName || bf.fileUrl.split("/").pop()}
+                        </span>
+                        <Tag color="blue" className="text-[10px]! leading-tight! px-1! py-0! m-0!">Re-upload</Tag>
+                        <button
+                          type="button"
+                          onClick={() => handleView(bf)}
+                          disabled={previewLoading === bf.id}
+                          className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors disabled:opacity-50"
+                        >
+                          <FiEye className="h-3 w-3" />
+                          {previewLoading === bf.id ? "..." : "View"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDownload(bf)}
+                          className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-800 transition-colors"
+                        >
+                          <LuDownload className="h-3 w-3" />
+                          Download
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           ) : bill.fileUrl ? (
             <span className="text-xs text-slate-500">1 file (legacy)</span>
