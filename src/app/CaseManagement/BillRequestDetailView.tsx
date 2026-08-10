@@ -33,6 +33,9 @@ import {
   useGetAllOffersForBillQuery,
   useSendSelectedOffersMutation,
   useTransitionBillStatusMutation,
+  useGetBillNotesQuery,
+  useAddBillNoteMutation,
+  useDeleteBillNoteMutation,
   type IOfferWithSavings,
   type IBill,
   type IBillFile,
@@ -42,13 +45,9 @@ import {
   useUpdateCaseMutation,
   useVerifyDocumentMutation,
   useUploadCaseDocumentMutation,
-  useGetCaseNotesQuery,
-  useAddCaseNoteMutation,
-  useDeleteCaseNoteMutation,
   type ICase,
   type ICaseEvent,
   type ICaseDocument,
-  type ICaseNote,
 } from "../../redux/features/Cases/caseApi";
 import {
   useGetContractByCaseQuery,
@@ -628,7 +627,7 @@ const BillRequestDetailView = () => {
           </div>
         );
       case "notes":
-        return <NotesTab billId={bill.id} caseId={activeCase?.id ?? null} />;
+        return <NotesTab billId={bill.id} />;
       case "case_details":
         return <CaseDetailsTab caseId={activeCase?.id ?? null} />;
       default:
@@ -1470,7 +1469,6 @@ function CaseDetailsTab({ caseId }: { caseId: string | null }) {
   const { data: caseData, isLoading } = useGetCaseByIdQuery(caseId!, { skip: !caseId });
   const [updateCase, { isLoading: isUpdating }] = useUpdateCaseMutation();
   const [subTab, setSubTab] = useState("timeline");
-  const [note, setNote] = useState("");
 
   if (!caseId) {
     return (
@@ -1516,17 +1514,6 @@ function CaseDetailsTab({ caseId }: { caseId: string | null }) {
       message.success(`Status advanced to ${caseStatusLabel[next]}`);
     } catch {
       message.error("Failed to advance status");
-    }
-  };
-
-  const handleSaveNote = async () => {
-    if (!note.trim()) return;
-    try {
-      await updateCase({ id: caseData.id, data: { internalNotes: note } }).unwrap();
-      message.success("Note saved");
-      setNote("");
-    } catch {
-      message.error("Failed to save note");
     }
   };
 
@@ -1644,35 +1631,6 @@ function CaseDetailsTab({ caseId }: { caseId: string | null }) {
 
       {/* Sub-tab Content */}
       <div>{renderSubTab()}</div>
-
-      {/* Internal Notes (always visible) */}
-      <div className="border-t border-slate-100 pt-5 space-y-3">
-        <h4 className="text-sm font-semibold text-slate-800">Internal Notes</h4>
-        {caseData.internalNotes && (
-          <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-600">
-            {caseData.internalNotes}
-          </div>
-        )}
-        <Input.TextArea
-          rows={3}
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          placeholder="Add internal note..."
-          className="resize-none rounded-xl! border-slate-200"
-        />
-        <div className="flex justify-end">
-          <Button
-            type="primary"
-            disabled={!note.trim()}
-            onClick={handleSaveNote}
-            loading={isUpdating}
-            size="small"
-            className="rounded-lg bg-[#7061ED]! hover:bg-[#5f52d4]! font-semibold"
-          >
-            Save Note
-          </Button>
-        </div>
-      </div>
     </div>
   );
 }
@@ -2470,18 +2428,17 @@ function CaseContractSection({ caseData }: { caseData: ICase }) {
 
 /* ── Notes Tab ─────────────────────────────────────────── */
 
-function NotesTab({ billId, caseId }: { billId: string; caseId: string | null }) {
+function NotesTab({ billId }: { billId: string }) {
   const { message } = App.useApp();
-  const effectiveId = caseId || billId;
-  const { data: notes, isLoading } = useGetCaseNotesQuery(effectiveId, { skip: !caseId });
-  const [addNote, { isLoading: isAdding }] = useAddCaseNoteMutation();
-  const [deleteNote] = useDeleteCaseNoteMutation();
+  const { data: notes, isLoading } = useGetBillNotesQuery(billId);
+  const [addNote, { isLoading: isAdding }] = useAddBillNoteMutation();
+  const [deleteNote] = useDeleteBillNoteMutation();
   const [content, setContent] = useState("");
 
   const handleAdd = async () => {
-    if (!content.trim() || !caseId) return;
+    if (!content.trim()) return;
     try {
-      await addNote({ caseId, content: content.trim() }).unwrap();
+      await addNote({ billId, content: content.trim() }).unwrap();
       message.success("Note added");
       setContent("");
     } catch {
@@ -2490,22 +2447,13 @@ function NotesTab({ billId, caseId }: { billId: string; caseId: string | null })
   };
 
   const handleDelete = async (noteId: string) => {
-    if (!caseId) return;
     try {
-      await deleteNote({ caseId, noteId }).unwrap();
+      await deleteNote({ billId, noteId }).unwrap();
       message.success("Note deleted");
     } catch {
       message.error("Failed to delete note");
     }
   };
-
-  if (!caseId) {
-    return (
-      <div className="py-12">
-        <Empty description="No case created yet. Notes will be available once a case is created for this bill." />
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-5">
@@ -2516,7 +2464,7 @@ function NotesTab({ billId, caseId }: { billId: string; caseId: string | null })
           rows={3}
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          placeholder="Write a note about this case..."
+          placeholder="Write a note about this bill..."
           className="resize-none rounded-xl! border-slate-200"
         />
         <div className="flex justify-end">
