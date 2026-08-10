@@ -32,7 +32,10 @@ import {
   useGetContractByCaseQuery,
   useCreateContractMutation,
   useUpdateContractMutation,
+  useUploadContractDocumentsMutation,
+  useDeleteContractDocumentMutation,
   type IContract,
+  type IContractDocument,
 } from "../../redux/features/Contracts/contractApi";
 import { server_origin } from "../../config";
 
@@ -826,33 +829,182 @@ const deliveryMethodLabel: Record<string, string> = {
   phone: "Via Phone",
 };
 
+function ContractDocumentList({
+  documents,
+  type,
+  title,
+  contract,
+  onDelete,
+}: {
+  documents: IContractDocument[];
+  type: "contract" | "signed";
+  title: string;
+  contract: IContract;
+  onDelete?: (docId: string) => void;
+}) {
+  const filtered = documents.filter((d) => d.documentType === type);
+  if (filtered.length === 0) return null;
+
+  const borderClass = type === "contract" ? "border-slate-100" : "border-emerald-100";
+  const hoverClass = type === "contract" ? "hover:bg-slate-50" : "hover:bg-emerald-50";
+  const iconBgClass = type === "contract" ? "bg-blue-50 text-blue-500" : "bg-emerald-50 text-emerald-500";
+
+  return (
+    <div className="space-y-2">
+      <h5 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{title}</h5>
+      {filtered.map((doc) => {
+        const href = doc.fileUrl.startsWith("http")
+          ? doc.fileUrl
+          : `${server_origin}/${doc.fileUrl.replace(/^\//, "")}`;
+        return (
+          <div
+            key={doc.id}
+            className={`flex items-center gap-3 rounded-lg border ${borderClass} p-3 ${hoverClass} transition-colors`}
+          >
+            <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${iconBgClass}`}>
+              {type === "contract" ? (
+                <LuDownload className="h-4 w-4" />
+              ) : (
+                <LuFileCheck2 className="h-4 w-4" />
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-slate-700 truncate">
+                {doc.originalName || doc.fileName}
+              </p>
+              <p className="text-xs text-slate-400">
+                {doc.mimeType === "application/pdf" ? "PDF" : doc.mimeType?.startsWith("image/") ? "Image" : "Document"}
+                {doc.fileSizeBytes ? ` · ${(Number(doc.fileSizeBytes) / 1024).toFixed(0)} KB` : ""}
+              </p>
+            </div>
+            <a
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-slate-100 text-slate-500 hover:text-slate-700"
+              title="View / Download"
+            >
+              <LuDownload className="h-4 w-4" />
+            </a>
+            {onDelete && (
+              <button
+                onClick={() => onDelete(doc.id)}
+                className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-red-50 text-slate-400 hover:text-red-500"
+                title="Delete"
+              >
+                <FiFileText className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function ContractTab({ caseData }: { caseData: ICase }) {
   const { data: contract, isLoading, error } = useGetContractByCaseQuery(caseData.id);
   const [createContract, { isLoading: isCreating }] = useCreateContractMutation();
   const [updateContract, { isLoading: isUpdatingContract }] = useUpdateContractMutation();
+  const [uploadContractDocuments] = useUploadContractDocumentsMutation();
+  const [deleteContractDocument] = useDeleteContractDocumentMutation();
 
   const [contractNumber, setContractNumber] = useState("");
   const [podPdrNumber, setPodPdrNumber] = useState(caseData.bill?.podNumber || caseData.bill?.pdrNumber || "");
   const [deliveryMethod, setDeliveryMethod] = useState<string | undefined>(undefined);
-  const [documentUrl, setDocumentUrl] = useState("");
   const [activationDate, setActivationDate] = useState<Dayjs | null>(null);
   const [expiryDate, setExpiryDate] = useState<Dayjs | null>(null);
+  const [pendingFiles, setPendingFiles] = useState<{ file: File; uploading: boolean }[]>([]);
+  const [isUploadingDocs, setIsUploadingDocs] = useState(false);
 
   const hasContract = contract && !error;
+  const allDocuments = contract?.documents || [];
+
+  const handleUploadFiles = async (files: File[]): Promise<{ fileUrl: string; fileName: string; originalName: string; mimeType: string; fileSizeBytes: number }[]> => {
+    const uploaded: { fileUrl: string; fileName: string; originalName: string; mimeType: string; fileSizeBytes: number }[] = [];
+    const token = localStorage.getItem("auth_token");
+    for (const file of files) {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch(`${server_origin}/api/v1/upload`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      const result = await res.json();
+      const data = result?.data || result;
+      if (res.ok && data?.url) {
+        uploaded.push({
+          fileUrl: data.url,
+          fileName: data.filename,
+          originalName: data.originalName || file.name,
+          mimeType: data.mimeType || file.type,
+          fileSizeBytes: data.size || file.size,
+        });
+      } else {
+        throw new Error(`Failed to upload ${file.name}`);
+      }
+    }
+    return uploaded;
+  };
 
   const handleCreate = async () => {
     if (!contractNumber.trim() || !deliveryMethod) return;
     try {
-      await createContract({
+      const created = await createContract({
         caseId: caseData.id,
         contractNumber: contractNumber.trim(),
         podPdrNumber: podPdrNumber || undefined,
         deliveryMethod: deliveryMethod as "app" | "email" | "mail" | "phone",
-        documentUrl: documentUrl || undefined,
       }).unwrap();
+
+      // Upload pending files as contract documents
+      if (pendingFiles.length > 0) {
+        setIsUploadingDocs(true);
+        try {
+          const uploaded = await handleUploadFiles(pendingFiles.map((f) => f.file));
+          await uploadContractDocuments({
+            contractId: created.id,
+            documents: uploaded,
+          }).unwrap();
+          setPendingFiles([]);
+        } catch {
+          message.warning("Contract created but some documents failed to upload");
+        } finally {
+          setIsUploadingDocs(false);
+        }
+      }
+
       message.success("Contract created and sent");
     } catch {
       message.error("Failed to create contract");
+    }
+  };
+
+  const handleAddDocuments = async (files: File[]) => {
+    if (!contract) return;
+    setIsUploadingDocs(true);
+    try {
+      const uploaded = await handleUploadFiles(files);
+      await uploadContractDocuments({
+        contractId: contract.id,
+        documents: uploaded,
+      }).unwrap();
+      message.success(`${uploaded.length} document(s) uploaded`);
+    } catch {
+      message.error("Failed to upload documents");
+    } finally {
+      setIsUploadingDocs(false);
+    }
+  };
+
+  const handleDeleteDocument = async (docId: string) => {
+    if (!contract) return;
+    try {
+      await deleteContractDocument({ contractId: contract.id, documentId: docId }).unwrap();
+      message.success("Document deleted");
+    } catch {
+      message.error("Failed to delete document");
     }
   };
 
@@ -927,25 +1079,43 @@ function ContractTab({ caseData }: { caseData: ICase }) {
                 ]}
               />
             </div>
-            {deliveryMethod === "app" && (
-              <div>
-                <label className="text-xs text-slate-500 mb-1 block">Contract Document URL *</label>
-                <Input
-                  value={documentUrl}
-                  onChange={(e) => setDocumentUrl(e.target.value)}
-                  placeholder="Upload document first, then paste URL"
-                  className="rounded-lg"
-                />
-              </div>
-            )}
+          </div>
+
+          {/* Contract Document Upload */}
+          <div>
+            <label className="text-xs text-slate-500 mb-1 block">Contract Documents</label>
+            <Upload.Dragger
+              multiple
+              accept=".pdf,.jpg,.jpeg,.png,.webp"
+              beforeUpload={(file) => {
+                setPendingFiles((prev) => [...prev, { file, uploading: false }]);
+                return false;
+              }}
+              fileList={pendingFiles.map((f, i) => ({
+                uid: String(i),
+                name: f.file.name,
+                status: "done" as const,
+                size: f.file.size,
+              }))}
+              onRemove={(file) => {
+                setPendingFiles((prev) => prev.filter((_, i) => String(i) !== file.uid));
+              }}
+              className="rounded-lg!"
+            >
+              <p className="text-slate-400">
+                <LuUpload className="mx-auto h-8 w-8 mb-2" />
+              </p>
+              <p className="text-sm text-slate-600">Click or drag files to upload contract documents</p>
+              <p className="text-xs text-slate-400 mt-1">PDF, JPG, PNG, WebP (max 10 MB each)</p>
+            </Upload.Dragger>
           </div>
 
           <div className="flex justify-end pt-2">
             <Button
               type="primary"
               onClick={handleCreate}
-              loading={isCreating}
-              disabled={!contractNumber.trim() || !deliveryMethod || (deliveryMethod === "app" && !documentUrl)}
+              loading={isCreating || isUploadingDocs}
+              disabled={!contractNumber.trim() || !deliveryMethod}
               className="h-10 rounded-lg bg-[#7061ED]! hover:bg-[#5f52d4]! border-0! font-semibold px-6"
             >
               Create & Send Contract
@@ -1020,45 +1190,49 @@ function ContractTab({ caseData }: { caseData: ICase }) {
       </div>
 
       {/* Documents */}
-      {(contract.documentUrl || contract.signedDocumentUrl) && (
-        <div className="rounded-xl border border-slate-200 p-5">
-          <h4 className="text-sm font-bold text-slate-800 mb-4">Documents</h4>
-          <div className="space-y-3">
-            {contract.documentUrl && (
-              <a
-                href={contract.documentUrl.startsWith("http") ? contract.documentUrl : `${server_origin}/${contract.documentUrl.replace(/^\//, "")}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-3 rounded-lg border border-slate-100 p-3 hover:bg-slate-50 transition-colors"
-              >
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-blue-500">
-                  <LuDownload className="h-4 w-4" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-slate-700">Unsigned Contract</p>
-                  <p className="text-xs text-slate-400">Sent to customer</p>
-                </div>
-              </a>
-            )}
-            {contract.signedDocumentUrl && (
-              <a
-                href={contract.signedDocumentUrl.startsWith("http") ? contract.signedDocumentUrl : `${server_origin}/${contract.signedDocumentUrl.replace(/^\//, "")}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-3 rounded-lg border border-emerald-100 p-3 hover:bg-emerald-50 transition-colors"
-              >
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-500">
-                  <LuFileCheck2 className="h-4 w-4" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-slate-700">Signed Contract</p>
-                  <p className="text-xs text-slate-400">Uploaded by customer</p>
-                </div>
-              </a>
-            )}
-          </div>
+      <div className="rounded-xl border border-slate-200 p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h4 className="text-sm font-bold text-slate-800">Documents</h4>
+          <Upload
+            multiple
+            accept=".pdf,.jpg,.jpeg,.png,.webp"
+            showUploadList={false}
+            beforeUpload={(_, fileList) => {
+              handleAddDocuments(fileList as unknown as File[]);
+              return false;
+            }}
+          >
+            <Button
+              size="small"
+              loading={isUploadingDocs}
+              className="rounded-lg border-slate-200 text-slate-600"
+              icon={<LuUpload className="h-3.5 w-3.5" />}
+            >
+              Upload Documents
+            </Button>
+          </Upload>
         </div>
-      )}
+
+        {allDocuments.length === 0 ? (
+          <p className="text-sm text-slate-400 text-center py-4">No documents uploaded yet</p>
+        ) : (
+          <div className="space-y-4">
+            <ContractDocumentList
+              documents={allDocuments}
+              type="contract"
+              title="Contract Documents"
+              contract={contract}
+              onDelete={handleDeleteDocument}
+            />
+            <ContractDocumentList
+              documents={allDocuments}
+              type="signed"
+              title="Signed Documents (by customer)"
+              contract={contract}
+            />
+          </div>
+        )}
+      </div>
 
       {/* Actions based on status */}
       {contract.status === "draft" && (
