@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback } from "react";
 import { App, Button, Input, InputNumber, Spin, Empty, Tag, Select, Table, Upload, Tooltip, DatePicker, Modal } from "antd";
 import type { Dayjs } from "dayjs";
 import type { ColumnsType } from "antd/es/table";
@@ -202,22 +202,7 @@ const BillRequestDetailView = () => {
     data: bill,
     isLoading,
     refetch,
-  } = useGetBillByIdAdminQuery(billId!, { skip: !billId });
-
-  /* Auto-poll every 15s when bill is awaiting user response so admin sees updates without reload */
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  useEffect(() => {
-    const shouldPoll =
-      bill?.status === "verification_required" ||
-      bill?.status === "contract_verification_required";
-    if (shouldPoll) {
-      pollRef.current = setInterval(() => refetch(), 15_000);
-    }
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-    };
-  }, [bill?.status, refetch]);
-
+  } = useGetBillByIdAdminQuery(billId!, { skip: !billId, refetchOnMountOrArgChange: true });
   const { data: allOffers, isLoading: offersLoading } = useGetAllOffersForBillQuery(billId!, {
     skip: !billId || bill?.status === "pending_email",
   });
