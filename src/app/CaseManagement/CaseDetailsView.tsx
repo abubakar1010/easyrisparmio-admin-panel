@@ -174,9 +174,7 @@ const CaseDetailsView = () => {
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   );
   const docCount = caseData.documents?.length || 0;
-  const identityDocs = (caseData.documents || []).filter((d) =>
-    ["id_card", "codice_fiscale", "partita_iva"].includes(d.documentType),
-  );
+  const identityDocs = caseData.documents || [];
   const identityVerified = identityDocs.length > 0 && identityDocs.every((d) => d.verified);
   const commCount = events.filter(
     (e) => e.eventType === "NOTE_ADDED" || e.eventType === "SYSTEM_EVENT",
@@ -553,18 +551,13 @@ function CaseDataTab({ caseData }: { caseData: ICase }) {
 
 /* ── Documents Tab ───────────────────────────────────────── */
 
-const IDENTITY_DOC_TYPES = ["id_card", "codice_fiscale", "partita_iva"];
-
 function DocumentsTab({ documents, caseId }: { documents: ICaseDocument[]; caseId: string }) {
   const [verifyDocument, { isLoading: isVerifying }] = useVerifyDocumentMutation();
   const [uploadCaseDocument] = useUploadCaseDocumentMutation();
   const [uploading, setUploading] = useState(false);
-  const [selectedDocType, setSelectedDocType] = useState<string>("id_card");
   const baseUrl = server_origin;
 
-  const identityDocs = documents.filter((d) => IDENTITY_DOC_TYPES.includes(d.documentType));
-  const otherDocs = documents.filter((d) => !IDENTITY_DOC_TYPES.includes(d.documentType));
-  const allVerified = identityDocs.length > 0 && identityDocs.every((d) => d.verified);
+  const allVerified = documents.length > 0 && documents.every((d) => d.verified);
 
   const handleVerify = async (docId: string) => {
     try {
@@ -596,7 +589,7 @@ function DocumentsTab({ documents, caseId }: { documents: ICaseDocument[]; caseI
       if (res.ok && url) {
         await uploadCaseDocument({
           caseId,
-          documentType: selectedDocType,
+          documentType: "identity_document",
           fileUrl: url,
           fileName: file.name,
         }).unwrap();
@@ -630,7 +623,7 @@ function DocumentsTab({ documents, caseId }: { documents: ICaseDocument[]; caseI
         if (res.ok && url) {
           await uploadCaseDocument({
             caseId,
-            documentType: selectedDocType,
+            documentType: "identity_document",
             fileUrl: url,
             fileName: file.name,
           }).unwrap();
@@ -656,22 +649,22 @@ function DocumentsTab({ documents, caseId }: { documents: ICaseDocument[]; caseI
           <div className="flex items-center gap-2">
             <h4 className="text-sm font-semibold text-slate-800">Identity Verification</h4>
             <Tag
-              color={identityDocs.length === 0 ? "red" : allVerified ? "green" : "orange"}
+              color={documents.length === 0 ? "red" : allVerified ? "green" : "orange"}
               className="m-0! rounded-full! border-0! text-xs! font-semibold!"
             >
-              {identityDocs.length === 0 ? "Not Uploaded" : allVerified ? "Verified" : "Pending Review"}
+              {documents.length === 0 ? "Not Uploaded" : allVerified ? "Verified" : "Pending Review"}
             </Tag>
           </div>
-          {identityDocs.length > 0 && (
+          {documents.length > 0 && (
             <span className="text-xs text-slate-400">
-              {identityDocs.filter((d) => d.verified).length}/{identityDocs.length} verified
+              {documents.filter((d) => d.verified).length}/{documents.length} verified
             </span>
           )}
         </div>
 
-        {identityDocs.length > 0 && (
+        {documents.length > 0 && (
           <div className="space-y-3 mb-4">
-            {identityDocs.map((doc) => (
+            {documents.map((doc) => (
               <div
                 key={doc.id}
                 className="flex items-center justify-between rounded-xl border border-slate-100 p-4 transition-colors hover:bg-slate-50/50"
@@ -682,11 +675,6 @@ function DocumentsTab({ documents, caseId }: { documents: ICaseDocument[]; caseI
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-slate-700 truncate">{doc.fileName}</p>
-                    <p className="text-xs text-slate-400 capitalize">
-                      {doc.documentType?.replace("_", " ")}
-                      {doc.fileSizeBytes != null && ` • ${(doc.fileSizeBytes / 1024 / 1024).toFixed(1)} MB`}
-                      {doc.uploadedBy && ` • by ${doc.uploadedBy.firstName} ${doc.uploadedBy.lastName}`}
-                    </p>
                     {doc.verified && doc.verifiedAt && (
                       <p className="text-[10px] text-emerald-500 mt-0.5">
                         Verified on {new Date(doc.verifiedAt).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })}
@@ -730,17 +718,6 @@ function DocumentsTab({ documents, caseId }: { documents: ICaseDocument[]; caseI
         {/* Admin Upload Identity Documents */}
         <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-4">
           <div className="flex items-center gap-3 flex-wrap">
-            <Select
-              size="small"
-              value={selectedDocType}
-              onChange={setSelectedDocType}
-              className="w-40 [&_.ant-select-selector]:rounded-lg!"
-              options={[
-                { value: "id_card", label: "ID Card" },
-                { value: "codice_fiscale", label: "Codice Fiscale" },
-                { value: "partita_iva", label: "Partita IVA" },
-              ]}
-            />
             <Upload
               accept=".pdf,.png,.jpg,.jpeg,.webp"
               multiple
@@ -766,51 +743,6 @@ function DocumentsTab({ documents, caseId }: { documents: ICaseDocument[]; caseI
           </div>
         </div>
       </div>
-
-      {/* Other Documents Section */}
-      {otherDocs.length > 0 && (
-        <div>
-          <h4 className="text-sm font-semibold text-slate-800 mb-3">Other Documents</h4>
-          <div className="space-y-3">
-            {otherDocs.map((doc) => (
-              <div
-                key={doc.id}
-                className="flex items-center justify-between rounded-xl border border-slate-100 p-4 transition-colors hover:bg-slate-50/50"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-500">
-                    <FiFileText className="h-5 w-5" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-slate-700 truncate">{doc.fileName}</p>
-                    <p className="text-xs text-slate-400 capitalize">
-                      {doc.documentType?.replace("_", " ")}
-                      {doc.fileSizeBytes != null && ` • ${(doc.fileSizeBytes / 1024 / 1024).toFixed(1)} MB`}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <a
-                    href={getFileUrl(doc.fileUrl)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
-                    title="View / Download"
-                  >
-                    <LuDownload className="h-4 w-4" />
-                  </a>
-                  <Tag
-                    color={doc.verified ? "green" : "default"}
-                    className="m-0! rounded-full! border-0! text-xs!"
-                  >
-                    {doc.verified ? "Verified" : "Pending"}
-                  </Tag>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

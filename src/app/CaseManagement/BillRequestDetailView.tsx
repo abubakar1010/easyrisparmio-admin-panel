@@ -1868,14 +1868,11 @@ function CaseDataSection({
   );
 }
 
-const IDENTITY_DOC_TYPES = ["id_card", "codice_fiscale", "partita_iva"];
-
 function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[]; caseId: string }) {
   const token = useAppSelector((state) => state.auth.token);
   const [verifyDocument, { isLoading: isVerifying }] = useVerifyDocumentMutation();
   const [uploadCaseDocument] = useUploadCaseDocumentMutation();
   const [uploading, setUploading] = useState(false);
-  const [selectedDocType, setSelectedDocType] = useState<string>("id_card");
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewDoc, setPreviewDoc] = useState<ICaseDocument | null>(null);
@@ -1956,7 +1953,7 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
         if (res.ok && url) {
           await uploadCaseDocument({
             caseId,
-            documentType: selectedDocType,
+            documentType: "identity_document",
             fileUrl: url,
             fileName: file.name,
           }).unwrap();
@@ -1977,26 +1974,19 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
   const isPdf = (doc: ICaseDocument) => doc.mimeType === "application/pdf" || doc.fileName.endsWith(".pdf");
   const isImage = (doc: ICaseDocument) => doc.mimeType?.startsWith("image/") || /\.(jpg|jpeg|png)$/i.test(doc.fileName);
 
-  const identityDocs = documents.filter((d) => IDENTITY_DOC_TYPES.includes(d.documentType));
-  const otherDocs = documents.filter((d) => !IDENTITY_DOC_TYPES.includes(d.documentType));
-  const allVerified = identityDocs.length > 0 && identityDocs.every((d) => d.verified);
+  const allVerified = documents.length > 0 && documents.every((d) => d.verified);
 
-  const renderDocRow = (doc: ICaseDocument, isIdentity: boolean) => (
+  const renderDocRow = (doc: ICaseDocument) => (
     <div
       key={doc.id}
       className="flex items-center justify-between rounded-xl border border-slate-100 p-4 transition-colors hover:bg-slate-50/50"
     >
       <div className="flex items-center gap-3 min-w-0">
-        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${isIdentity ? (doc.verified ? "bg-emerald-50 text-emerald-500" : "bg-amber-50 text-amber-500") : "bg-blue-50 text-blue-500"}`}>
+        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${doc.verified ? "bg-emerald-50 text-emerald-500" : "bg-amber-50 text-amber-500"}`}>
           <FiFileText className="h-5 w-5" />
         </div>
         <div className="min-w-0">
           <p className="text-sm font-semibold text-slate-700 truncate">{doc.fileName}</p>
-          <p className="text-xs text-slate-400 capitalize">
-            {doc.documentType?.replace("_", " ")}
-            {doc.fileSizeBytes != null && ` • ${(doc.fileSizeBytes / 1024 / 1024).toFixed(1)} MB`}
-            {doc.uploadedBy && ` • by ${doc.uploadedBy.firstName} ${doc.uploadedBy.lastName}`}
-          </p>
           {doc.verified && doc.verifiedAt && (
             <p className="text-[10px] text-emerald-500 mt-0.5">
               Verified on {new Date(doc.verifiedAt).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })}
@@ -2022,7 +2012,7 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
           <FiDownload className="h-3.5 w-3.5" />
           Download
         </button>
-        {isIdentity && !doc.verified ? (
+        {!doc.verified ? (
           <Button
             size="small"
             type="primary"
@@ -2035,10 +2025,10 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
           </Button>
         ) : (
           <Tag
-            color={doc.verified ? "green" : "default"}
+            color="green"
             className="m-0! rounded-full! border-0! text-xs!"
           >
-            {doc.verified ? "Verified" : "Pending"}
+            Verified
           </Tag>
         )}
       </div>
@@ -2054,39 +2044,28 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
             <div className="flex items-center gap-2">
               <h4 className="text-sm font-semibold text-slate-800">Identity Verification</h4>
               <Tag
-                color={identityDocs.length === 0 ? "red" : allVerified ? "green" : "orange"}
+                color={documents.length === 0 ? "red" : allVerified ? "green" : "orange"}
                 className="m-0! rounded-full! border-0! text-xs! font-semibold!"
               >
-                {identityDocs.length === 0 ? "Not Uploaded" : allVerified ? "Verified" : "Pending Review"}
+                {documents.length === 0 ? "Not Uploaded" : allVerified ? "Verified" : "Pending Review"}
               </Tag>
             </div>
-            {identityDocs.length > 0 && (
+            {documents.length > 0 && (
               <span className="text-xs text-slate-400">
-                {identityDocs.filter((d) => d.verified).length}/{identityDocs.length} verified
+                {documents.filter((d) => d.verified).length}/{documents.length} verified
               </span>
             )}
           </div>
 
-          {identityDocs.length > 0 && (
+          {documents.length > 0 && (
             <div className="space-y-3 mb-4">
-              {identityDocs.map((doc) => renderDocRow(doc, true))}
+              {documents.map((doc) => renderDocRow(doc))}
             </div>
           )}
 
           {/* Admin Upload Identity Documents */}
           <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-4">
             <div className="flex items-center gap-3 flex-wrap">
-              <Select
-                size="small"
-                value={selectedDocType}
-                onChange={setSelectedDocType}
-                className="w-40 [&_.ant-select-selector]:rounded-lg!"
-                options={[
-                  { value: "id_card", label: "ID Card" },
-                  { value: "codice_fiscale", label: "Codice Fiscale" },
-                  { value: "partita_iva", label: "Partita IVA" },
-                ]}
-              />
               <Upload
                 accept=".pdf,.png,.jpg,.jpeg,.webp"
                 multiple
@@ -2108,16 +2087,6 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
             </div>
           </div>
         </div>
-
-        {/* Other Documents Section */}
-        {otherDocs.length > 0 && (
-          <div>
-            <h4 className="text-sm font-semibold text-slate-800 mb-3">Other Documents</h4>
-            <div className="space-y-3">
-              {otherDocs.map((doc) => renderDocRow(doc, false))}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Document Preview Modal */}
