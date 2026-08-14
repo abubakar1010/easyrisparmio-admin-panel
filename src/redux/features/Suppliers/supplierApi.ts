@@ -45,6 +45,9 @@ export interface ISupplier {
   contractStartDate: string | null;
   notes: string | null;
   supplierCode: string | null;
+  contractSigningInstructions: string | null;
+  contractSigningDocumentUrl: string | null;
+  contractSigningDocumentName: string | null;
   createdAt: string;
   updatedAt: string;
   offers: SupplierOffer[];
@@ -80,6 +83,9 @@ export interface ICreateSupplier {
   contractStartDate?: string;
   notes?: string;
   supplierCode?: string;
+  contractSigningInstructions?: string | null;
+  contractSigningDocumentUrl?: string | null;
+  contractSigningDocumentName?: string | null;
 }
 
 interface IPaginatedResponse<T> {

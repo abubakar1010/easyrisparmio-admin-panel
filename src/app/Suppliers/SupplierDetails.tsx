@@ -5,6 +5,7 @@ import {
   FiArrowLeft,
   FiEdit2,
   FiExternalLink,
+  FiFileText,
   FiMail,
   FiMapPin,
   FiPhone,
@@ -114,6 +115,9 @@ const SupplierDetails = () => {
     startDate: supplier.contractStartDate ? dayjs(supplier.contractStartDate) : undefined,
     notes: supplier.notes,
     logoUrl: supplier.logoUrl,
+    contractSigningInstructions: supplier.contractSigningInstructions,
+    contractSigningDocumentUrl: supplier.contractSigningDocumentUrl,
+    contractSigningDocumentName: supplier.contractSigningDocumentName,
   };
 
   const handleStatusChange = async (status: string) => {
@@ -450,6 +454,39 @@ const SupplierDetails = () => {
                   .join(", ") || null
               }
             />
+          </div>
+
+          <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
+            <h3 className="mb-1 text-base font-semibold text-slate-800">Contract Signing Instructions</h3>
+            <p className="mb-4 text-xs text-slate-400">
+              Shown to users as "Contract Sign Guideline" on contracts from this supplier.
+            </p>
+            {supplier.contractSigningInstructions || supplier.contractSigningDocumentUrl ? (
+              <>
+                {supplier.contractSigningInstructions && (
+                  <p className="whitespace-pre-line text-sm leading-relaxed text-slate-600">
+                    {supplier.contractSigningInstructions}
+                  </p>
+                )}
+                {supplier.contractSigningDocumentUrl && (
+                  <a
+                    href={
+                      supplier.contractSigningDocumentUrl.startsWith("http")
+                        ? supplier.contractSigningDocumentUrl
+                        : `${server_origin}${supplier.contractSigningDocumentUrl}`
+                    }
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-4 inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 transition-colors hover:border-[#7061ED] hover:text-[#7061ED]"
+                  >
+                    <FiFileText className="h-4 w-4" />
+                    {supplier.contractSigningDocumentName || "View document"}
+                  </a>
+                )}
+              </>
+            ) : (
+              <p className="text-sm leading-relaxed text-slate-600">No signing instructions.</p>
+            )}
           </div>
 
           <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
