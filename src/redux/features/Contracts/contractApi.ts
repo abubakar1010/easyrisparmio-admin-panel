@@ -1,5 +1,8 @@
 import { baseApi } from "../../api/baseApi";
 
+/** A contract can only be delivered through the app or by email. */
+export type TContractDeliveryMethod = "app" | "email";
+
 export interface IContractDocument {
   id: string;
   contractId: string;
@@ -25,7 +28,7 @@ export interface IContract {
   expiryDate: string | null;
   signedAt: string | null;
   signedDocumentUrl: string | null;
-  deliveryMethod: "app" | "email" | "mail" | "phone" | null;
+  deliveryMethod: TContractDeliveryMethod | null;
   documentUrl: string | null;
   monthlyEstimate: number | null;
   renewalDate: string | null;
@@ -84,7 +87,7 @@ const contractApi = baseApi.injectEndpoints({
         caseId: string;
         contractNumber: string;
         podPdrNumber?: string;
-        deliveryMethod?: "app" | "email" | "mail" | "phone";
+        deliveryMethod?: TContractDeliveryMethod;
         documentUrl?: string;
       }
     >({
@@ -111,7 +114,7 @@ const contractApi = baseApi.injectEndpoints({
           expiryDate?: string;
           signedDocumentUrl?: string;
           monthlyEstimate?: number;
-          deliveryMethod?: "app" | "email" | "mail" | "phone";
+          deliveryMethod?: TContractDeliveryMethod;
           documentUrl?: string;
         };
       }

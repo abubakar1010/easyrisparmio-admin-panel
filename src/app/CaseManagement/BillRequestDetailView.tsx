@@ -54,6 +54,7 @@ import {
   useUploadContractDocumentsMutation,
   useDeleteContractDocumentMutation,
   type IContractDocument,
+  type TContractDeliveryMethod,
 } from "../../redux/features/Contracts/contractApi";
 import { useAppSelector } from "../../redux/hooks";
 import { server_url, server_origin } from "../../config";
@@ -2282,11 +2283,14 @@ const contractStatusColor: Record<string, string> = {
 };
 
 const deliveryMethodLabel: Record<string, string> = {
-  app: "Through App",
+  app: "Via App",
   email: "Via Email",
-  mail: "Via Mail",
-  phone: "Via Phone",
 };
+
+const deliveryMethodOptions = [
+  { value: "app", label: "Via App" },
+  { value: "email", label: "Via Email" },
+];
 
 function ContractDocumentListBRD({
   documents,
@@ -2370,7 +2374,7 @@ function CaseContractSection({ caseData }: { caseData: ICase }) {
   const [podPdrNumber, setPodPdrNumber] = useState(
     caseData.bill?.podNumber || caseData.bill?.pdrNumber || ""
   );
-  const [deliveryMethod, setDeliveryMethod] = useState<string | undefined>(undefined);
+  const [deliveryMethod, setDeliveryMethod] = useState<TContractDeliveryMethod | undefined>(undefined);
   const [activationDate, setActivationDate] = useState<Dayjs | null>(null);
   const [expiryDate, setExpiryDate] = useState<Dayjs | null>(null);
   const [pendingFiles, setPendingFiles] = useState<{ file: File; uploading: boolean }[]>([]);
@@ -2407,6 +2411,12 @@ function CaseContractSection({ caseData }: { caseData: ICase }) {
     return uploaded;
   };
 
+  // Documents are only attached when the contract is delivered by email
+  const handleDeliveryMethodChange = (value: TContractDeliveryMethod) => {
+    setDeliveryMethod(value);
+    if (value !== "email") setPendingFiles([]);
+  };
+
   const handleCreate = async () => {
     if (!contractNumber.trim() || !deliveryMethod) return;
     try {
@@ -2414,10 +2424,10 @@ function CaseContractSection({ caseData }: { caseData: ICase }) {
         caseId: caseData.id,
         contractNumber: contractNumber.trim(),
         podPdrNumber: podPdrNumber || undefined,
-        deliveryMethod: deliveryMethod as "app" | "email" | "mail" | "phone",
+        deliveryMethod,
       }).unwrap();
 
-      if (pendingFiles.length > 0) {
+      if (deliveryMethod === "email" && pendingFiles.length > 0) {
         setIsUploadingDocs(true);
         try {
           const uploaded = await handleUploadFiles(pendingFiles.map((f) => f.file));
@@ -2526,47 +2536,44 @@ function CaseContractSection({ caseData }: { caseData: ICase }) {
               <label className="text-xs text-slate-500 mb-1 block">Delivery Method *</label>
               <Select
                 value={deliveryMethod}
-                onChange={setDeliveryMethod}
+                onChange={handleDeliveryMethodChange}
                 placeholder="Select delivery method"
                 className="w-full"
-                options={[
-                  { value: "app", label: "Through App (upload document)" },
-                  { value: "email", label: "Via Email" },
-                  { value: "mail", label: "Via Mail" },
-                  { value: "phone", label: "Via Phone" },
-                ]}
+                options={deliveryMethodOptions}
               />
             </div>
           </div>
 
-          {/* Contract Document Upload */}
-          <div>
-            <label className="text-xs text-slate-500 mb-1 block">Contract Documents</label>
-            <Upload.Dragger
-              multiple
-              accept=".pdf,.jpg,.jpeg,.png,.webp"
-              beforeUpload={(file) => {
-                setPendingFiles((prev) => [...prev, { file, uploading: false }]);
-                return false;
-              }}
-              fileList={pendingFiles.map((f, i) => ({
-                uid: String(i),
-                name: f.file.name,
-                status: "done" as const,
-                size: f.file.size,
-              }))}
-              onRemove={(file) => {
-                setPendingFiles((prev) => prev.filter((_, i) => String(i) !== file.uid));
-              }}
-              className="rounded-lg!"
-            >
-              <p className="text-slate-400">
-                <LuUpload className="mx-auto h-8 w-8 mb-2" />
-              </p>
-              <p className="text-sm text-slate-600">Click or drag files to upload contract documents</p>
-              <p className="text-xs text-slate-400 mt-1">PDF, JPG, PNG, WebP (max 10 MB each)</p>
-            </Upload.Dragger>
-          </div>
+          {/* Contract Document Upload — only for email delivery */}
+          {deliveryMethod === "email" && (
+            <div>
+              <label className="text-xs text-slate-500 mb-1 block">Contract Documents</label>
+              <Upload.Dragger
+                multiple
+                accept=".pdf,.jpg,.jpeg,.png,.webp"
+                beforeUpload={(file) => {
+                  setPendingFiles((prev) => [...prev, { file, uploading: false }]);
+                  return false;
+                }}
+                fileList={pendingFiles.map((f, i) => ({
+                  uid: String(i),
+                  name: f.file.name,
+                  status: "done" as const,
+                  size: f.file.size,
+                }))}
+                onRemove={(file) => {
+                  setPendingFiles((prev) => prev.filter((_, i) => String(i) !== file.uid));
+                }}
+                className="rounded-lg!"
+              >
+                <p className="text-slate-400">
+                  <LuUpload className="mx-auto h-8 w-8 mb-2" />
+                </p>
+                <p className="text-sm text-slate-600">Click or drag files to upload contract documents</p>
+                <p className="text-xs text-slate-400 mt-1">PDF, JPG, PNG, WebP (max 10 MB each)</p>
+              </Upload.Dragger>
+            </div>
+          )}
 
           <div className="flex justify-end pt-2">
             <Button
@@ -2611,7 +2618,9 @@ function CaseContractSection({ caseData }: { caseData: ICase }) {
           <div>
             <span className="text-xs text-slate-400">Delivery Method</span>
             <p className="text-sm font-medium text-slate-700">
-              {contract.deliveryMethod ? deliveryMethodLabel[contract.deliveryMethod] : "—"}
+              {contract.deliveryMethod
+                ? deliveryMethodLabel[contract.deliveryMethod] || contract.deliveryMethod
+                : "—"}
             </p>
           </div>
           {contract.activationDate && (
@@ -2700,15 +2709,10 @@ function CaseContractSection({ caseData }: { caseData: ICase }) {
           <div className="flex items-center gap-3">
             <Select
               value={deliveryMethod}
-              onChange={setDeliveryMethod}
+              onChange={handleDeliveryMethodChange}
               placeholder="Delivery method"
               className="w-48"
-              options={[
-                { value: "app", label: "Through App" },
-                { value: "email", label: "Via Email" },
-                { value: "mail", label: "Via Mail" },
-                { value: "phone", label: "Via Phone" },
-              ]}
+              options={deliveryMethodOptions}
             />
             <Button
               type="primary"
@@ -2719,7 +2723,7 @@ function CaseContractSection({ caseData }: { caseData: ICase }) {
                     id: contract.id,
                     data: {
                       status: "sent",
-                      deliveryMethod: deliveryMethod as "app" | "email" | "mail" | "phone",
+                      deliveryMethod,
                     },
                   }).unwrap();
                   message.success("Contract sent to customer");
@@ -2742,7 +2746,10 @@ function CaseContractSection({ caseData }: { caseData: ICase }) {
           <h4 className="text-sm font-bold text-amber-800">Waiting for Signature</h4>
           <p className="text-sm text-amber-600 mt-1">
             Contract has been sent via{" "}
-            {contract.deliveryMethod ? deliveryMethodLabel[contract.deliveryMethod] : "unknown method"}.
+            {contract.deliveryMethod
+              ? deliveryMethodLabel[contract.deliveryMethod] || contract.deliveryMethod
+              : "unknown method"}
+            .
             Waiting for the customer to sign and upload the signed document.
           </p>
         </div>
