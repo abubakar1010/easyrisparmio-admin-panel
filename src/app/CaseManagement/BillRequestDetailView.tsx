@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { App, Button, Input, InputNumber, Spin, Empty, Tag, Select, Table, Upload, Tooltip, DatePicker, Modal } from "antd";
+import { App, Button, Input, InputNumber, Spin, Empty, Tag, Select, Table, Upload, Tooltip, DatePicker, Modal, message } from "antd";
 import type { Dayjs } from "dayjs";
 import type { ColumnsType } from "antd/es/table";
 import {
@@ -16,8 +16,6 @@ import {
   LuFlame,
   LuLeaf,
   LuPackageSearch,
-  LuFileText as LuFileTextIcon,
-  LuArrowRight,
   LuFileCheck2,
   LuUpload,
   LuFilePlus2,
@@ -50,45 +48,25 @@ import {
   useGetContractByCaseQuery,
   useCreateContractMutation,
   useUpdateContractMutation,
-  type IContract,
 } from "../../redux/features/Contracts/contractApi";
 import { useAppSelector } from "../../redux/hooks";
 import { server_url, server_origin } from "../../config";
 import EditBillModal from "./EditBillModal";
-
-/* ── Field Labels ───────────────────────────────────────── */
-
-const FIELD_LABELS: Record<string, string> = {
-  podNumber: "POD Number",
-  pdrNumber: "PDR Number",
-  totalAmount: "Total Amount",
-  consumptionKwh: "Consumption (kWh)",
-  consumptionSmc: "Consumption (Smc)",
-  costPerUnit: "Cost Per Unit",
-  fixedCharges: "Fixed Charges",
-  taxes: "Taxes",
-  billingPeriodStart: "Billing Period Start",
-  billingPeriodEnd: "Billing Period End",
-  supplyAddress: "Supply Address",
-  codiceFiscale: "Codice Fiscale",
-  partitaIva: "Partita IVA",
-  contractNumber: "Contract Number",
-  meterNumber: "Meter Number",
-  customerName: "Customer Name",
-  supplierName: "Supplier Name",
-};
-
-const FIELD_OPTIONS = Object.entries(FIELD_LABELS).map(([value, label]) => ({ value, label }));
+import VerificationFileList from "./VerificationFileList";
 
 /* ── Status & Step Configuration ─────────────────────────── */
 
-const billStatusOrder = [
-  "pending_email", "uploaded", "analyzing", "analyzed",
+/**
+ * Pipeline order, mirroring `PIPELINE_STATUS_ORDER` on the server. Used only to
+ * work out whether a chosen status is ahead of or behind the current one —
+ * the admin is free to pick any of them, in any order.
+ */
+const pipelineStatusOrder = [
+  "uploaded", "analyzing", "analyzed",
   "verification_review", "verification_required", "verified",
   "offer_sent", "offer_accepted",
   "contract_sent", "contract_signed", "contract_review", "contract_verification_required", "contract_verified",
   "awaiting_activation", "activated",
-  "cancelled",
 ];
 
 const stepConfig = [
@@ -142,7 +120,69 @@ const statusTagColor: Record<string, string> = {
   cancelled: "default",
 };
 
+/* ── Status dropdown configuration ───────────────────────── */
+
+/**
+ * Every status the administrator can set, grouped by pipeline stage.
+ * Selection is not restricted to the step order — any entry can be picked at
+ * any time, which moves the case forward or backward.
+ */
+const statusGroups: { label: string; statuses: string[] }[] = [
+  { label: "Upload & Analysis", statuses: ["uploaded", "analyzing", "analyzed"] },
+  { label: "Verification", statuses: ["verification_review", "verification_required", "verified"] },
+  { label: "Offers", statuses: ["offer_sent", "offer_accepted"] },
+  {
+    label: "Contract",
+    statuses: [
+      "contract_sent",
+      "contract_signed",
+      "contract_review",
+      "contract_verification_required",
+      "contract_verified",
+    ],
+  },
+  { label: "Activation", statuses: ["awaiting_activation", "activated"] },
+  { label: "Other", statuses: ["cancelled"] },
+];
+
+/**
+ * System-managed states. They are never offered as a destination, but they are
+ * listed when the case is currently sitting in one so it can be moved out.
+ */
+const systemOnlyStatuses = ["pending_email", "error"];
+
+/** Statuses that carry a message to the customer and open the request modal. */
+const statusesRequiringMessage = ["verification_required", "contract_verification_required"];
+
+const statusDotClass: Record<string, string> = {
+  pending_email: "bg-purple-400",
+  uploaded: "bg-blue-400",
+  analyzing: "bg-orange-400",
+  analyzed: "bg-emerald-400",
+  error: "bg-red-500",
+  verification_review: "bg-amber-400",
+  verification_required: "bg-red-400",
+  verified: "bg-emerald-500",
+  offer_sent: "bg-cyan-400",
+  offer_accepted: "bg-purple-400",
+  contract_sent: "bg-amber-500",
+  contract_signed: "bg-orange-500",
+  contract_review: "bg-amber-400",
+  contract_verification_required: "bg-red-400",
+  contract_verified: "bg-emerald-500",
+  awaiting_activation: "bg-blue-500",
+  activated: "bg-emerald-600",
+  cancelled: "bg-slate-400",
+};
+
 /* ── Helpers ──────────────────────────────────────────────── */
+
+function getStatusDirection(from: string, to: string): "forward" | "backward" | "lateral" {
+  const fromIdx = pipelineStatusOrder.indexOf(from);
+  const toIdx = pipelineStatusOrder.indexOf(to);
+  if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return "lateral";
+  return toIdx > fromIdx ? "forward" : "backward";
+}
 
 function getStepIndex(billStatus: string): number {
   for (let i = 0; i < stepConfig.length; i++) {
@@ -182,6 +222,98 @@ const fmtNum = (val: number | null | undefined, unit = ""): string | null =>
     ? `${Number(val).toLocaleString("it-IT", { maximumFractionDigits: 2 })} ${unit}`.trim()
     : null;
 
+/* ── Case Status Dropdown ────────────────────────────────── */
+
+/**
+ * Replaces the old "Advance Status" button: every status is selectable, in any
+ * order, so a case can be moved forward or backward. The current status is
+ * shown in the closed control and flagged in the list.
+ */
+function CaseStatusSelect({
+  currentStatus,
+  onSelect,
+  loading = false,
+  size = "middle",
+  className = "",
+}: {
+  currentStatus: string;
+  onSelect: (status: string) => void;
+  loading?: boolean;
+  size?: "small" | "middle";
+  className?: string;
+}) {
+  const buildOption = (status: string) => ({
+    value: status,
+    label: statusLabel[status] || status,
+    // The case is already here — nothing to change.
+    disabled: status === currentStatus,
+  });
+
+  const options = [
+    // A system-managed status is only listed while the case is parked in it.
+    ...(systemOnlyStatuses.includes(currentStatus)
+      ? [{ label: "Current", options: [buildOption(currentStatus)] }]
+      : []),
+    ...statusGroups.map((group) => ({
+      label: group.label,
+      options: group.statuses.map(buildOption),
+    })),
+  ];
+
+  return (
+    <Select
+      value={currentStatus}
+      onChange={(value) => onSelect(value as string)}
+      loading={loading}
+      disabled={loading}
+      size={size}
+      listHeight={420}
+      popupMatchSelectWidth={300}
+      className={`min-w-[230px] ${className}`}
+      options={options}
+      labelRender={() => (
+        <span className="flex items-center gap-2">
+          <span
+            className={`h-2 w-2 shrink-0 rounded-full ${statusDotClass[currentStatus] || "bg-slate-300"}`}
+          />
+          <span className="font-semibold text-slate-700">
+            {statusLabel[currentStatus] || currentStatus}
+          </span>
+        </span>
+      )}
+      optionRender={(option) => {
+        const status = String(option.value);
+        const isCurrent = status === currentStatus;
+        const direction = getStatusDirection(currentStatus, status);
+        return (
+          <div className="flex items-center justify-between gap-3">
+            <span
+              className={`flex min-w-0 items-center gap-2 ${
+                isCurrent ? "font-semibold text-slate-800" : "text-slate-600"
+              }`}
+            >
+              <span
+                className={`h-2 w-2 shrink-0 rounded-full ${statusDotClass[status] || "bg-slate-300"}`}
+              />
+              <span className="truncate">{statusLabel[status] || status}</span>
+            </span>
+            {isCurrent ? (
+              <span className="flex shrink-0 items-center gap-1 rounded-full bg-[#7061ED] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                <FiCheck className="h-2.5 w-2.5" />
+                Current
+              </span>
+            ) : direction === "backward" ? (
+              <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700">
+                Back
+              </span>
+            ) : null}
+          </div>
+        );
+      }}
+    />
+  );
+}
+
 /* ── Tab definitions ─────────────────────────────────────── */
 
 const tabKeys = [
@@ -215,14 +347,20 @@ const BillRequestDetailView = () => {
   const [showVerificationModal, setShowVerificationModal] = useState(false);
   const [showContractVerificationModal, setShowContractVerificationModal] = useState(false);
   const [verificationMessage, setVerificationMessage] = useState("");
-  const [verificationFields, setVerificationFields] = useState<string[]>([]);
-  const [requireReupload, setRequireReupload] = useState(false);
+  const [verificationEditOpen, setVerificationEditOpen] = useState(false);
 
   const handleTransition = async (targetStatus: string) => {
+    if (!bill) return;
+    const previousStatus = bill.status;
     setIsTransitioning(true);
     try {
       await transitionBillStatus({ billId: bill.id, targetStatus }).unwrap();
-      message.success(`Status updated to ${statusLabel[targetStatus] || targetStatus}`);
+      const movedBack = getStatusDirection(previousStatus, targetStatus) === "backward";
+      message.success(
+        `${movedBack ? "Status moved back to" : "Status updated to"} "${
+          statusLabel[targetStatus] || targetStatus
+        }" — the customer has been notified.`,
+      );
       refetch();
     } catch (err: any) {
       message.error(err?.data?.message?.[0] || err?.data?.message || "Failed to update status");
@@ -231,7 +369,28 @@ const BillRequestDetailView = () => {
     }
   };
 
+  /**
+   * Applies a status chosen from the dropdown. Any status can be picked, in any
+   * order. The two verification statuses carry an admin-written message to the
+   * customer, so they open the request modal instead of applying immediately.
+   */
+  const handleStatusSelect = (targetStatus: string) => {
+    if (!bill || targetStatus === bill.status) return;
+
+    if (statusesRequiringMessage.includes(targetStatus)) {
+      if (targetStatus === "verification_required") {
+        setShowVerificationModal(true);
+      } else {
+        setShowContractVerificationModal(true);
+      }
+      return;
+    }
+
+    handleTransition(targetStatus);
+  };
+
   const handleSendVerificationRequest = async (isContract = false) => {
+    if (!bill) return;
     if (!verificationMessage.trim()) {
       message.warning("Please enter a message");
       return;
@@ -242,15 +401,11 @@ const BillRequestDetailView = () => {
         billId: bill.id,
         targetStatus: isContract ? "contract_verification_required" : "verification_required",
         message: verificationMessage,
-        missingFields: verificationFields,
-        requireReupload,
       }).unwrap();
       message.success("Verification request sent");
       setShowVerificationModal(false);
       setShowContractVerificationModal(false);
       setVerificationMessage("");
-      setVerificationFields([]);
-      setRequireReupload(false);
       refetch();
     } catch (err: any) {
       message.error(err?.data?.message?.[0] || err?.data?.message || "Failed to send request");
@@ -504,11 +659,22 @@ const BillRequestDetailView = () => {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold text-slate-700">Verification History</h3>
-              {bill.status === "verification_review" && bill.verifications?.some((v: any) => v.status === "submitted") && (
-                <Button danger size="small" onClick={() => setShowVerificationModal(true)}>
-                  Request Further Corrections
+              <div className="flex items-center gap-2">
+                {/* The uploaded documents are never re-analysed — the admin reads
+                    them here and writes the values in by hand. */}
+                <Button
+                  size="small"
+                  icon={<FiEdit2 className="h-3 w-3" />}
+                  onClick={() => setVerificationEditOpen(true)}
+                >
+                  Edit Bill Data
                 </Button>
-              )}
+                {bill.status === "verification_review" && bill.verifications?.some((v: any) => v.status === "submitted") && (
+                  <Button danger size="small" onClick={() => setShowVerificationModal(true)}>
+                    Request Further Corrections
+                  </Button>
+                )}
+              </div>
             </div>
             {bill.verifications && bill.verifications.length > 0 ? (
               [...bill.verifications].sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()).map((v: any, idx: number) => (
@@ -530,25 +696,7 @@ const BillRequestDetailView = () => {
                       <p className="text-xs font-semibold text-orange-700 mb-2 flex items-center gap-1">
                         <FiSend className="h-3 w-3" /> Admin Request
                       </p>
-                      <p className="text-sm text-slate-700 mb-3">{v.adminMessage}</p>
-
-                      <div className="flex flex-wrap gap-3">
-                        {v.missingFields?.length > 0 && (
-                          <div>
-                            <p className="text-xs text-slate-400 mb-1">Missing Fields</p>
-                            <div className="flex flex-wrap gap-1">
-                              {v.missingFields.map((f: string) => (
-                                <Tag key={f} color="volcano" className="text-xs!">{FIELD_LABELS[f] || f}</Tag>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        {v.requireReupload && (
-                          <div>
-                            <Tag color="red" className="text-xs!">Re-upload Required</Tag>
-                          </div>
-                        )}
-                      </div>
+                      <p className="text-sm text-slate-700">{v.adminMessage}</p>
                     </div>
 
                     {/* User response */}
@@ -562,51 +710,15 @@ const BillRequestDetailView = () => {
                           <p className="text-sm text-slate-700 mb-3">{v.userMessage}</p>
                         )}
 
-                        {v.userData && Object.keys(v.userData).length > 0 && (
-                          <div className="mb-3">
-                            <p className="text-xs text-slate-400 mb-1">Submitted Data</p>
-                            <div className="bg-white rounded-lg border border-blue-100 divide-y divide-blue-50">
-                              {Object.entries(v.userData).map(([key, value]) => (
-                                <div key={key} className="flex justify-between px-3 py-2 text-sm">
-                                  <span className="text-slate-500">{FIELD_LABELS[key] || key}</span>
-                                  <span className="text-slate-800 font-medium">{String(value)}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
                         {v.files && v.files.length > 0 && (
                           <div>
                             <p className="text-xs text-slate-400 mb-1">Uploaded Documents ({v.files.length})</p>
-                            <div className="space-y-1">
-                              {v.files.map((f: any) => (
-                                <div key={f.id} className="flex items-center justify-between bg-white rounded-lg border border-blue-100 px-3 py-2">
-                                  <div className="flex items-center gap-2 min-w-0">
-                                    {f.mimeType?.startsWith("image/") ? (
-                                      <LuScanLine className="h-4 w-4 text-indigo-500 shrink-0" />
-                                    ) : (
-                                      <FiFileText className="h-4 w-4 text-red-500 shrink-0" />
-                                    )}
-                                    <span className="text-sm text-slate-700 truncate">{f.originalName || f.fileUrl.split("/").pop()}</span>
-                                    {f.fileSize && <span className="text-xs text-slate-400 shrink-0">{(f.fileSize / 1024).toFixed(0)} KB</span>}
-                                  </div>
-                                  <a
-                                    href={`${server_origin}${f.fileUrl}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800 shrink-0 ml-2"
-                                  >
-                                    <FiEye className="h-3 w-3" /> View
-                                  </a>
-                                </div>
-                              ))}
-                            </div>
+                            <VerificationFileList billId={bill.id} files={v.files} />
                           </div>
                         )}
 
-                        {!v.userMessage && (!v.userData || Object.keys(v.userData).length === 0) && (!v.files || v.files.length === 0) && (
-                          <p className="text-sm text-slate-400 italic">No details submitted by user.</p>
+                        {!v.userMessage && (!v.files || v.files.length === 0) && (
+                          <p className="text-sm text-slate-400 italic">No documents submitted by user.</p>
                         )}
                       </div>
                     )}
@@ -623,7 +735,14 @@ const BillRequestDetailView = () => {
           </div>
         );
       case "case_details":
-        return <CaseDetailsTab caseId={activeCase?.id ?? null} />;
+        return (
+          <CaseDetailsTab
+            caseId={activeCase?.id ?? null}
+            billStatus={bill.status}
+            onStatusSelect={handleStatusSelect}
+            statusUpdating={isTransitioning}
+          />
+        );
       default:
         return null;
     }
@@ -730,7 +849,22 @@ const BillRequestDetailView = () => {
             })}
           </div>
 
-          <div className="pb-2" />
+          {/* ── Case status control ────────────────────── */}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-slate-200/70 py-4">
+            <div className="flex items-center gap-2.5">
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                Case status
+              </span>
+              <CaseStatusSelect
+                currentStatus={bill.status}
+                onSelect={handleStatusSelect}
+                loading={isTransitioning}
+              />
+            </div>
+            <span className="text-xs text-slate-400">
+              Pick any status — forward or backward. The customer is notified of every change.
+            </span>
+          </div>
         </div>
 
         {/* ── Tabs Navigation ──────────────────────────── */}
@@ -763,11 +897,18 @@ const BillRequestDetailView = () => {
         <div className="p-6">{renderTab()}</div>
       </div>
 
+      {/* Manual bill data edit, opened from the verification review */}
+      <EditBillModal
+        bill={bill}
+        open={verificationEditOpen}
+        onClose={() => setVerificationEditOpen(false)}
+      />
+
       {/* Verification Request Modal */}
       <Modal
         title="Request Verification from User"
         open={showVerificationModal}
-        onCancel={() => { setShowVerificationModal(false); setVerificationMessage(""); setVerificationFields([]); setRequireReupload(false); }}
+        onCancel={() => { setShowVerificationModal(false); setVerificationMessage(""); }}
         onOk={() => handleSendVerificationRequest(false)}
         confirmLoading={isTransitioning}
         okText="Send Request"
@@ -776,32 +917,16 @@ const BillRequestDetailView = () => {
           <div>
             <label className="text-sm font-medium text-slate-700">Message to User *</label>
             <Input.TextArea
-              rows={3}
+              rows={4}
               value={verificationMessage}
               onChange={(e) => setVerificationMessage(e.target.value)}
-              placeholder="Explain what information is missing or incorrect..."
+              placeholder="Explain what the user needs to send you..."
             />
           </div>
-          <div>
-            <label className="text-sm font-medium text-slate-700">Missing Fields</label>
-            <Select
-              mode="multiple"
-              className="w-full mt-1"
-              value={verificationFields}
-              onChange={setVerificationFields}
-              placeholder="Select fields that need correction"
-              options={FIELD_OPTIONS}
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={requireReupload}
-              onChange={(e) => setRequireReupload(e.target.checked)}
-              id="requireReupload"
-            />
-            <label htmlFor="requireReupload" className="text-sm text-slate-700">Require document re-upload</label>
-          </div>
+          <p className="text-xs text-slate-400">
+            The user will receive this message and can respond by uploading a document or taking a
+            photo from the app.
+          </p>
         </div>
       </Modal>
 
@@ -809,7 +934,7 @@ const BillRequestDetailView = () => {
       <Modal
         title="Request Contract Re-submission"
         open={showContractVerificationModal}
-        onCancel={() => { setShowContractVerificationModal(false); setVerificationMessage(""); setVerificationFields([]); setRequireReupload(false); }}
+        onCancel={() => { setShowContractVerificationModal(false); setVerificationMessage(""); }}
         onOk={() => handleSendVerificationRequest(true)}
         confirmLoading={isTransitioning}
         okText="Send Request"
@@ -818,32 +943,16 @@ const BillRequestDetailView = () => {
           <div>
             <label className="text-sm font-medium text-slate-700">Message to User *</label>
             <Input.TextArea
-              rows={3}
+              rows={4}
               value={verificationMessage}
               onChange={(e) => setVerificationMessage(e.target.value)}
               placeholder="Explain what needs to be corrected in the contract..."
             />
           </div>
-          <div>
-            <label className="text-sm font-medium text-slate-700">Missing Fields</label>
-            <Select
-              mode="multiple"
-              className="w-full mt-1"
-              value={verificationFields}
-              onChange={setVerificationFields}
-              placeholder="Select fields that need correction"
-              options={FIELD_OPTIONS}
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={requireReupload}
-              onChange={(e) => setRequireReupload(e.target.checked)}
-              id="contractRequireReupload"
-            />
-            <label htmlFor="contractRequireReupload" className="text-sm text-slate-700">Require document re-upload</label>
-          </div>
+          <p className="text-xs text-slate-400">
+            The user will receive this message and can respond by uploading a document or taking a
+            photo from the app.
+          </p>
         </div>
       </Modal>
     </div>
@@ -1404,42 +1513,6 @@ function BillDataTab({ bill }: { bill: IBill }) {
 
 /* ── Case Details Tab ───────────────────────────────────── */
 
-const caseStatusLabel: Record<string, string> = {
-  new: "New",
-  in_progress: "In Progress",
-  documents_pending: "Documents Pending",
-  contract_sent: "Contract Sent",
-  contract_signed: "Contract Signed",
-  activated: "Activated",
-  rejected: "Rejected",
-  cancelled: "Cancelled",
-};
-
-const caseStatusColor: Record<string, string> = {
-  new: "blue",
-  in_progress: "processing",
-  documents_pending: "default",
-  contract_sent: "gold",
-  contract_signed: "orange",
-  activated: "green",
-  rejected: "red",
-  cancelled: "default",
-};
-
-const caseStatusOrder = [
-  "new",
-  "in_progress",
-  "documents_pending",
-  "contract_sent",
-  "contract_signed",
-  "activated",
-];
-
-function getNextCaseStatus(current: string): string | null {
-  const idx = caseStatusOrder.indexOf(current);
-  return idx >= 0 && idx < caseStatusOrder.length - 1 ? caseStatusOrder[idx + 1] : null;
-}
-
 const eventIconMap: Record<string, { icon: React.ReactNode; color: string }> = {
   STATUS_CHANGE: { icon: <FiCheckCircle className="h-5 w-5 text-white" />, color: "bg-orange-500" },
   DOCUMENT_UPLOADED: { icon: <LuUpload className="h-5 w-5 text-white" />, color: "bg-blue-500" },
@@ -1452,14 +1525,24 @@ const eventIconMap: Record<string, { icon: React.ReactNode; color: string }> = {
   SYSTEM_EVENT: { icon: <LuFilePlus2 className="h-5 w-5 text-white" />, color: "bg-purple-500" },
 };
 
-const caseSubTabs = [
+const caseSubTabs: { key: string; label: string; counted?: boolean }[] = [
   { key: "timeline", label: "Timeline" },
   { key: "case_data", label: "Case Data" },
   { key: "documents", label: "Documents", counted: true },
   { key: "contract", label: "Contract" },
-] as const;
+];
 
-function CaseDetailsTab({ caseId }: { caseId: string | null }) {
+function CaseDetailsTab({
+  caseId,
+  billStatus,
+  onStatusSelect,
+  statusUpdating,
+}: {
+  caseId: string | null;
+  billStatus: string;
+  onStatusSelect: (status: string) => void;
+  statusUpdating: boolean;
+}) {
   const { data: caseData, isLoading } = useGetCaseByIdQuery(caseId!, { skip: !caseId });
   const [updateCase, { isLoading: isUpdating }] = useUpdateCaseMutation();
   const [subTab, setSubTab] = useState("timeline");
@@ -1500,17 +1583,6 @@ function CaseDetailsTab({ caseId }: { caseId: string | null }) {
   const agentName = caseData.assignedAgent
     ? `${caseData.assignedAgent.firstName} ${caseData.assignedAgent.lastName}`
     : null;
-
-  const handleAdvance = async () => {
-    const next = getNextCaseStatus(caseData.status);
-    if (!next) return;
-    try {
-      await updateCase({ id: caseData.id, data: { status: next } }).unwrap();
-      message.success(`Status advanced to ${caseStatusLabel[next]}`);
-    } catch {
-      message.error("Failed to advance status");
-    }
-  };
 
   const handleSaveNote = async () => {
     if (!note.trim()) return;
@@ -1554,11 +1626,12 @@ function CaseDetailsTab({ caseId }: { caseId: string | null }) {
           <Tag className="m-0! rounded-md! border-0! bg-slate-800! px-2.5! py-0.5! text-xs! font-semibold! text-white!">
             {caseData.caseNumber || `#${caseData.id.slice(0, 8)}`}
           </Tag>
+          {/* Pipeline status — the same value the dropdown on the right sets */}
           <Tag
-            color={caseStatusColor[caseData.status] || "default"}
+            color={statusTagColor[billStatus] || "default"}
             className="m-0! rounded-md! border-0! px-2.5! py-0.5! text-xs! font-semibold!"
           >
-            {caseStatusLabel[caseData.status] || caseData.status}
+            {statusLabel[billStatus] || billStatus}
           </Tag>
           <Tag className="m-0! rounded-md! border-0! bg-orange-50! px-2.5! py-0.5! text-xs! font-semibold! text-orange-600! capitalize!">
             {caseData.caseType?.replace("_", " ")}
@@ -1586,17 +1659,12 @@ function CaseDetailsTab({ caseId }: { caseId: string | null }) {
             })()
           )}
         </div>
-        <Button
-          type="primary"
-          icon={<LuArrowRight className="h-4 w-4" />}
-          onClick={handleAdvance}
-          loading={isUpdating}
-          disabled={!getNextCaseStatus(caseData.status)}
+        <CaseStatusSelect
+          currentStatus={billStatus}
+          onSelect={onStatusSelect}
+          loading={statusUpdating}
           size="small"
-          className="rounded-lg bg-slate-800! hover:bg-slate-700! border-0! font-semibold"
-        >
-          Advance Status
-        </Button>
+        />
       </div>
 
       {/* Sub-tabs */}
@@ -1778,14 +1846,17 @@ function CaseDataSection({
   );
 }
 
-const IDENTITY_DOC_TYPES = ["id_card", "codice_fiscale", "partita_iva"];
+// Identity documents are uploaded uncategorized as "identity_verification".
+// The rest are legacy sub-types from before that change; they are still listed
+// here so documents on existing cases keep showing in the identity section.
+const IDENTITY_DOC_TYPE = "identity_verification";
+const IDENTITY_DOC_TYPES = [IDENTITY_DOC_TYPE, "id_card", "codice_fiscale", "partita_iva"];
 
 function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[]; caseId: string }) {
   const token = useAppSelector((state) => state.auth.token);
   const [verifyDocument, { isLoading: isVerifying }] = useVerifyDocumentMutation();
   const [uploadCaseDocument] = useUploadCaseDocumentMutation();
   const [uploading, setUploading] = useState(false);
-  const [selectedDocType, setSelectedDocType] = useState<string>("id_card");
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewDoc, setPreviewDoc] = useState<ICaseDocument | null>(null);
@@ -1866,7 +1937,7 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
         if (res.ok && url) {
           await uploadCaseDocument({
             caseId,
-            documentType: selectedDocType,
+            documentType: IDENTITY_DOC_TYPE,
             fileUrl: url,
             fileName: file.name,
           }).unwrap();
@@ -1903,9 +1974,15 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
         <div className="min-w-0">
           <p className="text-sm font-semibold text-slate-700 truncate">{doc.fileName}</p>
           <p className="text-xs text-slate-400 capitalize">
-            {doc.documentType?.replace("_", " ")}
-            {doc.fileSizeBytes != null && ` • ${(doc.fileSizeBytes / 1024 / 1024).toFixed(1)} MB`}
-            {doc.uploadedBy && ` • by ${doc.uploadedBy.firstName} ${doc.uploadedBy.lastName}`}
+            {[
+              // Identity files all share one type, so the label would just repeat
+              // the section heading — show it only for other document types.
+              isIdentity ? null : doc.documentType?.replace(/_/g, " "),
+              doc.fileSizeBytes != null ? `${(doc.fileSizeBytes / 1024 / 1024).toFixed(1)} MB` : null,
+              doc.uploadedBy ? `by ${doc.uploadedBy.firstName} ${doc.uploadedBy.lastName}` : null,
+            ]
+              .filter(Boolean)
+              .join(" • ")}
           </p>
           {doc.verified && doc.verifiedAt && (
             <p className="text-[10px] text-emerald-500 mt-0.5">
@@ -1986,17 +2063,6 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
           {/* Admin Upload Identity Documents */}
           <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-4">
             <div className="flex items-center gap-3 flex-wrap">
-              <Select
-                size="small"
-                value={selectedDocType}
-                onChange={setSelectedDocType}
-                className="w-40 [&_.ant-select-selector]:rounded-lg!"
-                options={[
-                  { value: "id_card", label: "ID Card" },
-                  { value: "codice_fiscale", label: "Codice Fiscale" },
-                  { value: "partita_iva", label: "Partita IVA" },
-                ]}
-              />
               <Upload
                 accept=".pdf,.png,.jpg,.jpeg,.webp"
                 multiple
@@ -2379,7 +2445,10 @@ function CaseContractSection({ caseData }: { caseData: ICase }) {
                 try {
                   await updateContract({
                     id: contract.id,
-                    data: { status: "sent", deliveryMethod },
+                    data: {
+                      status: "sent",
+                      deliveryMethod: deliveryMethod as "app" | "email" | "mail" | "phone",
+                    },
                   }).unwrap();
                   message.success("Contract sent to customer");
                 } catch {

@@ -46,11 +46,8 @@ export interface IBillVerification {
   id: string;
   billId: string;
   adminMessage: string;
-  missingFields: string[];
-  requireReupload: boolean;
   status: "pending" | "submitted" | "resolved";
   userMessage: string | null;
-  userData: Record<string, unknown> | null;
   files: IBillFile[];
   resolvedAt: string | null;
   createdAt: string;
@@ -63,6 +60,7 @@ export interface IBillFile {
   originalName: string | null;
   mimeType: string | null;
   fileSize: number | null;
+  verificationId: string | null;
   createdAt: string;
 }
 
@@ -209,7 +207,7 @@ const billApi = baseApi.injectEndpoints({
         method: "POST",
         body: { offers },
       }),
-      invalidatesTags: (result, error, { billId }) =>
+      invalidatesTags: (_result, error, { billId }) =>
         error
           ? []
           : [
@@ -243,7 +241,7 @@ const billApi = baseApi.injectEndpoints({
 
     requestVerification: builder.mutation<
       IBillVerification,
-      { billId: string; message: string; missingFields: string[]; requireReupload?: boolean }
+      { billId: string; message: string }
     >({
       query: ({ billId, ...body }) => ({
         url: `bills/admin/${billId}/request-verification`,
@@ -279,7 +277,7 @@ const billApi = baseApi.injectEndpoints({
 
     transitionBillStatus: builder.mutation<
       IBill,
-      { billId: string; targetStatus: string; message?: string; missingFields?: string[]; requireReupload?: boolean }
+      { billId: string; targetStatus: string; message?: string }
     >({
       query: ({ billId, ...body }) => ({
         url: `bills/admin/${billId}/transition`,
@@ -287,9 +285,17 @@ const billApi = baseApi.injectEndpoints({
         body,
       }),
       transformResponse: (response: { success: boolean; data: IBill }) => response.data,
-      invalidatesTags: (_r, _e, { billId }) => [
+      // A status change also rewrites the case timeline and can flip the
+      // contract between signed/active, so those caches are invalidated too.
+      invalidatesTags: (result, _e, { billId }) => [
         { type: "bill", id: billId },
         { type: "bill", id: "LIST" },
+        { type: "case", id: "LIST" },
+        ...(result?.switchCases ?? []).flatMap((c) => [
+          { type: "case" as const, id: c.id },
+          { type: "contract" as const, id: `case-${c.id}` },
+        ]),
+        { type: "contract", id: "LIST" },
         { type: "dashboard", id: "ADMIN" },
         { type: "activityLog", id: "LIST" },
       ],
