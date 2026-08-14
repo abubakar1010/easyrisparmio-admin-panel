@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import type { JSX } from "react";
 import { Avatar, Button, Divider, Form, Input, Modal, Spin, Tabs, Tag } from "antd";
 import { FiEdit3, FiFileText, FiLock, FiMail, FiMapPin, FiPhone, FiUnlock, FiZap } from "react-icons/fi";
 import { useTranslation } from "react-i18next";

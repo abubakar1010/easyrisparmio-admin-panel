@@ -20,13 +20,6 @@ import { server_origin } from "../../config";
 
 /* ── Config ────────────────────────────────────────────────── */
 
-const statusStyles: Record<string, string> = {
-  open: "bg-blue-500! text-white!",
-  in_progress: "bg-amber-500! text-white!",
-  resolved: "bg-emerald-500! text-white!",
-  closed: "bg-slate-500! text-white!",
-};
-
 const statusDot: Record<string, string> = {
   open: "bg-blue-500",
   in_progress: "bg-amber-500",

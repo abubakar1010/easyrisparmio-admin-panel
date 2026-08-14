@@ -74,7 +74,13 @@ export const CreateOfferModal = ({
   const { data: suppliersData } = useGetSuppliersQuery({ limit: 100 });
   const allSuppliers = suppliersData?.data || [];
 
-  const commodity = Form.useWatch("commodity", form);
+  // The commodity Select offers electricity / gas / dual — antd cannot infer
+  // that from an untyped form, so the domain is stated explicitly here.
+  const commodity = Form.useWatch("commodity", form) as
+    | "electricity"
+    | "gas"
+    | "dual"
+    | undefined;
   const selectedSupplier = Form.useWatch("supplier", form);
 
   // Filter suppliers: only active, not pending deletion, and matching commodity
@@ -83,8 +89,9 @@ export const CreateOfferModal = ({
     if (!commodity || !s.commodity) return true;
     // dual supplier can serve any commodity
     if (s.commodity === "dual") return true;
-    // non-dual supplier must match exactly (or offer is dual → needs dual supplier)
-    if (commodity === "dual") return s.commodity === "dual";
+    // Dual suppliers already returned above, so anything still here is single
+    // commodity — which cannot serve a dual offer.
+    if (commodity === "dual") return false;
     return s.commodity === commodity;
   });
   const priceType = Form.useWatch("priceType", form);

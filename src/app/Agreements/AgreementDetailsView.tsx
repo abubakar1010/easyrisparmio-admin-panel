@@ -8,7 +8,6 @@ import {
   useGetAgreementByIdQuery,
   useToggleAgreementStatusMutation,
   useDeleteAgreementMutation,
-  type IAgreement,
 } from "../../redux/features/Agreements/agreementApi";
 import AgreementFormModal from "./AgreementFormModal";
 
