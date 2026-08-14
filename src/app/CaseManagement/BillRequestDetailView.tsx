@@ -1846,17 +1846,14 @@ function CaseDataSection({
   );
 }
 
-// Identity documents are uploaded uncategorized as "identity_verification".
-// The rest are legacy sub-types from before that change; they are still listed
-// here so documents on existing cases keep showing in the identity section.
-const IDENTITY_DOC_TYPE = "identity_verification";
-const IDENTITY_DOC_TYPES = [IDENTITY_DOC_TYPE, "id_card", "codice_fiscale", "partita_iva"];
+const IDENTITY_DOC_TYPES = ["id_card", "codice_fiscale", "partita_iva"];
 
 function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[]; caseId: string }) {
   const token = useAppSelector((state) => state.auth.token);
   const [verifyDocument, { isLoading: isVerifying }] = useVerifyDocumentMutation();
   const [uploadCaseDocument] = useUploadCaseDocumentMutation();
   const [uploading, setUploading] = useState(false);
+  const [selectedDocType, setSelectedDocType] = useState<string>("id_card");
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewDoc, setPreviewDoc] = useState<ICaseDocument | null>(null);
@@ -1937,7 +1934,7 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
         if (res.ok && url) {
           await uploadCaseDocument({
             caseId,
-            documentType: IDENTITY_DOC_TYPE,
+            documentType: selectedDocType,
             fileUrl: url,
             fileName: file.name,
           }).unwrap();
@@ -1974,15 +1971,9 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
         <div className="min-w-0">
           <p className="text-sm font-semibold text-slate-700 truncate">{doc.fileName}</p>
           <p className="text-xs text-slate-400 capitalize">
-            {[
-              // Identity files all share one type, so the label would just repeat
-              // the section heading — show it only for other document types.
-              isIdentity ? null : doc.documentType?.replace(/_/g, " "),
-              doc.fileSizeBytes != null ? `${(doc.fileSizeBytes / 1024 / 1024).toFixed(1)} MB` : null,
-              doc.uploadedBy ? `by ${doc.uploadedBy.firstName} ${doc.uploadedBy.lastName}` : null,
-            ]
-              .filter(Boolean)
-              .join(" • ")}
+            {doc.documentType?.replace("_", " ")}
+            {doc.fileSizeBytes != null && ` • ${(doc.fileSizeBytes / 1024 / 1024).toFixed(1)} MB`}
+            {doc.uploadedBy && ` • by ${doc.uploadedBy.firstName} ${doc.uploadedBy.lastName}`}
           </p>
           {doc.verified && doc.verifiedAt && (
             <p className="text-[10px] text-emerald-500 mt-0.5">
@@ -2063,6 +2054,17 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
           {/* Admin Upload Identity Documents */}
           <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-4">
             <div className="flex items-center gap-3 flex-wrap">
+              <Select
+                size="small"
+                value={selectedDocType}
+                onChange={setSelectedDocType}
+                className="w-40 [&_.ant-select-selector]:rounded-lg!"
+                options={[
+                  { value: "id_card", label: "ID Card" },
+                  { value: "codice_fiscale", label: "Codice Fiscale" },
+                  { value: "partita_iva", label: "Partita IVA" },
+                ]}
+              />
               <Upload
                 accept=".pdf,.png,.jpg,.jpeg,.webp"
                 multiple
