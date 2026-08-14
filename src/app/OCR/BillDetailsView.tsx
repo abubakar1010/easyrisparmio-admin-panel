@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { App, Button, Spin, Empty, Tag, Tooltip, InputNumber, Table, Modal, Input, Checkbox } from "antd";
+import { App, Button, Spin, Empty, Tag, Tooltip, InputNumber, Table, Modal, Input } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import {
   FiArrowLeft,
@@ -9,7 +9,6 @@ import {
   FiSend,
   FiUser,
   FiFileText,
-  FiZap,
   FiMail,
   FiAlertTriangle,
 } from "react-icons/fi";
@@ -26,7 +25,6 @@ import {
   useGetAllOffersForBillQuery,
   useSendSelectedOffersMutation,
   useRequestVerificationMutation,
-  type IBill,
   type IBillFile,
   type IOfferWithSavings,
 } from "../../redux/features/Bills/billApi";
@@ -89,8 +87,6 @@ const BillDetailsView = () => {
   const [docPreviewType, setDocPreviewType] = useState<"pdf" | "image" | "other">("other");
   const [verifyModalOpen, setVerifyModalOpen] = useState(false);
   const [verifyMessage, setVerifyMessage] = useState("");
-  const [verifyFields, setVerifyFields] = useState<string[]>([]);
-  const [verifyReupload, setVerifyReupload] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
 
   if (isLoading) {
@@ -216,38 +212,19 @@ const BillDetailsView = () => {
       await requestVerification({
         billId: bill.id,
         message: verifyMessage,
-        missingFields: verifyFields,
-        requireReupload: verifyReupload,
       }).unwrap();
       message.success("Verification request sent to user");
       setVerifyModalOpen(false);
       setVerifyMessage("");
-      setVerifyFields([]);
-      setVerifyReupload(false);
       refetch();
     } catch {
       message.error("Failed to send verification request");
     }
   };
 
-  const FIELD_LABELS: Record<string, string> = {
-    podNumber: "POD Number",
-    pdrNumber: "PDR Number",
-    totalAmount: "Total Amount",
-    consumptionKwh: "Consumption (kWh)",
-    consumptionSmc: "Consumption (Smc)",
-    costPerUnit: "Cost per Unit",
-    fixedCharges: "Fixed Charges",
-    taxes: "Taxes",
-    billingPeriodStart: "Billing Period Start",
-    billingPeriodEnd: "Billing Period End",
-    supplyAddress: "Supply Address",
-    codiceFiscale: "Codice Fiscale",
-    partitaIva: "Partita IVA",
-    contractNumber: "Contract Number",
-    meterNumber: "Meter Number",
-    customerName: "Account Holder",
-    supplierName: "Supplier Name",
+  const handleCloseVerifyModal = () => {
+    setVerifyModalOpen(false);
+    setVerifyMessage("");
   };
 
   const handleCloseDocPreview = () => {
@@ -349,15 +326,15 @@ const BillDetailsView = () => {
         {/* Left Column */}
         <div className="space-y-6 lg:col-span-2">
           {/* OCR Error */}
-          {ocrData?.ocrError && (
+          {ocrData?.ocrError ? (
             <Card title="OCR Status" icon={<FiFileText className="h-4 w-4 text-red-500" />}>
               <div className="rounded-lg bg-red-50 p-3">
                 <p className="text-sm font-medium text-red-700">
-                  OCR extraction failed: {ocrData.ocrError as string}
+                  OCR extraction failed: {ocrData?.ocrError as string}
                 </p>
               </div>
             </Card>
-          )}
+          ) : null}
 
           {/* Financial Breakdown */}
           <Card title="Financial Breakdown" icon={<LuChartColumnIncreasing className="h-4 w-4 text-emerald-500" />}>
@@ -598,7 +575,7 @@ const BillDetailsView = () => {
       {/* Verification Request Modal */}
       <Modal
         open={verifyModalOpen}
-        onCancel={() => setVerifyModalOpen(false)}
+        onCancel={handleCloseVerifyModal}
         title={
           <span className="flex items-center gap-2">
             <FiAlertTriangle className="h-4 w-4 text-orange-500" />
@@ -610,7 +587,7 @@ const BillDetailsView = () => {
         destroyOnClose
         footer={
           <div className="flex justify-end gap-2">
-            <Button onClick={() => setVerifyModalOpen(false)}>Cancel</Button>
+            <Button onClick={handleCloseVerifyModal}>Cancel</Button>
             <Button
               type="primary"
               loading={isRequestingVerification}
@@ -627,45 +604,18 @@ const BillDetailsView = () => {
           <div>
             <label className="text-xs font-semibold text-slate-600 mb-1.5 block">Message to User *</label>
             <Input.TextArea
-              rows={3}
-              placeholder="Explain what's wrong or missing (e.g. 'The bill is hard to read, please re-upload a clearer copy')"
+              rows={4}
+              placeholder="Explain what you need from the user (e.g. 'The bill is hard to read, please upload a clearer copy')"
               value={verifyMessage}
               onChange={(e) => setVerifyMessage(e.target.value)}
             />
           </div>
 
-          <div>
-            <label className="text-xs font-semibold text-slate-600 mb-1.5 block">Select Missing Fields (user will fill these manually)</label>
-            <div className="grid grid-cols-2 gap-2">
-              {Object.entries(FIELD_LABELS).map(([key, label]) => (
-                <Checkbox
-                  key={key}
-                  checked={verifyFields.includes(key)}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setVerifyFields((prev) => [...prev, key]);
-                    } else {
-                      setVerifyFields((prev) => prev.filter((f) => f !== key));
-                    }
-                  }}
-                >
-                  <span className="text-xs text-slate-600">{label}</span>
-                </Checkbox>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <Checkbox
-              checked={verifyReupload}
-              onChange={(e) => setVerifyReupload(e.target.checked)}
-            >
-              <span className="text-sm font-medium text-slate-700">Request document re-upload</span>
-            </Checkbox>
-            <p className="text-xs text-slate-400 mt-0.5 ml-6">
-              Ask the user to upload a clearer or complete version of the bill
-            </p>
-          </div>
+          <p className="text-xs text-slate-400">
+            The user will receive this message and can respond by uploading a document or taking a
+            photo from the app. The documents are not re-analysed — review them here and update the
+            bill data manually with <span className="font-medium text-slate-500">Edit Bill Data</span>.
+          </p>
         </div>
       </Modal>
 
