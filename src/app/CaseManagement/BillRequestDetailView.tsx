@@ -31,13 +31,16 @@ import {
   useGetAllOffersForBillQuery,
   useSendSelectedOffersMutation,
   useTransitionBillStatusMutation,
+  useGetBillNotesQuery,
+  useAddBillNoteMutation,
+  useUpdateBillNoteMutation,
+  useDeleteBillNoteMutation,
   type IOfferWithSavings,
   type IBill,
   type IBillFile,
 } from "../../redux/features/Bills/billApi";
 import {
   useGetCaseByIdQuery,
-  useUpdateCaseMutation,
   useVerifyDocumentMutation,
   useUploadCaseDocumentMutation,
   type ICase,
@@ -48,6 +51,9 @@ import {
   useGetContractByCaseQuery,
   useCreateContractMutation,
   useUpdateContractMutation,
+  useUploadContractDocumentsMutation,
+  useDeleteContractDocumentMutation,
+  type IContractDocument,
 } from "../../redux/features/Contracts/contractApi";
 import { useAppSelector } from "../../redux/hooks";
 import { server_url, server_origin } from "../../config";
@@ -321,6 +327,7 @@ const tabKeys = [
   { key: "available_offers", label: "Offers" },
   { key: "bill_data", label: "Bill Data" },
   { key: "verification", label: "Verification" },
+  { key: "notes", label: "Notes" },
   { key: "case_details", label: "Case Details" },
 ] as const;
 
@@ -334,7 +341,7 @@ const BillRequestDetailView = () => {
     data: bill,
     isLoading,
     refetch,
-  } = useGetBillByIdAdminQuery(billId!, { skip: !billId });
+  } = useGetBillByIdAdminQuery(billId!, { skip: !billId, refetchOnMountOrArgChange: true });
   const { data: allOffers, isLoading: offersLoading } = useGetAllOffersForBillQuery(billId!, {
     skip: !billId || bill?.status === "pending_email",
   });
@@ -653,7 +660,16 @@ const BillRequestDetailView = () => {
           />
         );
       case "bill_data":
-        return <BillDataTab bill={bill} />;
+        return (
+          <BillDataTab
+            bill={bill}
+            isTransitioning={isTransitioning}
+            handleTransition={handleTransition}
+            setShowVerificationModal={setShowVerificationModal}
+            setShowContractVerificationModal={setShowContractVerificationModal}
+            setActiveTab={setActiveTab}
+          />
+        );
       case "verification":
         return (
           <div className="space-y-4">
@@ -734,6 +750,8 @@ const BillRequestDetailView = () => {
             )}
           </div>
         );
+      case "notes":
+        return <NotesTab billId={bill.id} />;
       case "case_details":
         return (
           <CaseDetailsTab
@@ -1242,7 +1260,21 @@ function AvailableOffersTab({
 
 /* ── Bill Data Tab ──────────────────────────────────────── */
 
-function BillDataTab({ bill }: { bill: IBill }) {
+function BillDataTab({
+  bill,
+  isTransitioning,
+  handleTransition,
+  setShowVerificationModal,
+  setShowContractVerificationModal,
+  setActiveTab,
+}: {
+  bill: IBill;
+  isTransitioning: boolean;
+  handleTransition: (status: string) => void;
+  setShowVerificationModal: (v: boolean) => void;
+  setShowContractVerificationModal: (v: boolean) => void;
+  setActiveTab: (tab: string) => void;
+}) {
   const isElectricity = bill.billType === "electricity";
   const token = useAppSelector((state) => state.auth.token);
   const [editOpen, setEditOpen] = useState(false);
@@ -1252,6 +1284,8 @@ function BillDataTab({ bill }: { bill: IBill }) {
   const [previewType, setPreviewType] = useState<"pdf" | "image" | "other">("other");
 
   const billFiles: IBillFile[] = bill.files ?? [];
+  const originalFiles = billFiles.filter((f) => !f.verificationId);
+  const reuploadedFiles = billFiles.filter((f) => !!f.verificationId);
 
   const fetchFileBlobByUrl = useCallback(async (url: string) => {
     const res = await fetch(url, {
@@ -1340,32 +1374,76 @@ function BillDataTab({ bill }: { bill: IBill }) {
         {
           label: `Uploaded Documents${billFiles.length > 0 ? ` (${billFiles.length})` : ""}`,
           value: billFiles.length > 0 ? (
-            <div className="space-y-2">
-              {billFiles.map((bf, idx) => (
-                <div key={bf.id} className="flex items-center gap-3">
-                  <span className="text-xs text-slate-500 font-mono w-4">{idx + 1}.</span>
-                  <span className="text-xs text-slate-600 truncate max-w-[120px]">
-                    {bf.originalName || bf.fileUrl.split("/").pop()}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => handleView(bf)}
-                    disabled={previewLoading === bf.id}
-                    className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors disabled:opacity-50"
-                  >
-                    <FiEye className="h-3 w-3" />
-                    {previewLoading === bf.id ? "..." : "View"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDownload(bf)}
-                    className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-800 transition-colors"
-                  >
-                    <LuDownload className="h-3 w-3" />
-                    Download
-                  </button>
+            <div className="space-y-3">
+              {/* Original Upload */}
+              {originalFiles.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 mb-1">Original Upload</p>
+                  <div className="space-y-2">
+                    {originalFiles.map((bf, idx) => (
+                      <div key={bf.id} className="flex items-center gap-3">
+                        <span className="text-xs text-slate-500 font-mono w-4">{idx + 1}.</span>
+                        <span className="text-xs text-slate-600 truncate max-w-[120px]">
+                          {bf.originalName || bf.fileUrl.split("/").pop()}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleView(bf)}
+                          disabled={previewLoading === bf.id}
+                          className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors disabled:opacity-50"
+                        >
+                          <FiEye className="h-3 w-3" />
+                          {previewLoading === bf.id ? "..." : "View"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDownload(bf)}
+                          className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-800 transition-colors"
+                        >
+                          <LuDownload className="h-3 w-3" />
+                          Download
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              ))}
+              )}
+
+              {/* Re-uploaded Documents */}
+              {reuploadedFiles.length > 0 && (
+                <div>
+                  {originalFiles.length > 0 && <div className="border-t border-slate-200 my-2" />}
+                  <p className="text-xs font-semibold text-slate-500 mb-1">Re-uploaded Documents</p>
+                  <div className="space-y-2">
+                    {reuploadedFiles.map((bf, idx) => (
+                      <div key={bf.id} className="flex items-center gap-3">
+                        <span className="text-xs text-slate-500 font-mono w-4">{idx + 1}.</span>
+                        <span className="text-xs text-slate-600 truncate max-w-[120px]">
+                          {bf.originalName || bf.fileUrl.split("/").pop()}
+                        </span>
+                        <Tag color="blue" className="text-[10px]! leading-tight! px-1! py-0! m-0!">Re-upload</Tag>
+                        <button
+                          type="button"
+                          onClick={() => handleView(bf)}
+                          disabled={previewLoading === bf.id}
+                          className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors disabled:opacity-50"
+                        >
+                          <FiEye className="h-3 w-3" />
+                          {previewLoading === bf.id ? "..." : "View"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDownload(bf)}
+                          className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-800 transition-colors"
+                        >
+                          <LuDownload className="h-3 w-3" />
+                          Download
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           ) : bill.fileUrl ? (
             <span className="text-xs text-slate-500">1 file (legacy)</span>
@@ -1441,6 +1519,105 @@ function BillDataTab({ bill }: { bill: IBill }) {
           Edit Bill Data
         </Button>
       </div>
+
+      {/* Actions section */}
+      {["verification_review", "verified", "offer_accepted", "contract_review", "contract_verified", "awaiting_activation"].includes(bill.status) && (
+        <div className="bg-white rounded-xl border border-slate-200 p-5">
+          <h3 className="text-sm font-bold text-slate-700 mb-4">Actions</h3>
+          <div className="flex flex-wrap gap-3">
+            {bill.status === "verification_review" && (
+              <>
+                <Button
+                  type="primary"
+                  icon={<FiCheck />}
+                  loading={isTransitioning}
+                  onClick={() => handleTransition("verified")}
+                  className="bg-emerald-500 hover:bg-emerald-600 border-0"
+                >
+                  Approve — Mark Verified
+                </Button>
+                <Button
+                  danger
+                  icon={<FiSend />}
+                  onClick={() => setShowVerificationModal(true)}
+                >
+                  Request Corrections
+                </Button>
+              </>
+            )}
+            {bill.status === "verified" && (
+              <Button
+                type="primary"
+                icon={<FiSend />}
+                onClick={() => setActiveTab("available_offers")}
+              >
+                Send Offers
+              </Button>
+            )}
+            {bill.status === "offer_accepted" && (
+              <Button
+                type="primary"
+                icon={<FiSend />}
+                onClick={() => setActiveTab("case_details")}
+              >
+                Create & Send Contract
+              </Button>
+            )}
+            {bill.status === "contract_review" && (
+              <>
+                <Button
+                  type="primary"
+                  icon={<FiCheck />}
+                  loading={isTransitioning}
+                  onClick={() => handleTransition("contract_verified")}
+                  className="bg-emerald-500 hover:bg-emerald-600 border-0"
+                >
+                  Approve Contract
+                </Button>
+                <Button
+                  danger
+                  icon={<FiSend />}
+                  onClick={() => setShowContractVerificationModal(true)}
+                >
+                  Request Re-submission
+                </Button>
+              </>
+            )}
+            {bill.status === "contract_verified" && (
+              <Button
+                type="primary"
+                icon={<FiCheckCircle />}
+                loading={isTransitioning}
+                onClick={() => handleTransition("awaiting_activation")}
+              >
+                Move to In Activation
+              </Button>
+            )}
+            {bill.status === "awaiting_activation" && (
+              <Button
+                type="primary"
+                icon={<FiCheckCircle />}
+                loading={isTransitioning}
+                onClick={() => handleTransition("activated")}
+                className="bg-emerald-500 hover:bg-emerald-600 border-0"
+              >
+                Activate Utility
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Activated success banner */}
+      {bill.status === "activated" && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5 flex items-center gap-3">
+          <FiCheckCircle className="text-emerald-500 h-6 w-6 flex-shrink-0" />
+          <div>
+            <p className="text-emerald-700 font-semibold">Utility Activated</p>
+            <p className="text-emerald-600 text-sm">This utility has been successfully activated.</p>
+          </div>
+        </div>
+      )}
 
       {groups.map((g) => (
         <div key={g.title}>
@@ -1544,9 +1721,7 @@ function CaseDetailsTab({
   statusUpdating: boolean;
 }) {
   const { data: caseData, isLoading } = useGetCaseByIdQuery(caseId!, { skip: !caseId });
-  const [updateCase, { isLoading: isUpdating }] = useUpdateCaseMutation();
   const [subTab, setSubTab] = useState("timeline");
-  const [note, setNote] = useState("");
 
   if (!caseId) {
     return (
@@ -1583,17 +1758,6 @@ function CaseDetailsTab({
   const agentName = caseData.assignedAgent
     ? `${caseData.assignedAgent.firstName} ${caseData.assignedAgent.lastName}`
     : null;
-
-  const handleSaveNote = async () => {
-    if (!note.trim()) return;
-    try {
-      await updateCase({ id: caseData.id, data: { internalNotes: note } }).unwrap();
-      message.success("Note saved");
-      setNote("");
-    } catch {
-      message.error("Failed to save note");
-    }
-  };
 
   const tabCounts: Record<string, number> = { documents: docCount };
 
@@ -1705,35 +1869,6 @@ function CaseDetailsTab({
 
       {/* Sub-tab Content */}
       <div>{renderSubTab()}</div>
-
-      {/* Internal Notes (always visible) */}
-      <div className="border-t border-slate-100 pt-5 space-y-3">
-        <h4 className="text-sm font-semibold text-slate-800">Internal Notes</h4>
-        {caseData.internalNotes && (
-          <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-600">
-            {caseData.internalNotes}
-          </div>
-        )}
-        <Input.TextArea
-          rows={3}
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          placeholder="Add internal note..."
-          className="resize-none rounded-xl! border-slate-200"
-        />
-        <div className="flex justify-end">
-          <Button
-            type="primary"
-            disabled={!note.trim()}
-            onClick={handleSaveNote}
-            loading={isUpdating}
-            size="small"
-            className="rounded-lg bg-[#7061ED]! hover:bg-[#5f52d4]! font-semibold"
-          >
-            Save Note
-          </Button>
-        </div>
-      </div>
     </div>
   );
 }
@@ -1846,14 +1981,11 @@ function CaseDataSection({
   );
 }
 
-const IDENTITY_DOC_TYPES = ["id_card", "codice_fiscale", "partita_iva"];
-
 function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[]; caseId: string }) {
   const token = useAppSelector((state) => state.auth.token);
   const [verifyDocument, { isLoading: isVerifying }] = useVerifyDocumentMutation();
   const [uploadCaseDocument] = useUploadCaseDocumentMutation();
   const [uploading, setUploading] = useState(false);
-  const [selectedDocType, setSelectedDocType] = useState<string>("id_card");
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewDoc, setPreviewDoc] = useState<ICaseDocument | null>(null);
@@ -1934,7 +2066,7 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
         if (res.ok && url) {
           await uploadCaseDocument({
             caseId,
-            documentType: selectedDocType,
+            documentType: "identity_document",
             fileUrl: url,
             fileName: file.name,
           }).unwrap();
@@ -1955,26 +2087,19 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
   const isPdf = (doc: ICaseDocument) => doc.mimeType === "application/pdf" || doc.fileName.endsWith(".pdf");
   const isImage = (doc: ICaseDocument) => doc.mimeType?.startsWith("image/") || /\.(jpg|jpeg|png)$/i.test(doc.fileName);
 
-  const identityDocs = documents.filter((d) => IDENTITY_DOC_TYPES.includes(d.documentType));
-  const otherDocs = documents.filter((d) => !IDENTITY_DOC_TYPES.includes(d.documentType));
-  const allVerified = identityDocs.length > 0 && identityDocs.every((d) => d.verified);
+  const allVerified = documents.length > 0 && documents.every((d) => d.verified);
 
-  const renderDocRow = (doc: ICaseDocument, isIdentity: boolean) => (
+  const renderDocRow = (doc: ICaseDocument) => (
     <div
       key={doc.id}
       className="flex items-center justify-between rounded-xl border border-slate-100 p-4 transition-colors hover:bg-slate-50/50"
     >
       <div className="flex items-center gap-3 min-w-0">
-        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${isIdentity ? (doc.verified ? "bg-emerald-50 text-emerald-500" : "bg-amber-50 text-amber-500") : "bg-blue-50 text-blue-500"}`}>
+        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${doc.verified ? "bg-emerald-50 text-emerald-500" : "bg-amber-50 text-amber-500"}`}>
           <FiFileText className="h-5 w-5" />
         </div>
         <div className="min-w-0">
           <p className="text-sm font-semibold text-slate-700 truncate">{doc.fileName}</p>
-          <p className="text-xs text-slate-400 capitalize">
-            {doc.documentType?.replace("_", " ")}
-            {doc.fileSizeBytes != null && ` • ${(doc.fileSizeBytes / 1024 / 1024).toFixed(1)} MB`}
-            {doc.uploadedBy && ` • by ${doc.uploadedBy.firstName} ${doc.uploadedBy.lastName}`}
-          </p>
           {doc.verified && doc.verifiedAt && (
             <p className="text-[10px] text-emerald-500 mt-0.5">
               Verified on {new Date(doc.verifiedAt).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })}
@@ -2000,7 +2125,7 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
           <FiDownload className="h-3.5 w-3.5" />
           Download
         </button>
-        {isIdentity && !doc.verified ? (
+        {!doc.verified ? (
           <Button
             size="small"
             type="primary"
@@ -2013,10 +2138,10 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
           </Button>
         ) : (
           <Tag
-            color={doc.verified ? "green" : "default"}
+            color="green"
             className="m-0! rounded-full! border-0! text-xs!"
           >
-            {doc.verified ? "Verified" : "Pending"}
+            Verified
           </Tag>
         )}
       </div>
@@ -2032,39 +2157,28 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
             <div className="flex items-center gap-2">
               <h4 className="text-sm font-semibold text-slate-800">Identity Verification</h4>
               <Tag
-                color={identityDocs.length === 0 ? "red" : allVerified ? "green" : "orange"}
+                color={documents.length === 0 ? "red" : allVerified ? "green" : "orange"}
                 className="m-0! rounded-full! border-0! text-xs! font-semibold!"
               >
-                {identityDocs.length === 0 ? "Not Uploaded" : allVerified ? "Verified" : "Pending Review"}
+                {documents.length === 0 ? "Not Uploaded" : allVerified ? "Verified" : "Pending Review"}
               </Tag>
             </div>
-            {identityDocs.length > 0 && (
+            {documents.length > 0 && (
               <span className="text-xs text-slate-400">
-                {identityDocs.filter((d) => d.verified).length}/{identityDocs.length} verified
+                {documents.filter((d) => d.verified).length}/{documents.length} verified
               </span>
             )}
           </div>
 
-          {identityDocs.length > 0 && (
+          {documents.length > 0 && (
             <div className="space-y-3 mb-4">
-              {identityDocs.map((doc) => renderDocRow(doc, true))}
+              {documents.map((doc) => renderDocRow(doc))}
             </div>
           )}
 
           {/* Admin Upload Identity Documents */}
           <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-4">
             <div className="flex items-center gap-3 flex-wrap">
-              <Select
-                size="small"
-                value={selectedDocType}
-                onChange={setSelectedDocType}
-                className="w-40 [&_.ant-select-selector]:rounded-lg!"
-                options={[
-                  { value: "id_card", label: "ID Card" },
-                  { value: "codice_fiscale", label: "Codice Fiscale" },
-                  { value: "partita_iva", label: "Partita IVA" },
-                ]}
-              />
               <Upload
                 accept=".pdf,.png,.jpg,.jpeg,.webp"
                 multiple
@@ -2086,16 +2200,6 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
             </div>
           </div>
         </div>
-
-        {/* Other Documents Section */}
-        {otherDocs.length > 0 && (
-          <div>
-            <h4 className="text-sm font-semibold text-slate-800 mb-3">Other Documents</h4>
-            <div className="space-y-3">
-              {otherDocs.map((doc) => renderDocRow(doc, false))}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Document Preview Modal */}
@@ -2184,35 +2288,181 @@ const deliveryMethodLabel: Record<string, string> = {
   phone: "Via Phone",
 };
 
+function ContractDocumentListBRD({
+  documents,
+  type,
+  title,
+  onDelete,
+}: {
+  documents: IContractDocument[];
+  type: "contract" | "signed";
+  title: string;
+  onDelete?: (docId: string) => void;
+}) {
+  const filtered = documents.filter((d) => d.documentType === type);
+  if (filtered.length === 0) return null;
+
+  const borderClass = type === "contract" ? "border-slate-100" : "border-emerald-100";
+  const hoverClass = type === "contract" ? "hover:bg-slate-50" : "hover:bg-emerald-50";
+  const iconBgClass = type === "contract" ? "bg-blue-50 text-blue-500" : "bg-emerald-50 text-emerald-500";
+
+  return (
+    <div className="space-y-2">
+      <h5 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{title}</h5>
+      {filtered.map((doc) => {
+        const href = doc.fileUrl.startsWith("http")
+          ? doc.fileUrl
+          : `${server_origin}/${doc.fileUrl.replace(/^\//, "")}`;
+        return (
+          <div
+            key={doc.id}
+            className={`flex items-center gap-3 rounded-lg border ${borderClass} p-3 ${hoverClass} transition-colors`}
+          >
+            <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${iconBgClass}`}>
+              {type === "contract" ? (
+                <LuDownload className="h-4 w-4" />
+              ) : (
+                <LuFileCheck2 className="h-4 w-4" />
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-slate-700 truncate">
+                {doc.originalName || doc.fileName}
+              </p>
+              <p className="text-xs text-slate-400">
+                {doc.mimeType === "application/pdf" ? "PDF" : doc.mimeType?.startsWith("image/") ? "Image" : "Document"}
+                {doc.fileSizeBytes ? ` · ${(Number(doc.fileSizeBytes) / 1024).toFixed(0)} KB` : ""}
+              </p>
+            </div>
+            <a
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-slate-100 text-slate-500 hover:text-slate-700"
+              title="View / Download"
+            >
+              <LuDownload className="h-4 w-4" />
+            </a>
+            {onDelete && (
+              <button
+                onClick={() => onDelete(doc.id)}
+                className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-red-50 text-slate-400 hover:text-red-500"
+                title="Delete"
+              >
+                <FiFileText className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function CaseContractSection({ caseData }: { caseData: ICase }) {
   const { data: contract, isLoading, error } = useGetContractByCaseQuery(caseData.id);
   const [createContract, { isLoading: isCreating }] = useCreateContractMutation();
   const [updateContract, { isLoading: isUpdatingContract }] = useUpdateContractMutation();
+  const [uploadContractDocuments] = useUploadContractDocumentsMutation();
+  const [deleteContractDocument] = useDeleteContractDocumentMutation();
 
   const [contractNumber, setContractNumber] = useState("");
   const [podPdrNumber, setPodPdrNumber] = useState(
     caseData.bill?.podNumber || caseData.bill?.pdrNumber || ""
   );
   const [deliveryMethod, setDeliveryMethod] = useState<string | undefined>(undefined);
-  const [documentUrl, setDocumentUrl] = useState("");
   const [activationDate, setActivationDate] = useState<Dayjs | null>(null);
   const [expiryDate, setExpiryDate] = useState<Dayjs | null>(null);
+  const [pendingFiles, setPendingFiles] = useState<{ file: File; uploading: boolean }[]>([]);
+  const [isUploadingDocs, setIsUploadingDocs] = useState(false);
 
   const hasContract = contract && !error;
+  const allDocuments = contract?.documents || [];
+
+  const handleUploadFiles = async (files: File[]): Promise<{ fileUrl: string; fileName: string; originalName: string; mimeType: string; fileSizeBytes: number }[]> => {
+    const uploaded: { fileUrl: string; fileName: string; originalName: string; mimeType: string; fileSizeBytes: number }[] = [];
+    const token = localStorage.getItem("auth_token");
+    for (const file of files) {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch(`${server_origin}/api/v1/upload`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      const result = await res.json();
+      const data = result?.data || result;
+      if (res.ok && data?.url) {
+        uploaded.push({
+          fileUrl: data.url,
+          fileName: data.filename,
+          originalName: data.originalName || file.name,
+          mimeType: data.mimeType || file.type,
+          fileSizeBytes: data.size || file.size,
+        });
+      } else {
+        throw new Error(`Failed to upload ${file.name}`);
+      }
+    }
+    return uploaded;
+  };
 
   const handleCreate = async () => {
     if (!contractNumber.trim() || !deliveryMethod) return;
     try {
-      await createContract({
+      const created = await createContract({
         caseId: caseData.id,
         contractNumber: contractNumber.trim(),
         podPdrNumber: podPdrNumber || undefined,
         deliveryMethod: deliveryMethod as "app" | "email" | "mail" | "phone",
-        documentUrl: documentUrl || undefined,
       }).unwrap();
+
+      if (pendingFiles.length > 0) {
+        setIsUploadingDocs(true);
+        try {
+          const uploaded = await handleUploadFiles(pendingFiles.map((f) => f.file));
+          await uploadContractDocuments({
+            contractId: created.id,
+            documents: uploaded,
+          }).unwrap();
+          setPendingFiles([]);
+        } catch {
+          message.warning("Contract created but some documents failed to upload");
+        } finally {
+          setIsUploadingDocs(false);
+        }
+      }
+
       message.success("Contract created and sent");
     } catch {
       message.error("Failed to create contract");
+    }
+  };
+
+  const handleAddDocuments = async (files: File[]) => {
+    if (!contract) return;
+    setIsUploadingDocs(true);
+    try {
+      const uploaded = await handleUploadFiles(files);
+      await uploadContractDocuments({
+        contractId: contract.id,
+        documents: uploaded,
+      }).unwrap();
+      message.success(`${uploaded.length} document(s) uploaded`);
+    } catch {
+      message.error("Failed to upload documents");
+    } finally {
+      setIsUploadingDocs(false);
+    }
+  };
+
+  const handleDeleteDocument = async (docId: string) => {
+    if (!contract) return;
+    try {
+      await deleteContractDocument({ contractId: contract.id, documentId: docId }).unwrap();
+      message.success("Document deleted");
+    } catch {
+      message.error("Failed to delete document");
     }
   };
 
@@ -2287,25 +2537,43 @@ function CaseContractSection({ caseData }: { caseData: ICase }) {
                 ]}
               />
             </div>
-            {deliveryMethod === "app" && (
-              <div>
-                <label className="text-xs text-slate-500 mb-1 block">Contract Document URL *</label>
-                <Input
-                  value={documentUrl}
-                  onChange={(e) => setDocumentUrl(e.target.value)}
-                  placeholder="Upload document first, then paste URL"
-                  className="rounded-lg"
-                />
-              </div>
-            )}
+          </div>
+
+          {/* Contract Document Upload */}
+          <div>
+            <label className="text-xs text-slate-500 mb-1 block">Contract Documents</label>
+            <Upload.Dragger
+              multiple
+              accept=".pdf,.jpg,.jpeg,.png,.webp"
+              beforeUpload={(file) => {
+                setPendingFiles((prev) => [...prev, { file, uploading: false }]);
+                return false;
+              }}
+              fileList={pendingFiles.map((f, i) => ({
+                uid: String(i),
+                name: f.file.name,
+                status: "done" as const,
+                size: f.file.size,
+              }))}
+              onRemove={(file) => {
+                setPendingFiles((prev) => prev.filter((_, i) => String(i) !== file.uid));
+              }}
+              className="rounded-lg!"
+            >
+              <p className="text-slate-400">
+                <LuUpload className="mx-auto h-8 w-8 mb-2" />
+              </p>
+              <p className="text-sm text-slate-600">Click or drag files to upload contract documents</p>
+              <p className="text-xs text-slate-400 mt-1">PDF, JPG, PNG, WebP (max 10 MB each)</p>
+            </Upload.Dragger>
           </div>
 
           <div className="flex justify-end pt-2">
             <Button
               type="primary"
               onClick={handleCreate}
-              loading={isCreating}
-              disabled={!contractNumber.trim() || !deliveryMethod || (deliveryMethod === "app" && !documentUrl)}
+              loading={isCreating || isUploadingDocs}
+              disabled={!contractNumber.trim() || !deliveryMethod}
               className="h-10 rounded-lg bg-[#7061ED]! hover:bg-[#5f52d4]! border-0! font-semibold px-6"
             >
               Create & Send Contract
@@ -2380,45 +2648,47 @@ function CaseContractSection({ caseData }: { caseData: ICase }) {
       </div>
 
       {/* Documents */}
-      {(contract.documentUrl || contract.signedDocumentUrl) && (
-        <div className="rounded-xl border border-slate-200 p-5">
-          <h4 className="text-sm font-bold text-slate-800 mb-4">Documents</h4>
-          <div className="space-y-3">
-            {contract.documentUrl && (
-              <a
-                href={contract.documentUrl.startsWith("http") ? contract.documentUrl : `${server_origin}/${contract.documentUrl.replace(/^\//, "")}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-3 rounded-lg border border-slate-100 p-3 hover:bg-slate-50 transition-colors"
-              >
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-blue-500">
-                  <LuDownload className="h-4 w-4" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-slate-700">Unsigned Contract</p>
-                  <p className="text-xs text-slate-400">Sent to customer</p>
-                </div>
-              </a>
-            )}
-            {contract.signedDocumentUrl && (
-              <a
-                href={contract.signedDocumentUrl.startsWith("http") ? contract.signedDocumentUrl : `${server_origin}/${contract.signedDocumentUrl.replace(/^\//, "")}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-3 rounded-lg border border-emerald-100 p-3 hover:bg-emerald-50 transition-colors"
-              >
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-500">
-                  <LuFileCheck2 className="h-4 w-4" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-slate-700">Signed Contract</p>
-                  <p className="text-xs text-slate-400">Uploaded by customer</p>
-                </div>
-              </a>
-            )}
-          </div>
+      <div className="rounded-xl border border-slate-200 p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h4 className="text-sm font-bold text-slate-800">Documents</h4>
+          <Upload
+            multiple
+            accept=".pdf,.jpg,.jpeg,.png,.webp"
+            showUploadList={false}
+            beforeUpload={(_, fileList) => {
+              handleAddDocuments(fileList as unknown as File[]);
+              return false;
+            }}
+          >
+            <Button
+              size="small"
+              loading={isUploadingDocs}
+              className="rounded-lg border-slate-200 text-slate-600"
+              icon={<LuUpload className="h-3.5 w-3.5" />}
+            >
+              Upload Documents
+            </Button>
+          </Upload>
         </div>
-      )}
+
+        {allDocuments.length === 0 ? (
+          <p className="text-sm text-slate-400 text-center py-4">No documents uploaded yet</p>
+        ) : (
+          <div className="space-y-4">
+            <ContractDocumentListBRD
+              documents={allDocuments}
+              type="contract"
+              title="Contract Documents"
+              onDelete={handleDeleteDocument}
+            />
+            <ContractDocumentListBRD
+              documents={allDocuments}
+              type="signed"
+              title="Signed Documents (by customer)"
+            />
+          </div>
+        )}
+      </div>
 
       {/* Actions based on status */}
       {contract.status === "draft" && (
@@ -2526,6 +2796,174 @@ function CaseContractSection({ caseData }: { caseData: ICase }) {
           <p className="text-sm text-emerald-600 mt-1">
             The utility has been activated. The customer can see it in their My Utilities section.
           </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Notes Tab ─────────────────────────────────────────── */
+
+function NotesTab({ billId }: { billId: string }) {
+  const { message } = App.useApp();
+  const { data: notes, isLoading } = useGetBillNotesQuery(billId);
+  const [addNote, { isLoading: isAdding }] = useAddBillNoteMutation();
+  const [updateNote] = useUpdateBillNoteMutation();
+  const [deleteNote] = useDeleteBillNoteMutation();
+  const [content, setContent] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState("");
+
+  const handleAdd = async () => {
+    if (!content.trim()) return;
+    try {
+      await addNote({ billId, content: content.trim() }).unwrap();
+      message.success("Note added");
+      setContent("");
+    } catch {
+      message.error("Failed to add note");
+    }
+  };
+
+  const handleEdit = (noteId: string, currentContent: string) => {
+    setEditingId(noteId);
+    setEditContent(currentContent);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditContent("");
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingId || !editContent.trim()) return;
+    try {
+      await updateNote({ billId, noteId: editingId, content: editContent.trim() }).unwrap();
+      message.success("Note updated");
+      setEditingId(null);
+      setEditContent("");
+    } catch {
+      message.error("Failed to update note");
+    }
+  };
+
+  const handleDelete = async (noteId: string) => {
+    try {
+      await deleteNote({ billId, noteId }).unwrap();
+      message.success("Note deleted");
+    } catch {
+      message.error("Failed to delete note");
+    }
+  };
+
+  return (
+    <div className="space-y-5">
+      {/* Add note form */}
+      <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-3">
+        <h3 className="text-sm font-bold text-slate-700">Add Note</h3>
+        <Input.TextArea
+          rows={3}
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          placeholder="Write a note about this bill..."
+          className="resize-none rounded-xl! border-slate-200"
+        />
+        <div className="flex justify-end">
+          <Button
+            type="primary"
+            disabled={!content.trim()}
+            onClick={handleAdd}
+            loading={isAdding}
+            size="small"
+            className="rounded-lg bg-[#7061ED]! hover:bg-[#5f52d4]! font-semibold"
+          >
+            Add Note
+          </Button>
+        </div>
+      </div>
+
+      {/* Notes list */}
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Spin size="large" />
+        </div>
+      ) : !notes || notes.length === 0 ? (
+        <Empty description="No notes yet" />
+      ) : (
+        <div className="space-y-3">
+          {notes.map((note) => (
+            <div key={note.id} className="bg-white rounded-xl border border-slate-200 p-5">
+              {editingId === note.id ? (
+                <div className="space-y-3">
+                  <Input.TextArea
+                    rows={3}
+                    value={editContent}
+                    onChange={(e) => setEditContent(e.target.value)}
+                    className="resize-none rounded-xl! border-slate-200"
+                    autoFocus
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button size="small" onClick={handleCancelEdit}>
+                      Cancel
+                    </Button>
+                    <Button
+                      type="primary"
+                      size="small"
+                      disabled={!editContent.trim()}
+                      onClick={handleSaveEdit}
+                      className="rounded-lg bg-[#7061ED]! hover:bg-[#5f52d4]! font-semibold"
+                    >
+                      Save
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-slate-700 whitespace-pre-wrap">{note.content}</p>
+                    <p className="mt-2 text-xs text-slate-400">
+                      <span className="text-[#7061ED] font-medium">
+                        {note.createdBy
+                          ? `${note.createdBy.firstName} ${note.createdBy.lastName}`
+                          : "Admin"}
+                      </span>
+                      {" · "}
+                      {new Date(note.createdAt).toLocaleDateString("en-GB", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                      {" "}
+                      {new Date(note.createdAt).toLocaleTimeString("en-US", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: false,
+                      })}
+                    </p>
+                  </div>
+                  <div className="flex gap-1 shrink-0">
+                    <Button
+                      type="text"
+                      size="small"
+                      onClick={() => handleEdit(note.id, note.content)}
+                      className="text-xs text-[#7061ED]"
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      type="text"
+                      danger
+                      size="small"
+                      onClick={() => handleDelete(note.id)}
+                      className="text-xs"
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
     </div>

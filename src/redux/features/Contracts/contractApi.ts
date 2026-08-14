@@ -1,5 +1,18 @@
 import { baseApi } from "../../api/baseApi";
 
+export interface IContractDocument {
+  id: string;
+  contractId: string;
+  documentType: "contract" | "signed";
+  fileUrl: string;
+  fileName: string;
+  originalName: string | null;
+  mimeType: string | null;
+  fileSizeBytes: number | null;
+  uploadedById: string;
+  createdAt: string;
+}
+
 export interface IContract {
   id: string;
   caseId: string;
@@ -19,6 +32,7 @@ export interface IContract {
   cancellationReason: string | null;
   createdAt: string;
   updatedAt: string;
+  documents?: IContractDocument[];
   switchCase?: { id: string; caseNumber: string; status: string };
   user?: { id: string; firstName: string; lastName: string; email: string };
   offer?: { id: string; name: string };
@@ -125,6 +139,54 @@ const contractApi = baseApi.injectEndpoints({
       transformResponse: (response: { success: boolean; data: IContract }) => response.data,
       providesTags: (_r, _e, caseId) => [{ type: "contract" as const, id: `case-${caseId}` }],
     }),
+
+    uploadContractDocuments: builder.mutation<
+      IContractDocument[],
+      {
+        contractId: string;
+        documents: {
+          fileUrl: string;
+          fileName: string;
+          originalName?: string;
+          mimeType?: string;
+          fileSizeBytes?: number;
+        }[];
+      }
+    >({
+      query: ({ contractId, documents }) => ({
+        url: `contracts/${contractId}/documents`,
+        method: "POST",
+        body: { documents },
+      }),
+      transformResponse: (response: { success: boolean; data: IContractDocument[] }) =>
+        response.data,
+      invalidatesTags: (_result, _error, { contractId }) => [
+        { type: "contract", id: contractId },
+        { type: "contract", id: "LIST" },
+        { type: "case", id: "LIST" },
+        { type: "activityLog", id: "LIST" },
+      ],
+    }),
+
+    getContractDocuments: builder.query<IContractDocument[], string>({
+      query: (contractId) => ({ url: `contracts/${contractId}/documents`, method: "GET" }),
+      transformResponse: (response: { success: boolean; data: IContractDocument[] }) =>
+        response.data,
+      providesTags: (_r, _e, contractId) => [{ type: "contract" as const, id: `docs-${contractId}` }],
+    }),
+
+    deleteContractDocument: builder.mutation<void, { contractId: string; documentId: string }>({
+      query: ({ contractId, documentId }) => ({
+        url: `contracts/${contractId}/documents/${documentId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: (_result, _error, { contractId }) => [
+        { type: "contract", id: contractId },
+        { type: "contract", id: `docs-${contractId}` },
+        { type: "contract", id: "LIST" },
+        { type: "activityLog", id: "LIST" },
+      ],
+    }),
   }),
 });
 
@@ -134,4 +196,7 @@ export const {
   useCreateContractMutation,
   useUpdateContractMutation,
   useGetContractByCaseQuery,
+  useUploadContractDocumentsMutation,
+  useGetContractDocumentsQuery,
+  useDeleteContractDocumentMutation,
 } = contractApi;

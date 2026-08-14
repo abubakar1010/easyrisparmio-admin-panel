@@ -168,6 +168,7 @@ const caseApi = baseApi.injectEndpoints({
         { type: "activityLog", id: "LIST" },
       ],
     }),
+
   }),
 });
 

@@ -318,8 +318,57 @@ const billApi = baseApi.injectEndpoints({
         { type: "activityLog", id: "LIST" },
       ],
     }),
+    getBillNotes: builder.query<IBillNote[], string>({
+      query: (billId) => ({ url: `bills/${billId}/notes`, method: "GET" }),
+      transformResponse: (response: { success: boolean; data: IBillNote[] }) => response.data,
+      providesTags: (_r, _e, billId) => [{ type: "bill" as const, id: `${billId}-notes` }],
+    }),
+
+    addBillNote: builder.mutation<IBillNote, { billId: string; content: string }>({
+      query: ({ billId, content }) => ({
+        url: `bills/${billId}/notes`,
+        method: "POST",
+        body: { content },
+      }),
+      transformResponse: (response: { success: boolean; data: IBillNote }) => response.data,
+      invalidatesTags: (_r, _e, { billId }) => [
+        { type: "bill", id: `${billId}-notes` },
+      ],
+    }),
+
+    updateBillNote: builder.mutation<IBillNote, { billId: string; noteId: string; content: string }>({
+      query: ({ billId, noteId, content }) => ({
+        url: `bills/${billId}/notes/${noteId}`,
+        method: "PATCH",
+        body: { content },
+      }),
+      transformResponse: (response: { success: boolean; data: IBillNote }) => response.data,
+      invalidatesTags: (_r, _e, { billId }) => [
+        { type: "bill", id: `${billId}-notes` },
+      ],
+    }),
+
+    deleteBillNote: builder.mutation<void, { billId: string; noteId: string }>({
+      query: ({ billId, noteId }) => ({
+        url: `bills/${billId}/notes/${noteId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: (_r, _e, { billId }) => [
+        { type: "bill", id: `${billId}-notes` },
+      ],
+    }),
   }),
 });
+
+export interface IBillNote {
+  id: string;
+  billId: string;
+  content: string;
+  createdById: string;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: { id: string; firstName: string; lastName: string; email: string };
+}
 
 export const {
   useGetBillsAdminQuery,
@@ -333,4 +382,8 @@ export const {
   useRequestVerificationMutation,
   useTransitionBillStatusMutation,
   useUpdateBillAdminMutation,
+  useGetBillNotesQuery,
+  useAddBillNoteMutation,
+  useUpdateBillNoteMutation,
+  useDeleteBillNoteMutation,
 } = billApi;
