@@ -1,5 +1,18 @@
 import { baseApi } from "../../api/baseApi";
 
+/** Payment method(s) a supplier accepts for an offer. */
+export type OfferPaymentMethod = "direct_debit" | "postal_order" | "both";
+
+export const PAYMENT_METHOD_LABELS: Record<OfferPaymentMethod, string> = {
+  direct_debit: "Direct Debit",
+  postal_order: "Postal Order",
+  both: "Both",
+};
+
+export const PAYMENT_METHOD_OPTIONS = (
+  Object.keys(PAYMENT_METHOD_LABELS) as OfferPaymentMethod[]
+).map((value) => ({ value, label: PAYMENT_METHOD_LABELS[value] }));
+
 export interface IOffer {
   id: string;
   name: string;
@@ -20,6 +33,7 @@ export interface IOffer {
   termsUrl: string | null;
   economicConditionsUrl: string | null;
   target: "personal" | "business" | "both";
+  paymentMethod: OfferPaymentMethod;
   highlights: string[] | null;
   offerCode: string | null;
   offerStatus: "draft" | "active" | "expiring" | "expired" | "archived";
@@ -50,6 +64,7 @@ export interface IOfferQuery {
   offerStatus?: string;
   supplierId?: string;
   target?: string;
+  paymentMethod?: OfferPaymentMethod;
   isActive?: boolean;
 }
 
@@ -71,6 +86,7 @@ export interface ICreateOffer {
   termsUrl?: string;
   economicConditionsUrl?: string;
   target?: string;
+  paymentMethod: OfferPaymentMethod;
   highlights?: string[];
   offerCode?: string;
   offerStatus?: string;
@@ -96,6 +112,7 @@ const offerApi = baseApi.injectEndpoints({
           if (params.offerStatus) qp.set("offerStatus", params.offerStatus);
           if (params.supplierId) qp.set("supplierId", params.supplierId);
           if (params.target) qp.set("target", params.target);
+          if (params.paymentMethod) qp.set("paymentMethod", params.paymentMethod);
           if (params.isActive !== undefined) qp.set("isActive", String(params.isActive));
         }
         return { url: `offers/admin?${qp.toString()}`, method: "GET" };

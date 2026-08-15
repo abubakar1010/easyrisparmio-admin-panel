@@ -24,6 +24,10 @@ import {
   type ISupplier,
   type SupplierOffer,
 } from "../../redux/features/Suppliers/supplierApi";
+import {
+  PAYMENT_METHOD_LABELS,
+  type OfferPaymentMethod,
+} from "../../redux/features/Offers/offerApi";
 import { statusDisplayMap, statusTagClass, commodityIconMap, commodityColorMap } from "./types";
 import { server_origin } from "../../config";
 
@@ -254,6 +258,14 @@ const SupplierDetails = () => {
       dataIndex: "compensation",
       key: "compensation",
       render: (v) => <span className="text-xs text-slate-600 line-clamp-2">{v || "—"}</span>,
+    },
+    {
+      title: "PAYMENT METHOD",
+      dataIndex: "paymentMethod",
+      key: "paymentMethod",
+      render: (v: OfferPaymentMethod) => (
+        <span className="text-xs text-slate-600">{PAYMENT_METHOD_LABELS[v] || "—"}</span>
+      ),
     },
     {
       title: "STATUS",

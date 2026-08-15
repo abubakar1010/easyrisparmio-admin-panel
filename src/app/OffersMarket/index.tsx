@@ -11,7 +11,9 @@ import {
   useGetOffersAdminQuery,
   useDeleteOfferMutation,
   useUpdateOfferStatusMutation,
+  PAYMENT_METHOD_LABELS,
   type IOffer,
+  type OfferPaymentMethod,
 } from "../../redux/features/Offers/offerApi";
 import { debounce } from "../../utils/debounce";
 
@@ -61,11 +63,13 @@ const OffersMarket = () => {
   const [search, setSearch] = useState("");
   const [energyType, setEnergyType] = useState<string | undefined>();
   const [offerStatus, setOfferStatus] = useState<string | undefined>();
+  const [paymentMethod, setPaymentMethod] = useState<OfferPaymentMethod | undefined>();
 
   const { data, isLoading } = useGetOffersAdminQuery({
     page,
     limit: 20,
     search: search || undefined,
+    paymentMethod,
     energyType,
     offerStatus,
   });
@@ -113,6 +117,7 @@ const OffersMarket = () => {
     validFrom: offer.validFrom ? dayjs(offer.validFrom) : undefined,
     validity: offer.validUntil ? dayjs(offer.validUntil) : undefined,
     target: offer.target,
+    paymentMethod: offer.paymentMethod,
     highlights: offer.highlights,
     termsUrl: offer.termsUrl,
     economicConditionsUrl: offer.economicConditionsUrl,
@@ -236,6 +241,14 @@ const OffersMarket = () => {
       key: "marketType",
       className: "text-slate-500 capitalize",
       responsive: ["lg"],
+    },
+    {
+      title: "PAYMENT METHOD",
+      dataIndex: "paymentMethod",
+      key: "paymentMethod",
+      className: "text-slate-500",
+      responsive: ["lg"],
+      render: (val: OfferPaymentMethod) => PAYMENT_METHOD_LABELS[val] || "—",
     },
     {
       title: "ACTIVATION COST",
@@ -381,7 +394,7 @@ const OffersMarket = () => {
               className="h-11 rounded-xl border-slate-200 hover:border-indigo-400 focus:border-indigo-400 shadow-sm"
             />
           </div>
-          <div className="grid w-full grid-cols-1 gap-2 sm:w-auto sm:grid-cols-[auto_auto] sm:gap-3">
+          <div className="grid w-full grid-cols-1 gap-2 sm:w-auto sm:grid-cols-[auto_auto_auto] sm:gap-3">
             <Select
               allowClear
               placeholder="Commodity"
@@ -406,6 +419,19 @@ const OffersMarket = () => {
               <Option value="expired">Expired</Option>
               <Option value="archived">Archived</Option>
             </Select>
+            {/* Direct Debit / Postal Order also match offers accepting both;
+                Both narrows to offers that accept both. */}
+            <Select
+              allowClear
+              placeholder="Payment Method"
+              onChange={(v) => { setPaymentMethod(v); setPage(1); }}
+              style={{ height: "44px" }}
+              className="w-full sm:w-44 [&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-xl [&_.ant-select-selector]:border-slate-200"
+            >
+              <Option value="direct_debit">Direct Debit</Option>
+              <Option value="postal_order">Postal Order</Option>
+              <Option value="both">Both</Option>
+            </Select>
           </div>
         </div>
 
@@ -422,7 +448,7 @@ const OffersMarket = () => {
             rowKey="id"
             columns={columns}
             dataSource={offers}
-            scroll={{ x: 980 }}
+            scroll={{ x: 1120 }}
             onRow={(record) => ({
               onClick: () => handleViewDetails(record),
               className: "cursor-pointer",

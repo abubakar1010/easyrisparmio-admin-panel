@@ -3,7 +3,10 @@ import { FiArrowLeft, FiExternalLink } from "react-icons/fi";
 import { LuDownload, LuLeaf, LuMail, LuPhone, LuUser, LuGlobe } from "react-icons/lu";
 import { useNavigate, useParams } from "react-router";
 import { server_origin } from "../../config";
-import { useGetOfferByIdQuery } from "../../redux/features/Offers/offerApi";
+import {
+  PAYMENT_METHOD_LABELS,
+  useGetOfferByIdQuery,
+} from "../../redux/features/Offers/offerApi";
 
 const statusColors: Record<string, { bg: string; text: string; dot: string }> = {
   active: { bg: "bg-emerald-50", text: "text-emerald-700", dot: "bg-emerald-500" },
@@ -184,6 +187,10 @@ const OfferDetailsPage = () => {
               }
             />
             <InfoRow label="Version" value={detail.version} />
+            <InfoRow
+              label="Payment Method"
+              value={PAYMENT_METHOD_LABELS[detail.paymentMethod] || "—"}
+            />
           </div>
         </div>
 

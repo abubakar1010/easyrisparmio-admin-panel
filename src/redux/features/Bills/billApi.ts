@@ -1,4 +1,5 @@
 import { baseApi } from "../../api/baseApi";
+import type { OfferPaymentMethod } from "../Offers/offerApi";
 
 export interface IBillFieldConfidence {
   supplierName?: "high" | "medium" | "low" | null;
@@ -134,6 +135,7 @@ export interface IOfferWithSavings {
   activationCost: number;
   contractDurationDays: number;
   isGreenEnergy: boolean;
+  paymentMethod: OfferPaymentMethod;
   offerStatus: string;
   supplierId: string;
   supplier?: { id: string; name: string } | null;

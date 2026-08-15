@@ -39,6 +39,7 @@ import {
   type IBill,
   type IBillFile,
 } from "../../redux/features/Bills/billApi";
+import { PAYMENT_METHOD_LABELS } from "../../redux/features/Offers/offerApi";
 import {
   useGetCaseByIdQuery,
   useVerifyDocumentMutation,
@@ -1103,6 +1104,16 @@ function AvailableOffersTab({
       width: 150,
       render: (_, record) => (
         <span className="text-xs text-slate-600 line-clamp-2">{record.compensation || "—"}</span>
+      ),
+    },
+    {
+      title: "PAYMENT METHOD",
+      key: "paymentMethod",
+      width: 150,
+      render: (_, record) => (
+        <span className="text-xs text-slate-600">
+          {PAYMENT_METHOD_LABELS[record.paymentMethod] || "—"}
+        </span>
       ),
     },
     {

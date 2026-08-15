@@ -4,6 +4,7 @@ import { FiExternalLink } from "react-icons/fi";
 import { LuDownload, LuLeaf } from "react-icons/lu";
 import { server_origin } from "../../../config";
 import {
+  PAYMENT_METHOD_LABELS,
   useLazyGetOfferByIdQuery,
   type IOffer,
 } from "../../../redux/features/Offers/offerApi";
@@ -118,6 +119,10 @@ export const OfferDetailsModal = ({ open, onClose, offer }: OfferDetailsModalPro
             </div>
             <InfoRow label="Market Type" value={<span className="capitalize">{detail.marketType}</span>} />
             <InfoRow label="Target" value={<span className="capitalize">{detail.target}</span>} />
+            <InfoRow
+              label="Payment Method"
+              value={PAYMENT_METHOD_LABELS[detail.paymentMethod] || "—"}
+            />
           </div>
 
           <hr className="my-4 border-slate-100" />

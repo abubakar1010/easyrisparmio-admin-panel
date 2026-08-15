@@ -1,4 +1,5 @@
 import { baseApi } from "../../api/baseApi";
+import type { OfferPaymentMethod } from "../Offers/offerApi";
 
 export interface SupplierOffer {
   id: string;
@@ -16,6 +17,7 @@ export interface SupplierOffer {
   isActive: boolean;
   validFrom: string;
   validUntil: string | null;
+  paymentMethod: OfferPaymentMethod;
   offerStatus: string;
   offerCode: string | null;
 }

@@ -2,7 +2,11 @@ import { Alert, Button, DatePicker, Form, Input, Modal, Select, Switch, Upload, 
 import dayjs from "dayjs";
 import { useEffect, useState } from "react";
 import { LuUpload, LuFile, LuTrash2 } from "react-icons/lu";
-import { useCreateOfferMutation, useUpdateOfferMutation } from "../../../redux/features/Offers/offerApi";
+import {
+  PAYMENT_METHOD_OPTIONS,
+  useCreateOfferMutation,
+  useUpdateOfferMutation,
+} from "../../../redux/features/Offers/offerApi";
 import { useGetSuppliersQuery } from "../../../redux/features/Suppliers/supplierApi";
 import { server_origin } from "../../../config";
 
@@ -199,6 +203,7 @@ export const CreateOfferModal = ({
         ? dayjs(values.validity).format("YYYY-MM-DD")
         : undefined,
       target: values.target || undefined,
+      paymentMethod: values.paymentMethod,
       highlights: values.highlights?.length ? values.highlights : undefined,
       termsUrl: termsDocUrl || undefined,
       economicConditionsUrl: economicConditionsUrl || undefined,
@@ -409,7 +414,7 @@ export const CreateOfferModal = ({
           </Form.Item>
         </div>
 
-        <div className="grid grid-cols-1 gap-x-3 gap-y-1 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-x-3 gap-y-1 sm:grid-cols-2 lg:grid-cols-4">
           <Form.Item name="target" label="Target" rules={[{ required: true, message: "Please select target" }]}>
             <Select
               size="large"
@@ -420,6 +425,18 @@ export const CreateOfferModal = ({
                 { value: "business", label: "Business" },
                 { value: "both", label: "Both" },
               ]}
+            />
+          </Form.Item>
+          <Form.Item
+            name="paymentMethod"
+            label="Payment Method"
+            rules={[{ required: true, message: "Please select payment method" }]}
+          >
+            <Select
+              size="large"
+              placeholder="Select payment method"
+              className="[&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-lg"
+              options={PAYMENT_METHOD_OPTIONS}
             />
           </Form.Item>
           <Form.Item name="status" label="Status" rules={[{ required: true, message: "Please select status" }]}>
