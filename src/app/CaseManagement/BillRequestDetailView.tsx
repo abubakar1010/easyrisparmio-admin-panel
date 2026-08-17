@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { App, Button, Input, InputNumber, Spin, Empty, Tag, Select, Table, Upload, Tooltip, DatePicker, Modal, message } from "antd";
 import type { Dayjs } from "dayjs";
 import type { ColumnsType } from "antd/es/table";
@@ -1767,9 +1767,6 @@ function CaseDetailsTab({
   const customerName = caseData.user
     ? `${caseData.user.firstName} ${caseData.user.lastName}`
     : "—";
-  const agentName = caseData.assignedAgent
-    ? `${caseData.assignedAgent.firstName} ${caseData.assignedAgent.lastName}`
-    : null;
 
   const tabCounts: Record<string, number> = { documents: docCount };
 
@@ -1778,13 +1775,7 @@ function CaseDetailsTab({
       case "timeline":
         return <CaseTimeline events={events} />;
       case "case_data":
-        return (
-          <CaseDataSection
-            caseData={caseData}
-            customerName={customerName}
-            agentName={agentName}
-          />
-        );
+        return <CaseDataSection caseData={caseData} customerName={customerName} />;
       case "documents":
         return <CaseDocumentsSection documents={caseData.documents || []} caseId={caseData.id} />;
       case "contract":
@@ -1812,11 +1803,6 @@ function CaseDetailsTab({
           <Tag className="m-0! rounded-md! border-0! bg-orange-50! px-2.5! py-0.5! text-xs! font-semibold! text-orange-600! capitalize!">
             {caseData.caseType?.replace("_", " ")}
           </Tag>
-          {agentName && (
-            <Tag className="m-0! rounded-md! border-0! bg-purple-50! px-2.5! py-0.5! text-xs! font-semibold! text-purple-600!">
-              Handled by {agentName}
-            </Tag>
-          )}
           {caseData.slaDeadline && (
             (() => {
               const daysLeft = Math.ceil(
@@ -1932,31 +1918,263 @@ function CaseTimeline({ events }: { events: ICaseEvent[] }) {
   );
 }
 
+/** One address block, in the shape every address on a case is stored. */
+type CaseAddress = {
+  street: string | null;
+  streetNumber: string | null;
+  city: string | null;
+  postalCode: string | null;
+  province: string | null;
+};
+
+/** Renders the five address fields as "Via Roma 10, 20100 Milano (MI)". */
+const fmtAddress = (a: CaseAddress): string => {
+  const street = [a.street, a.streetNumber].filter(Boolean).join(" ").trim();
+  const town = [
+    [a.postalCode, a.city].filter(Boolean).join(" ").trim(),
+    a.province ? `(${a.province})` : "",
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+  return [street, town].filter(Boolean).join(", ") || "—";
+};
+
+const paymentMethodLabel: Record<string, string> = {
+  rid_bancario: "Direct debit (SDD)",
+  postal_order: "Postal order",
+  credit_card: "Credit card",
+  bank_transfer: "Bank transfer",
+};
+
+const invoiceDeliveryLabel: Record<string, string> = {
+  digital: "Digital (by email)",
+  paper: "Paper (by post)",
+};
+
+const documentTypeLabel: Record<string, string> = {
+  identity_document: "Identity document",
+  id_card: "ID card",
+  codice_fiscale: "Codice Fiscale",
+  partita_iva: "Partita IVA",
+  bill: "Bill",
+  contract: "Contract",
+  signed_contract: "Signed contract",
+};
+
+type DataRow = {
+  label: string;
+  value: string;
+  /** Spans both columns — for addresses and other long values. */
+  wide?: boolean;
+  /** Identifiers (IBAN, POD, email) keep the casing they were entered with. */
+  raw?: boolean;
+};
+
+type DataGroup = { title: string; rows?: DataRow[]; content?: React.ReactNode };
+
 function CaseDataSection({
   caseData,
   customerName,
-  agentName,
 }: {
   caseData: ICase;
   customerName: string;
-  agentName: string | null;
 }) {
-  const groups = [
+  const bill = caseData.bill;
+  const dash = (v: string | null | undefined) => (v && v.trim() ? v : "—");
+
+  const supply: CaseAddress = {
+    street: caseData.supplyStreet,
+    streetNumber: caseData.supplyStreetNumber,
+    city: caseData.supplyCity,
+    postalCode: caseData.supplyPostalCode,
+    province: caseData.supplyProvince,
+  };
+  const residential: CaseAddress = {
+    street: caseData.residentialStreet,
+    streetNumber: caseData.residentialStreetNumber,
+    city: caseData.residentialCity,
+    postalCode: caseData.residentialPostalCode,
+    province: caseData.residentialProvince,
+  };
+  const shipping: CaseAddress = {
+    street: caseData.shippingStreet,
+    streetNumber: caseData.shippingStreetNumber,
+    city: caseData.shippingCity,
+    postalCode: caseData.shippingPostalCode,
+    province: caseData.shippingProvince,
+  };
+
+  // Cases opened before the structured address fields existed only carry the
+  // OCR'd supply line on the bill — fall back to it so the row is never blank.
+  const supplyLine = fmtAddress(supply);
+  const supplyDisplay = supplyLine !== "—" ? supplyLine : dash(bill?.supplyAddress);
+
+  // The supplier the customer is leaving is only linked to a supplier record
+  // when the OCR'd name matched one, so fall back to the name off the bill.
+  const fromSupplier = dash(caseData.fromSupplier?.name || bill?.supplierName);
+
+  const isDirectDebit = caseData.paymentMethod === "rid_bancario";
+  const isPaper = caseData.invoiceDelivery === "paper";
+  const ibanHolder = [caseData.ibanHolderFirstName, caseData.ibanHolderLastName]
+    .filter(Boolean)
+    .join(" ");
+
+  const documents = caseData.documents || [];
+  const verifiedCount = documents.filter((d) => d.verified).length;
+
+  const groups: DataGroup[] = [
     {
       title: "Customer Information",
       rows: [
         { label: "Name", value: customerName },
-        { label: "Email", value: caseData.user?.email || "—" },
-        { label: "Case Type", value: caseData.caseType?.replace("_", " ") || "—" },
-        { label: "Priority", value: caseData.priority || "—" },
+        { label: "Email", value: dash(caseData.user?.email), raw: true },
+        { label: "Phone", value: dash(caseData.user?.phone), raw: true },
+        {
+          label: "Codice Fiscale",
+          value: dash(caseData.user?.codiceFiscale || bill?.codiceFiscale),
+          raw: true,
+        },
+        ...(bill?.partitaIva
+          ? [{ label: "Partita IVA", value: bill.partitaIva, raw: true }]
+          : []),
+        { label: "Case Type", value: dash(caseData.caseType?.replace("_", " ")) },
+        { label: "Priority", value: dash(caseData.priority) },
       ],
+    },
+    {
+      title: "Delivery Address",
+      rows: [
+        { label: "Supply Address", value: supplyDisplay, wide: true },
+        {
+          label: bill?.billType === "gas" ? "PDR" : "POD",
+          value: dash(bill?.podNumber || bill?.pdrNumber),
+          raw: true,
+        },
+        { label: "Meter Number", value: dash(bill?.meterNumber), raw: true },
+      ],
+    },
+    {
+      title: "Residential Address",
+      rows: [
+        {
+          label: "Same as supply address",
+          value: caseData.residentialSameAsSupply ? "Yes" : "No",
+        },
+        {
+          label: "Residence",
+          value: caseData.residentialSameAsSupply
+            ? supplyDisplay
+            : fmtAddress(residential),
+          wide: true,
+        },
+      ],
+    },
+    {
+      title: "Payment Method",
+      rows: [
+        {
+          label: "Method",
+          value: caseData.paymentMethod
+            ? paymentMethodLabel[caseData.paymentMethod] || caseData.paymentMethod
+            : "—",
+        },
+        ...(isDirectDebit
+          ? [
+              { label: "IBAN", value: dash(caseData.iban), raw: true },
+              {
+                label: "Account Holder",
+                value: ibanHolder || customerName,
+              },
+              {
+                label: "Holder Codice Fiscale",
+                value: dash(caseData.ibanHolderTaxCode || caseData.user?.codiceFiscale),
+                raw: true,
+              },
+            ]
+          : []),
+      ],
+    },
+    {
+      title: "Invoice Delivery",
+      rows: [
+        {
+          label: "Method",
+          value: caseData.invoiceDelivery
+            ? invoiceDeliveryLabel[caseData.invoiceDelivery] || caseData.invoiceDelivery
+            : "—",
+        },
+        ...(caseData.invoiceDelivery === "digital"
+          ? [
+              {
+                label: "Invoice Email",
+                value: dash(caseData.invoiceEmail || caseData.user?.email),
+                raw: true,
+              },
+            ]
+          : []),
+        ...(isPaper
+          ? [
+              {
+                label: "Ships to supply address",
+                value: caseData.shippingSameAsSupply ? "Yes" : "No",
+              },
+              {
+                label: "Shipping Address",
+                value: caseData.shippingSameAsSupply
+                  ? supplyDisplay
+                  : fmtAddress(shipping),
+                wide: true,
+              },
+            ]
+          : []),
+      ],
+    },
+    {
+      title: "Identity Verification",
+      content:
+        documents.length === 0 ? (
+          <p className="text-sm text-slate-400">No identity documents uploaded yet.</p>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-sm font-medium text-slate-700">
+              {documents.length} document{documents.length === 1 ? "" : "s"} uploaded ·{" "}
+              {verifiedCount} verified
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {documents.map((doc) => (
+                <span
+                  key={doc.id}
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${
+                    doc.verified
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                      : "border-amber-200 bg-amber-50 text-amber-700"
+                  }`}
+                  title={`${documentTypeLabel[doc.documentType] || doc.documentType} · uploaded ${fmtDate(doc.createdAt)}`}
+                >
+                  {doc.verified ? (
+                    <FiCheckCircle className="h-3.5 w-3.5" />
+                  ) : (
+                    <LuClock3 className="h-3.5 w-3.5" />
+                  )}
+                  <span className="max-w-[220px] truncate">{doc.fileName}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        ),
     },
     {
       title: "Supplier & Offer",
       rows: [
-        { label: "From Supplier", value: caseData.fromSupplier?.name || "—" },
-        { label: "To Supplier", value: caseData.toSupplier?.name || "—" },
-        { label: "Selected Offer", value: caseData.selectedOffer?.name || "—" },
+        { label: "From Supplier", value: fromSupplier },
+        { label: "To Supplier", value: dash(caseData.toSupplier?.name) },
+        { label: "Selected Offer", value: dash(caseData.selectedOffer?.name) },
+        {
+          label: "Estimated Annual Value",
+          value: fmt(caseData.estimatedAnnualValue) || "—",
+          raw: true,
+        },
         {
           label: "SLA Deadline",
           value: caseData.slaDeadline ? fmtDate(caseData.slaDeadline) : "—",
@@ -1964,10 +2182,9 @@ function CaseDataSection({
       ],
     },
     {
-      title: "Assignment & Dates",
+      title: "Dates",
       rows: [
-        { label: "Assigned Agent", value: agentName || "Unassigned" },
-        { label: "Case Number", value: caseData.caseNumber || "—" },
+        { label: "Case Number", value: dash(caseData.caseNumber), raw: true },
         { label: "Created", value: fmtDate(caseData.createdAt) },
         { label: "Last Updated", value: fmtDate(caseData.updatedAt) },
       ],
@@ -1979,14 +2196,22 @@ function CaseDataSection({
       {groups.map((g) => (
         <div key={g.title}>
           <h4 className="text-sm font-semibold text-slate-800 mb-4">{g.title}</h4>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {g.rows.map((r) => (
-              <div key={r.label}>
-                <span className="text-xs text-slate-400">{r.label}</span>
-                <p className="text-sm font-medium text-slate-700 capitalize">{r.value}</p>
-              </div>
-            ))}
-          </div>
+          {g.content ?? (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {g.rows?.map((r) => (
+                <div key={r.label} className={r.wide ? "sm:col-span-2" : undefined}>
+                  <span className="text-xs text-slate-400">{r.label}</span>
+                  <p
+                    className={`text-sm font-medium text-slate-700 ${
+                      r.raw ? "break-words" : "capitalize"
+                    }`}
+                  >
+                    {r.value}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       ))}
     </div>
@@ -2358,7 +2583,9 @@ function ContractDocumentListBRD({
             >
               <LuDownload className="h-4 w-4" />
             </a>
-            {onDelete && (
+            {/* Legacy entries are synthesized from the contract's own URL — there
+                is no document row on the server to delete. */}
+            {onDelete && !doc.id.startsWith("legacy-") && (
               <button
                 onClick={() => onDelete(doc.id)}
                 className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-red-50 text-slate-400 hover:text-red-500"
@@ -2392,7 +2619,37 @@ function CaseContractSection({ caseData }: { caseData: ICase }) {
   const [isUploadingDocs, setIsUploadingDocs] = useState(false);
 
   const hasContract = contract && !error;
-  const allDocuments = contract?.documents || [];
+
+  // Contracts created before documents were stored individually only carry the
+  // legacy `documentUrl`. The app falls back to it, so the dashboard has to show
+  // it as well — otherwise a contract the customer can open looks empty here.
+  const allDocuments: IContractDocument[] = useMemo(() => {
+    if (!contract) return [];
+    const stored = contract.documents || [];
+    const extras: IContractDocument[] = [];
+    const legacyEntry = (url: string, type: "contract" | "signed"): IContractDocument => ({
+      id: `legacy-${type}`,
+      contractId: contract.id,
+      documentType: type,
+      fileUrl: url,
+      fileName: url.split("/").pop() || url,
+      originalName: null,
+      mimeType: null,
+      fileSizeBytes: null,
+      uploadedById: "",
+      createdAt: contract.createdAt,
+    });
+
+    if (contract.documentUrl && !stored.some((d) => d.documentType === "contract")) {
+      extras.push(legacyEntry(contract.documentUrl, "contract"));
+    }
+    if (contract.signedDocumentUrl && !stored.some((d) => d.documentType === "signed")) {
+      extras.push(legacyEntry(contract.signedDocumentUrl, "signed"));
+    }
+    return [...stored, ...extras];
+  }, [contract]);
+
+  const hasContractFile = allDocuments.some((d) => d.documentType === "contract");
 
   const handleUploadFiles = async (files: File[]): Promise<{ fileUrl: string; fileName: string; originalName: string; mimeType: string; fileSizeBytes: number }[]> => {
     const uploaded: { fileUrl: string; fileName: string; originalName: string; mimeType: string; fileSizeBytes: number }[] = [];
@@ -2422,38 +2679,48 @@ function CaseContractSection({ caseData }: { caseData: ICase }) {
     return uploaded;
   };
 
-  // Documents are only attached when the contract is delivered by email
   const handleDeliveryMethodChange = (value: TContractDeliveryMethod) => {
     setDeliveryMethod(value);
-    if (value !== "email") setPendingFiles([]);
   };
 
+  // Delivering through the app means the customer downloads the contract from
+  // there, so the file has to travel with it. By email it is optional — useful
+  // only as a copy on record.
+  const requiresDocument = deliveryMethod === "app";
+  const canCreate =
+    !!contractNumber.trim() &&
+    !!deliveryMethod &&
+    (!requiresDocument || pendingFiles.length > 0);
+
   const handleCreate = async () => {
-    if (!contractNumber.trim() || !deliveryMethod) return;
+    if (!canCreate || !deliveryMethod) return;
+
+    // Upload the files first and attach them to the create call: the contract is
+    // sent — and the customer notified — the moment it is created, so it must
+    // never come into existence without the document it announces.
+    let uploaded: Awaited<ReturnType<typeof handleUploadFiles>> = [];
+    if (pendingFiles.length > 0) {
+      setIsUploadingDocs(true);
+      try {
+        uploaded = await handleUploadFiles(pendingFiles.map((f) => f.file));
+      } catch {
+        message.error("Failed to upload the contract documents — the contract was not sent");
+        return;
+      } finally {
+        setIsUploadingDocs(false);
+      }
+    }
+
     try {
-      const created = await createContract({
+      await createContract({
         caseId: caseData.id,
         contractNumber: contractNumber.trim(),
         podPdrNumber: podPdrNumber || undefined,
         deliveryMethod,
+        documents: uploaded.length > 0 ? uploaded : undefined,
       }).unwrap();
 
-      if (deliveryMethod === "email" && pendingFiles.length > 0) {
-        setIsUploadingDocs(true);
-        try {
-          const uploaded = await handleUploadFiles(pendingFiles.map((f) => f.file));
-          await uploadContractDocuments({
-            contractId: created.id,
-            documents: uploaded,
-          }).unwrap();
-          setPendingFiles([]);
-        } catch {
-          message.warning("Contract created but some documents failed to upload");
-        } finally {
-          setIsUploadingDocs(false);
-        }
-      }
-
+      setPendingFiles([]);
       message.success("Contract created and sent");
     } catch {
       message.error("Failed to create contract");
@@ -2467,6 +2734,7 @@ function CaseContractSection({ caseData }: { caseData: ICase }) {
       const uploaded = await handleUploadFiles(files);
       await uploadContractDocuments({
         contractId: contract.id,
+        caseId: caseData.id,
         documents: uploaded,
       }).unwrap();
       message.success(`${uploaded.length} document(s) uploaded`);
@@ -2480,7 +2748,11 @@ function CaseContractSection({ caseData }: { caseData: ICase }) {
   const handleDeleteDocument = async (docId: string) => {
     if (!contract) return;
     try {
-      await deleteContractDocument({ contractId: contract.id, documentId: docId }).unwrap();
+      await deleteContractDocument({
+        contractId: contract.id,
+        documentId: docId,
+        caseId: caseData.id,
+      }).unwrap();
       message.success("Document deleted");
     } catch {
       message.error("Failed to delete document");
@@ -2555,10 +2827,12 @@ function CaseContractSection({ caseData }: { caseData: ICase }) {
             </div>
           </div>
 
-          {/* Contract Document Upload — only for email delivery */}
-          {deliveryMethod === "email" && (
+          {/* Contract documents — required for the app, optional by email */}
+          {deliveryMethod && (
             <div>
-              <label className="text-xs text-slate-500 mb-1 block">Contract Documents</label>
+              <label className="text-xs text-slate-500 mb-1 block">
+                Contract Documents {requiresDocument ? "*" : "(optional)"}
+              </label>
               <Upload.Dragger
                 multiple
                 accept=".pdf,.jpg,.jpeg,.png,.webp"
@@ -2583,6 +2857,11 @@ function CaseContractSection({ caseData }: { caseData: ICase }) {
                 <p className="text-sm text-slate-600">Click or drag files to upload contract documents</p>
                 <p className="text-xs text-slate-400 mt-1">PDF, JPG, PNG, WebP (max 10 MB each)</p>
               </Upload.Dragger>
+              <p className="mt-2 text-xs text-slate-500">
+                {requiresDocument
+                  ? "The customer opens and downloads these files in the app, then uploads the signed copy back."
+                  : "The customer receives the contract by email. Attaching a copy here keeps it on record."}
+              </p>
             </div>
           )}
 
@@ -2591,7 +2870,7 @@ function CaseContractSection({ caseData }: { caseData: ICase }) {
               type="primary"
               onClick={handleCreate}
               loading={isCreating || isUploadingDocs}
-              disabled={!contractNumber.trim() || !deliveryMethod}
+              disabled={!canCreate}
               className="h-10 rounded-lg bg-[#7061ED]! hover:bg-[#5f52d4]! border-0! font-semibold px-6"
             >
               Create & Send Contract
@@ -2659,7 +2938,15 @@ function CaseContractSection({ caseData }: { caseData: ICase }) {
             </div>
           )}
           <div>
-            <span className="text-xs text-slate-400">Created</span>
+            <span className="text-xs text-slate-400">Estimated Annual Savings</span>
+            <p className="text-sm font-medium text-slate-700">
+              {contract.estimatedSavings != null
+                ? `€ ${Number(contract.estimatedSavings).toFixed(2)}`
+                : "—"}
+            </p>
+          </div>
+          <div>
+            <span className="text-xs text-slate-400">Sent On</span>
             <p className="text-sm font-medium text-slate-700">
               {new Date(contract.createdAt).toLocaleDateString("en-US")}
             </p>
@@ -2691,6 +2978,15 @@ function CaseContractSection({ caseData }: { caseData: ICase }) {
           </Upload>
         </div>
 
+        {contract.deliveryMethod === "app" && !hasContractFile && (
+          <div className="mb-4 rounded-lg bg-amber-50 border border-amber-200 p-3">
+            <p className="text-xs text-amber-700">
+              This contract is delivered through the app but has no contract file attached —
+              the customer has nothing to open or download. Upload it here.
+            </p>
+          </div>
+        )}
+
         {allDocuments.length === 0 ? (
           <p className="text-sm text-slate-400 text-center py-4">No documents uploaded yet</p>
         ) : (
@@ -2698,13 +2994,13 @@ function CaseContractSection({ caseData }: { caseData: ICase }) {
             <ContractDocumentListBRD
               documents={allDocuments}
               type="contract"
-              title="Contract Documents"
+              title="Contract sent to the customer"
               onDelete={handleDeleteDocument}
             />
             <ContractDocumentListBRD
               documents={allDocuments}
               type="signed"
-              title="Signed Documents (by customer)"
+              title="Contract signed by the customer"
             />
           </div>
         )}
@@ -2743,12 +3039,18 @@ function CaseContractSection({ caseData }: { caseData: ICase }) {
                 }
               }}
               loading={isUpdatingContract}
-              disabled={!deliveryMethod}
+              disabled={!deliveryMethod || (deliveryMethod === "app" && !hasContractFile)}
               className="h-9 rounded-lg bg-blue-600! hover:bg-blue-700! border-0! font-semibold"
             >
               Send Contract
             </Button>
           </div>
+          {deliveryMethod === "app" && !hasContractFile && (
+            <p className="mt-3 text-xs text-amber-700">
+              Upload the contract document above before sending it through the app — that
+              file is what the customer opens, downloads and signs.
+            </p>
+          )}
         </div>
       )}
 

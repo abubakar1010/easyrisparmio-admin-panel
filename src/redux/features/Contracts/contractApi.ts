@@ -31,6 +31,8 @@ export interface IContract {
   deliveryMethod: TContractDeliveryMethod | null;
   documentUrl: string | null;
   monthlyEstimate: number | null;
+  /** Yearly saving estimated on the offer the customer accepted. */
+  estimatedSavings: number | string | null;
   renewalDate: string | null;
   cancellationReason: string | null;
   createdAt: string;
@@ -39,6 +41,15 @@ export interface IContract {
   switchCase?: { id: string; caseNumber: string; status: string };
   user?: { id: string; firstName: string; lastName: string; email: string };
   offer?: { id: string; name: string };
+}
+
+/** Metadata returned by POST /upload, ready to be attached to a contract. */
+export interface IContractDocumentUpload {
+  fileUrl: string;
+  fileName: string;
+  originalName?: string;
+  mimeType?: string;
+  fileSizeBytes?: number;
 }
 
 export interface IContractQuery {
@@ -89,6 +100,11 @@ const contractApi = baseApi.injectEndpoints({
         podPdrNumber?: string;
         deliveryMethod?: TContractDeliveryMethod;
         documentUrl?: string;
+        /**
+         * Files are attached in the same request so the contract is stored with
+         * its document before the customer is notified about it.
+         */
+        documents?: IContractDocumentUpload[];
       }
     >({
       query: (data) => ({ url: "contracts", method: "POST", body: data }),
@@ -140,20 +156,28 @@ const contractApi = baseApi.injectEndpoints({
     getContractByCase: builder.query<IContract | null, string>({
       query: (caseId) => ({ url: `contracts/case/${caseId}`, method: "GET" }),
       transformResponse: (response: { success: boolean; data: IContract }) => response.data,
-      providesTags: (_r, _e, caseId) => [{ type: "contract" as const, id: `case-${caseId}` }],
+      // The contract carries its documents, so anything that touches the
+      // contract or its documents has to refresh this query too — tagging it by
+      // case alone let document uploads leave a stale, document-less contract
+      // on screen.
+      providesTags: (result, _e, caseId) => [
+        { type: "contract" as const, id: `case-${caseId}` },
+        ...(result
+          ? [
+              { type: "contract" as const, id: result.id },
+              { type: "contract" as const, id: `docs-${result.id}` },
+            ]
+          : []),
+      ],
     }),
 
     uploadContractDocuments: builder.mutation<
       IContractDocument[],
       {
         contractId: string;
-        documents: {
-          fileUrl: string;
-          fileName: string;
-          originalName?: string;
-          mimeType?: string;
-          fileSizeBytes?: number;
-        }[];
+        /** Pass it when known so the case-scoped contract query refetches too. */
+        caseId?: string;
+        documents: IContractDocumentUpload[];
       }
     >({
       query: ({ contractId, documents }) => ({
@@ -163,9 +187,11 @@ const contractApi = baseApi.injectEndpoints({
       }),
       transformResponse: (response: { success: boolean; data: IContractDocument[] }) =>
         response.data,
-      invalidatesTags: (_result, _error, { contractId }) => [
+      invalidatesTags: (_result, _error, { contractId, caseId }) => [
         { type: "contract", id: contractId },
+        { type: "contract", id: `docs-${contractId}` },
         { type: "contract", id: "LIST" },
+        ...(caseId ? [{ type: "contract" as const, id: `case-${caseId}` }] : []),
         { type: "case", id: "LIST" },
         { type: "activityLog", id: "LIST" },
       ],
@@ -178,15 +204,19 @@ const contractApi = baseApi.injectEndpoints({
       providesTags: (_r, _e, contractId) => [{ type: "contract" as const, id: `docs-${contractId}` }],
     }),
 
-    deleteContractDocument: builder.mutation<void, { contractId: string; documentId: string }>({
+    deleteContractDocument: builder.mutation<
+      void,
+      { contractId: string; documentId: string; caseId?: string }
+    >({
       query: ({ contractId, documentId }) => ({
         url: `contracts/${contractId}/documents/${documentId}`,
         method: "DELETE",
       }),
-      invalidatesTags: (_result, _error, { contractId }) => [
+      invalidatesTags: (_result, _error, { contractId, caseId }) => [
         { type: "contract", id: contractId },
         { type: "contract", id: `docs-${contractId}` },
         { type: "contract", id: "LIST" },
+        ...(caseId ? [{ type: "contract" as const, id: `case-${caseId}` }] : []),
         { type: "activityLog", id: "LIST" },
       ],
     }),
