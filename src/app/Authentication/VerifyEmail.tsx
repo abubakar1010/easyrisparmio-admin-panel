@@ -21,6 +21,7 @@ const VerifyEmail = () => {
   const location = useLocation();
   const state = location.state as LocationState | null;
 
+  const [form] = Form.useForm<{ otp: string }>();
   const [verifyOtp, { isLoading }] = useVerifyOtpMutation();
   const [resendOtp, { isLoading: isResending }] = useResendOtpMutation();
   const [cooldown, setCooldown] = useState(0);
@@ -45,12 +46,14 @@ const VerifyEmail = () => {
         payload.email = state.email;
       }
       await resendOtp(payload).unwrap();
+      // Wipe the previously typed code so the boxes start empty again
+      form.resetFields(["otp"]);
       successAlert({ message: t("auth.otp_resent") });
       setCooldown(60);
     } catch (err) {
       errorAlert({ error: err as { data?: { message?: string | string[] } } });
     }
-  }, [cooldown, state, resendOtp]);
+  }, [cooldown, state, resendOtp, form, t]);
 
   if (!state?.email && !state?.verificationToken) {
     return <Navigate to="/auth/sign-in" replace />;
@@ -85,6 +88,8 @@ const VerifyEmail = () => {
         navigate("/auth/sign-in");
       }
     } catch (err) {
+      // Wrong code — clear the boxes so the user can retype straight away
+      form.resetFields(["otp"]);
       errorAlert({ error: err as { data?: { message?: string | string[] } } });
     }
   };
@@ -106,6 +111,7 @@ const VerifyEmail = () => {
       )}
 
       <Form
+        form={form}
         name="verify_email_form"
         layout="vertical"
         onFinish={onFinish}
@@ -114,10 +120,22 @@ const VerifyEmail = () => {
       >
         <Form.Item
           name="otp"
-          rules={[{ required: true, message: t("auth.please_input_otp") }]}
+          rules={[
+            { required: true, message: t("auth.please_input_otp") },
+            { len: 6, message: t("auth.please_input_otp") },
+          ]}
           className="mb-6"
         >
-          <Input.OTP length={6} size="large" />
+          <Input.OTP
+            length={6}
+            size="large"
+            autoFocus
+            formatter={(value) => value.replace(/\D/g, "")}
+            onChange={(value) => {
+              // Auto-submit as soon as the full code is typed or pasted
+              if (value.length === 6) form.submit();
+            }}
+          />
         </Form.Item>
 
         <div className="mb-6 text-center">
