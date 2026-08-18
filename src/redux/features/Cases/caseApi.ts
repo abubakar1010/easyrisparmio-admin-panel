@@ -5,6 +5,25 @@ export interface ICaseUser {
   firstName: string;
   lastName: string;
   email: string;
+  phone?: string | null;
+  codiceFiscale?: string | null;
+}
+
+/** The bill the case was opened from, as returned by `GET /cases/:id`. */
+export interface ICaseBill {
+  id: string;
+  billType: string;
+  totalAmount: number | null;
+  podNumber?: string | null;
+  pdrNumber?: string | null;
+  /** Supplier name as read off the bill by OCR — no supplier record required. */
+  supplierName?: string | null;
+  supplyAddress?: string | null;
+  customerName?: string | null;
+  codiceFiscale?: string | null;
+  partitaIva?: string | null;
+  contractNumber?: string | null;
+  meterNumber?: string | null;
 }
 
 export interface ICaseDocument {
@@ -56,16 +75,64 @@ export interface ICase {
   fromSupplierId: string | null;
   toSupplierId: string | null;
   meterId: string | null;
+
+  // ── Addresses ──
+  // Supply, residential and shipping all carry the same five fields, so every
+  // address reads the same way.
+
+  /** Where the energy is delivered — taken from the bill, confirmed by the user. */
+  supplyStreet: string | null;
+  supplyStreetNumber: string | null;
+  supplyCity: string | null;
+  supplyPostalCode: string | null;
+  supplyProvince: string | null;
+
+  residentialSameAsSupply: boolean;
+  residentialStreet: string | null;
+  residentialStreetNumber: string | null;
+  residentialCity: string | null;
+  residentialPostalCode: string | null;
+  residentialProvince: string | null;
+
+  /** Only meaningful when `invoiceDelivery` is `paper`. */
+  shippingSameAsSupply: boolean;
+  shippingStreet: string | null;
+  shippingStreetNumber: string | null;
+  shippingCity: string | null;
+  shippingPostalCode: string | null;
+  shippingProvince: string | null;
+
+  // ── Payment & invoicing ──
+  paymentMethod: string | null;
+  invoiceDelivery: string | null;
+  /** Where digital invoices go — defaults to the account email. */
+  invoiceEmail: string | null;
+  iban: string | null;
+  ibanHolderFirstName: string | null;
+  ibanHolderLastName: string | null;
+  ibanHolderTaxCode: string | null;
+
+  // ── Activation ──
+  // Contract signing happens outside the app; the admin enters both dates when
+  // moving the case to "In Activation".
+  /** When the admin handed the contract over for signing. */
+  contractSentAt?: string | null;
+  /** When the new supply goes live. */
+  activationDate?: string | null;
+  /** When the new supply contract expires. */
+  expiryDate?: string | null;
+
   createdAt: string;
   updatedAt: string;
   user?: ICaseUser;
   assignedAgent?: ICaseUser | null;
   selectedOffer?: { id: string; name: string; supplier?: { id: string; name: string } };
-  bill?: { id: string; billType: string; totalAmount: number | null; podNumber?: string | null; pdrNumber?: string | null };
+  bill?: ICaseBill;
   fromSupplier?: { id: string; name: string } | null;
   toSupplier?: { id: string; name: string } | null;
   documents?: ICaseDocument[];
-  contract?: { id: string; contractNumber: string; status: string; deliveryMethod?: string | null; documentUrl?: string | null; signedDocumentUrl?: string | null; signedAt?: string | null; activationDate?: string | null; expiryDate?: string | null; createdAt?: string } | null;
+  /** Yearly saving quoted on the offer the customer accepted. */
+  estimatedSavings?: number | null;
   events?: ICaseEvent[];
 }
 
@@ -85,6 +152,9 @@ export interface IUpdateCase {
   notes?: string;
   internalNotes?: string;
   assignedAgentId?: string;
+  /** `YYYY-MM-DD`. Correcting the dates an admin entered at activation. */
+  activationDate?: string;
+  expiryDate?: string;
 }
 
 interface IPaginatedResponse<T> {

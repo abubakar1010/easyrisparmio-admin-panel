@@ -1,6 +1,6 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback } from "react";
 import { App, Button, Input, InputNumber, Spin, Empty, Tag, Select, Table, Upload, Tooltip, DatePicker, Modal, message } from "antd";
-import type { Dayjs } from "dayjs";
+import dayjs, { type Dayjs } from "dayjs";
 import type { ColumnsType } from "antd/es/table";
 import {
   FiArrowLeft,
@@ -42,21 +42,13 @@ import {
 import { PAYMENT_METHOD_LABELS } from "../../redux/features/Offers/offerApi";
 import {
   useGetCaseByIdQuery,
+  useUpdateCaseMutation,
   useVerifyDocumentMutation,
   useUploadCaseDocumentMutation,
   type ICase,
   type ICaseEvent,
   type ICaseDocument,
 } from "../../redux/features/Cases/caseApi";
-import {
-  useGetContractByCaseQuery,
-  useCreateContractMutation,
-  useUpdateContractMutation,
-  useUploadContractDocumentsMutation,
-  useDeleteContractDocumentMutation,
-  type IContractDocument,
-  type TContractDeliveryMethod,
-} from "../../redux/features/Contracts/contractApi";
 import { useAppSelector } from "../../redux/hooks";
 import { server_url, server_origin } from "../../config";
 import EditBillModal from "./EditBillModal";
@@ -73,7 +65,7 @@ const pipelineStatusOrder = [
   "uploaded", "analyzing", "analyzed",
   "verification_review", "verification_required", "verified",
   "offer_sent", "offer_accepted",
-  "contract_sent", "contract_signed", "contract_review", "contract_verification_required", "contract_verified",
+  "contract_sent",
   "awaiting_activation", "activated",
 ];
 
@@ -81,7 +73,7 @@ const stepConfig = [
   { label: "Upload & Analysis", statuses: ["pending_email", "uploaded", "analyzing", "analyzed"] },
   { label: "Verification", statuses: ["verification_review", "verification_required", "verified"] },
   { label: "Offers", statuses: ["offer_sent", "offer_accepted"] },
-  { label: "Contract", statuses: ["contract_sent", "contract_signed", "contract_review", "contract_verification_required", "contract_verified"] },
+  { label: "Contract", statuses: ["contract_sent"] },
   { label: "In Activation", statuses: ["awaiting_activation"] },
   { label: "Activated", statuses: ["activated"] },
 ];
@@ -98,10 +90,6 @@ const statusLabel: Record<string, string> = {
   offer_sent: "Offer Sent",
   offer_accepted: "Offer Accepted",
   contract_sent: "Contract Sent",
-  contract_signed: "Contract Signed",
-  contract_review: "Contract Review",
-  contract_verification_required: "Contract Verification Required",
-  contract_verified: "Contract Verified",
   awaiting_activation: "In Activation",
   activated: "Activated",
   cancelled: "Cancelled",
@@ -119,10 +107,6 @@ const statusTagColor: Record<string, string> = {
   offer_sent: "cyan",
   offer_accepted: "purple",
   contract_sent: "gold",
-  contract_signed: "orange",
-  contract_review: "gold",
-  contract_verification_required: "volcano",
-  contract_verified: "green",
   awaiting_activation: "processing",
   activated: "green",
   cancelled: "default",
@@ -139,16 +123,7 @@ const statusGroups: { label: string; statuses: string[] }[] = [
   { label: "Upload & Analysis", statuses: ["uploaded", "analyzing", "analyzed"] },
   { label: "Verification", statuses: ["verification_review", "verification_required", "verified"] },
   { label: "Offers", statuses: ["offer_sent", "offer_accepted"] },
-  {
-    label: "Contract",
-    statuses: [
-      "contract_sent",
-      "contract_signed",
-      "contract_review",
-      "contract_verification_required",
-      "contract_verified",
-    ],
-  },
+  { label: "Contract", statuses: ["contract_sent"] },
   { label: "Activation", statuses: ["awaiting_activation", "activated"] },
   { label: "Other", statuses: ["cancelled"] },
 ];
@@ -160,7 +135,14 @@ const statusGroups: { label: string; statuses: string[] }[] = [
 const systemOnlyStatuses = ["pending_email", "error"];
 
 /** Statuses that carry a message to the customer and open the request modal. */
-const statusesRequiringMessage = ["verification_required", "contract_verification_required"];
+const statusesRequiringMessage = ["verification_required"];
+
+/**
+ * Statuses that cannot be set without the activation and expiry dates, and so
+ * open the dates modal instead of transitioning straight away. The server
+ * enforces the same rule.
+ */
+const statusesRequiringDates = ["awaiting_activation"];
 
 const statusDotClass: Record<string, string> = {
   pending_email: "bg-purple-400",
@@ -174,10 +156,6 @@ const statusDotClass: Record<string, string> = {
   offer_sent: "bg-cyan-400",
   offer_accepted: "bg-purple-400",
   contract_sent: "bg-amber-500",
-  contract_signed: "bg-orange-500",
-  contract_review: "bg-amber-400",
-  contract_verification_required: "bg-red-400",
-  contract_verified: "bg-emerald-500",
   awaiting_activation: "bg-blue-500",
   activated: "bg-emerald-600",
   cancelled: "bg-slate-400",
@@ -215,6 +193,20 @@ const fmtDate = (val: string | null | undefined) => {
     return new Date(val).toLocaleDateString("en-US", {
       month: "2-digit",
       day: "2-digit",
+      year: "numeric",
+    });
+  } catch {
+    return val;
+  }
+};
+
+/** Italian date format — what the admins and the customers both read. */
+const fmtDateIt = (val: string | null | undefined) => {
+  if (!val) return "—";
+  try {
+    return new Date(val).toLocaleDateString("it-IT", {
+      day: "2-digit",
+      month: "2-digit",
       year: "numeric",
     });
   } catch {
@@ -322,6 +314,101 @@ function CaseStatusSelect({
   );
 }
 
+/* ── Contextual admin actions ────────────────────────────── */
+
+/** The statuses that have something for the admin to do right now. */
+const statusesWithActions = [
+  "verification_review",
+  "verified",
+  "offer_accepted",
+  "contract_sent",
+  "awaiting_activation",
+];
+
+interface CaseActionsPanelProps {
+  billStatus: string;
+  isTransitioning: boolean;
+  onTransition: (targetStatus: string) => void;
+  onRequestCorrections: () => void;
+  onMoveToActivation: () => void;
+  onGoToOffers: () => void;
+}
+
+/**
+ * The next step, offered as a button. Rendered on both the Overview and the
+ * Bill Data tab — it lives here rather than inline so the two can never drift.
+ */
+function CaseActionsPanel({
+  billStatus,
+  isTransitioning,
+  onTransition,
+  onRequestCorrections,
+  onMoveToActivation,
+  onGoToOffers,
+}: CaseActionsPanelProps) {
+  if (!statusesWithActions.includes(billStatus)) return null;
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 p-5">
+      <h3 className="text-sm font-bold text-slate-700 mb-4">Actions</h3>
+      <div className="flex flex-wrap gap-3">
+        {billStatus === "verification_review" && (
+          <>
+            <Button
+              type="primary"
+              icon={<FiCheck />}
+              loading={isTransitioning}
+              onClick={() => onTransition("verified")}
+              className="bg-emerald-500 hover:bg-emerald-600 border-0"
+            >
+              Approve — Mark Verified
+            </Button>
+            <Button danger icon={<FiSend />} onClick={onRequestCorrections}>
+              Request Corrections
+            </Button>
+          </>
+        )}
+        {billStatus === "verified" && (
+          <Button type="primary" icon={<FiSend />} onClick={onGoToOffers}>
+            Send Offers
+          </Button>
+        )}
+        {billStatus === "offer_accepted" && (
+          <Button
+            type="primary"
+            icon={<FiSend />}
+            loading={isTransitioning}
+            onClick={() => onTransition("contract_sent")}
+          >
+            Send Contract to Customer
+          </Button>
+        )}
+        {billStatus === "contract_sent" && (
+          <Button
+            type="primary"
+            icon={<FiCheckCircle />}
+            loading={isTransitioning}
+            onClick={onMoveToActivation}
+          >
+            Move to In Activation
+          </Button>
+        )}
+        {billStatus === "awaiting_activation" && (
+          <Button
+            type="primary"
+            icon={<FiCheckCircle />}
+            loading={isTransitioning}
+            onClick={() => onTransition("activated")}
+            className="bg-emerald-500 hover:bg-emerald-600 border-0"
+          >
+            Activate Utility
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ── Tab definitions ─────────────────────────────────────── */
 
 const tabKeys = [
@@ -354,16 +441,21 @@ const BillRequestDetailView = () => {
   const [savingsOverrides, setSavingsOverrides] = useState<Record<string, number>>({});
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [showVerificationModal, setShowVerificationModal] = useState(false);
-  const [showContractVerificationModal, setShowContractVerificationModal] = useState(false);
   const [verificationMessage, setVerificationMessage] = useState("");
   const [verificationEditOpen, setVerificationEditOpen] = useState(false);
+  const [showActivationModal, setShowActivationModal] = useState(false);
+  const [activationDate, setActivationDate] = useState<Dayjs | null>(null);
+  const [expiryDate, setExpiryDate] = useState<Dayjs | null>(null);
 
-  const handleTransition = async (targetStatus: string) => {
+  const handleTransition = async (
+    targetStatus: string,
+    dates?: { activationDate: string; expiryDate: string },
+  ) => {
     if (!bill) return;
     const previousStatus = bill.status;
     setIsTransitioning(true);
     try {
-      await transitionBillStatus({ billId: bill.id, targetStatus }).unwrap();
+      await transitionBillStatus({ billId: bill.id, targetStatus, ...dates }).unwrap();
       const movedBack = getStatusDirection(previousStatus, targetStatus) === "backward";
       message.success(
         `${movedBack ? "Status moved back to" : "Status updated to"} "${
@@ -380,25 +472,43 @@ const BillRequestDetailView = () => {
 
   /**
    * Applies a status chosen from the dropdown. Any status can be picked, in any
-   * order. The two verification statuses carry an admin-written message to the
-   * customer, so they open the request modal instead of applying immediately.
+   * order — except the two that cannot be applied on their own: a verification
+   * request needs a message for the customer, and In Activation needs the dates
+   * the supplier gave us. Both open a modal instead.
    */
   const handleStatusSelect = (targetStatus: string) => {
     if (!bill || targetStatus === bill.status) return;
 
     if (statusesRequiringMessage.includes(targetStatus)) {
-      if (targetStatus === "verification_required") {
-        setShowVerificationModal(true);
-      } else {
-        setShowContractVerificationModal(true);
-      }
+      setShowVerificationModal(true);
+      return;
+    }
+
+    if (statusesRequiringDates.includes(targetStatus)) {
+      openActivationModal();
       return;
     }
 
     handleTransition(targetStatus);
   };
 
-  const handleSendVerificationRequest = async (isContract = false) => {
+  /** Pre-fills with whatever the case already carries, so a re-run is an edit. */
+  const openActivationModal = () => {
+    setActivationDate(activeCase?.activationDate ? dayjs(activeCase.activationDate) : null);
+    setExpiryDate(activeCase?.expiryDate ? dayjs(activeCase.expiryDate) : null);
+    setShowActivationModal(true);
+  };
+
+  const handleMoveToActivation = async () => {
+    if (!activationDate || !expiryDate) return;
+    await handleTransition("awaiting_activation", {
+      activationDate: activationDate.format("YYYY-MM-DD"),
+      expiryDate: expiryDate.format("YYYY-MM-DD"),
+    });
+    setShowActivationModal(false);
+  };
+
+  const handleSendVerificationRequest = async () => {
     if (!bill) return;
     if (!verificationMessage.trim()) {
       message.warning("Please enter a message");
@@ -408,12 +518,11 @@ const BillRequestDetailView = () => {
     try {
       await transitionBillStatus({
         billId: bill.id,
-        targetStatus: isContract ? "contract_verification_required" : "verification_required",
+        targetStatus: "verification_required",
         message: verificationMessage,
       }).unwrap();
       message.success("Verification request sent");
       setShowVerificationModal(false);
-      setShowContractVerificationModal(false);
       setVerificationMessage("");
       refetch();
     } catch (err: any) {
@@ -507,107 +616,24 @@ const BillRequestDetailView = () => {
                 {bill.status === "verification_review" && "Review the extracted bill data. Approve or request corrections from the user."}
                 {bill.status === "verified" && "Bill data verified. You can now send offers to the user."}
                 {bill.status === "offer_sent" && "Offers have been sent. Waiting for the user to select an offer."}
-                {bill.status === "offer_accepted" && "User has accepted an offer. Create and send the contract."}
-                {bill.status === "contract_sent" && "Contract sent to user. Waiting for signed contract."}
-                {bill.status === "contract_signed" && "User signed the contract. It's now in review."}
-                {bill.status === "contract_review" && "Review the signed contract. Approve or request corrections."}
-                {bill.status === "contract_verified" && "Contract approved. Move to in activation."}
+                {bill.status === "offer_accepted" && "User has accepted an offer. Send them the contract."}
+                {bill.status === "contract_sent" && "The customer is signing with the supplier. Move to In Activation once the supplier confirms."}
                 {bill.status === "awaiting_activation" && "Utility is in activation. Mark as activated when ready."}
                 {bill.status === "activated" && "Utility is activated and live."}
                 {bill.status === "analyzing" && "Bill is being analyzed by the system."}
                 {bill.status === "analyzed" && "Analysis complete. Moving to verification review."}
                 {bill.status === "verification_required" && "Waiting for user to provide requested information."}
-                {bill.status === "contract_verification_required" && "Waiting for user to re-submit corrected contract."}
               </p>
             </div>
 
-            {/* Contextual Admin Actions */}
-            {["verification_review", "verified", "offer_accepted", "contract_review", "contract_verified", "awaiting_activation"].includes(bill.status) && (
-              <div className="bg-white rounded-xl border border-slate-200 p-5">
-                <h3 className="text-sm font-bold text-slate-700 mb-4">Actions</h3>
-                <div className="flex flex-wrap gap-3">
-                  {bill.status === "verification_review" && (
-                    <>
-                      <Button
-                        type="primary"
-                        icon={<FiCheck />}
-                        loading={isTransitioning}
-                        onClick={() => handleTransition("verified")}
-                        className="bg-emerald-500 hover:bg-emerald-600 border-0"
-                      >
-                        Approve — Mark Verified
-                      </Button>
-                      <Button
-                        danger
-                        icon={<FiSend />}
-                        onClick={() => setShowVerificationModal(true)}
-                      >
-                        Request Corrections
-                      </Button>
-                    </>
-                  )}
-                  {bill.status === "verified" && (
-                    <Button
-                      type="primary"
-                      icon={<FiSend />}
-                      onClick={() => setActiveTab("available_offers")}
-                    >
-                      Send Offers
-                    </Button>
-                  )}
-                  {bill.status === "offer_accepted" && (
-                    <Button
-                      type="primary"
-                      icon={<FiSend />}
-                      onClick={() => setActiveTab("case_details")}
-                    >
-                      Create & Send Contract
-                    </Button>
-                  )}
-                  {bill.status === "contract_review" && (
-                    <>
-                      <Button
-                        type="primary"
-                        icon={<FiCheck />}
-                        loading={isTransitioning}
-                        onClick={() => handleTransition("contract_verified")}
-                        className="bg-emerald-500 hover:bg-emerald-600 border-0"
-                      >
-                        Approve Contract
-                      </Button>
-                      <Button
-                        danger
-                        icon={<FiSend />}
-                        onClick={() => setShowContractVerificationModal(true)}
-                      >
-                        Request Re-submission
-                      </Button>
-                    </>
-                  )}
-                  {bill.status === "contract_verified" && (
-                    <Button
-                      type="primary"
-                      icon={<FiCheckCircle />}
-                      loading={isTransitioning}
-                      onClick={() => handleTransition("awaiting_activation")}
-                    >
-                      Move to In Activation
-                    </Button>
-                  )}
-                  {bill.status === "awaiting_activation" && (
-                    <Button
-                      type="primary"
-                      icon={<FiCheckCircle />}
-                      loading={isTransitioning}
-                      onClick={() => handleTransition("activated")}
-                      className="bg-emerald-500 hover:bg-emerald-600 border-0"
-                    >
-                      Activate Utility
-                    </Button>
-                  )}
-                </div>
-              </div>
-            )}
+            <CaseActionsPanel
+              billStatus={bill.status}
+              isTransitioning={isTransitioning}
+              onTransition={handleTransition}
+              onRequestCorrections={() => setShowVerificationModal(true)}
+              onMoveToActivation={openActivationModal}
+              onGoToOffers={() => setActiveTab("available_offers")}
+            />
 
             {/* Activated success banner */}
             {bill.status === "activated" && (
@@ -667,9 +693,9 @@ const BillRequestDetailView = () => {
             bill={bill}
             isTransitioning={isTransitioning}
             handleTransition={handleTransition}
-            setShowVerificationModal={setShowVerificationModal}
-            setShowContractVerificationModal={setShowContractVerificationModal}
-            setActiveTab={setActiveTab}
+            onRequestCorrections={() => setShowVerificationModal(true)}
+            onMoveToActivation={openActivationModal}
+            onGoToOffers={() => setActiveTab("available_offers")}
           />
         );
       case "verification":
@@ -701,6 +727,13 @@ const BillRequestDetailView = () => {
                   <div className="flex items-center justify-between px-5 py-3 bg-slate-50 border-b border-slate-200">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-semibold text-slate-500">Round {idx + 1}</span>
+                      {/* Contract requests are no longer created, but old rounds
+                          are still in this list — say which kind each one was. */}
+                      {v.type === "contract" && (
+                        <Tag color="purple" className="rounded-full! border-0! text-xs!">
+                          SIGNED CONTRACT
+                        </Tag>
+                      )}
                       <Tag color={v.status === "pending" ? "orange" : v.status === "submitted" ? "blue" : "green"} className="rounded-full! border-0! text-xs!">
                         {v.status === "pending" ? "AWAITING USER" : v.status === "submitted" ? "USER RESPONDED" : "RESOLVED"}
                       </Tag>
@@ -929,7 +962,7 @@ const BillRequestDetailView = () => {
         title="Request Verification from User"
         open={showVerificationModal}
         onCancel={() => { setShowVerificationModal(false); setVerificationMessage(""); }}
-        onOk={() => handleSendVerificationRequest(false)}
+        onOk={handleSendVerificationRequest}
         confirmLoading={isTransitioning}
         okText="Send Request"
       >
@@ -950,29 +983,50 @@ const BillRequestDetailView = () => {
         </div>
       </Modal>
 
-      {/* Contract Verification Request Modal */}
+      {/* Move to In Activation — the dates come from the supplier, so they are
+          collected here rather than stamped automatically. */}
       <Modal
-        title="Request Contract Re-submission"
-        open={showContractVerificationModal}
-        onCancel={() => { setShowContractVerificationModal(false); setVerificationMessage(""); }}
-        onOk={() => handleSendVerificationRequest(true)}
+        title="Move to In Activation"
+        open={showActivationModal}
+        onCancel={() => setShowActivationModal(false)}
+        onOk={handleMoveToActivation}
         confirmLoading={isTransitioning}
-        okText="Send Request"
+        okText="Move to In Activation"
+        okButtonProps={{ disabled: !activationDate || !expiryDate }}
       >
         <div className="space-y-4 mt-4">
+          <p className="text-sm text-slate-500">
+            The customer has signed with the supplier. Enter the dates the supplier confirmed —
+            the customer sees them on their utility straight away.
+          </p>
           <div>
-            <label className="text-sm font-medium text-slate-700">Message to User *</label>
-            <Input.TextArea
-              rows={4}
-              value={verificationMessage}
-              onChange={(e) => setVerificationMessage(e.target.value)}
-              placeholder="Explain what needs to be corrected in the contract..."
+            <label className="text-sm font-medium text-slate-700 block mb-1">
+              Activation Date *
+            </label>
+            <DatePicker
+              className="w-full"
+              value={activationDate}
+              onChange={(d) => {
+                setActivationDate(d);
+                // An expiry that is no longer after the activation date would be
+                // rejected by the server; drop it rather than submit it.
+                if (d && expiryDate && !expiryDate.isAfter(d, "day")) setExpiryDate(null);
+              }}
+              format="DD/MM/YYYY"
+              placeholder="Select activation date"
             />
           </div>
-          <p className="text-xs text-slate-400">
-            The user will receive this message and can respond by uploading a document or taking a
-            photo from the app.
-          </p>
+          <div>
+            <label className="text-sm font-medium text-slate-700 block mb-1">Expiry Date *</label>
+            <DatePicker
+              className="w-full"
+              value={expiryDate}
+              onChange={setExpiryDate}
+              disabledDate={(d) => !!activationDate && !d.isAfter(activationDate, "day")}
+              format="DD/MM/YYYY"
+              placeholder="Select expiry date"
+            />
+          </div>
         </div>
       </Modal>
     </div>
@@ -1276,16 +1330,16 @@ function BillDataTab({
   bill,
   isTransitioning,
   handleTransition,
-  setShowVerificationModal,
-  setShowContractVerificationModal,
-  setActiveTab,
+  onRequestCorrections,
+  onMoveToActivation,
+  onGoToOffers,
 }: {
   bill: IBill;
   isTransitioning: boolean;
   handleTransition: (status: string) => void;
-  setShowVerificationModal: (v: boolean) => void;
-  setShowContractVerificationModal: (v: boolean) => void;
-  setActiveTab: (tab: string) => void;
+  onRequestCorrections: () => void;
+  onMoveToActivation: () => void;
+  onGoToOffers: () => void;
 }) {
   const isElectricity = bill.billType === "electricity";
   const token = useAppSelector((state) => state.auth.token);
@@ -1532,93 +1586,14 @@ function BillDataTab({
         </Button>
       </div>
 
-      {/* Actions section */}
-      {["verification_review", "verified", "offer_accepted", "contract_review", "contract_verified", "awaiting_activation"].includes(bill.status) && (
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
-          <h3 className="text-sm font-bold text-slate-700 mb-4">Actions</h3>
-          <div className="flex flex-wrap gap-3">
-            {bill.status === "verification_review" && (
-              <>
-                <Button
-                  type="primary"
-                  icon={<FiCheck />}
-                  loading={isTransitioning}
-                  onClick={() => handleTransition("verified")}
-                  className="bg-emerald-500 hover:bg-emerald-600 border-0"
-                >
-                  Approve — Mark Verified
-                </Button>
-                <Button
-                  danger
-                  icon={<FiSend />}
-                  onClick={() => setShowVerificationModal(true)}
-                >
-                  Request Corrections
-                </Button>
-              </>
-            )}
-            {bill.status === "verified" && (
-              <Button
-                type="primary"
-                icon={<FiSend />}
-                onClick={() => setActiveTab("available_offers")}
-              >
-                Send Offers
-              </Button>
-            )}
-            {bill.status === "offer_accepted" && (
-              <Button
-                type="primary"
-                icon={<FiSend />}
-                onClick={() => setActiveTab("case_details")}
-              >
-                Create & Send Contract
-              </Button>
-            )}
-            {bill.status === "contract_review" && (
-              <>
-                <Button
-                  type="primary"
-                  icon={<FiCheck />}
-                  loading={isTransitioning}
-                  onClick={() => handleTransition("contract_verified")}
-                  className="bg-emerald-500 hover:bg-emerald-600 border-0"
-                >
-                  Approve Contract
-                </Button>
-                <Button
-                  danger
-                  icon={<FiSend />}
-                  onClick={() => setShowContractVerificationModal(true)}
-                >
-                  Request Re-submission
-                </Button>
-              </>
-            )}
-            {bill.status === "contract_verified" && (
-              <Button
-                type="primary"
-                icon={<FiCheckCircle />}
-                loading={isTransitioning}
-                onClick={() => handleTransition("awaiting_activation")}
-              >
-                Move to In Activation
-              </Button>
-            )}
-            {bill.status === "awaiting_activation" && (
-              <Button
-                type="primary"
-                icon={<FiCheckCircle />}
-                loading={isTransitioning}
-                onClick={() => handleTransition("activated")}
-                className="bg-emerald-500 hover:bg-emerald-600 border-0"
-              >
-                Activate Utility
-              </Button>
-            )}
-          </div>
-        </div>
-      )}
+      <CaseActionsPanel
+        billStatus={bill.status}
+        isTransitioning={isTransitioning}
+        onTransition={handleTransition}
+        onRequestCorrections={onRequestCorrections}
+        onMoveToActivation={onMoveToActivation}
+        onGoToOffers={onGoToOffers}
+      />
 
       {/* Activated success banner */}
       {bill.status === "activated" && (
@@ -1718,7 +1693,7 @@ const caseSubTabs: { key: string; label: string; counted?: boolean }[] = [
   { key: "timeline", label: "Timeline" },
   { key: "case_data", label: "Case Data" },
   { key: "documents", label: "Documents", counted: true },
-  { key: "contract", label: "Contract" },
+  { key: "activation", label: "Activation" },
 ];
 
 function CaseDetailsTab({
@@ -1778,8 +1753,8 @@ function CaseDetailsTab({
         return <CaseDataSection caseData={caseData} customerName={customerName} />;
       case "documents":
         return <CaseDocumentsSection documents={caseData.documents || []} caseId={caseData.id} />;
-      case "contract":
-        return <CaseContractSection caseData={caseData} />;
+      case "activation":
+        return <CaseActivationSection caseData={caseData} billStatus={billStatus} />;
       default:
         return null;
     }
@@ -2498,616 +2473,152 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
   );
 }
 
-/* ── Case Contract Section ─────────────────────────────────── */
+/* ── Case Activation Section ───────────────────────────────── */
 
-const contractStatusLabel: Record<string, string> = {
-  draft: "Draft",
-  sent: "Sent",
-  signed: "Signed",
-  active: "Active",
-  expired: "Expired",
-  cancelled: "Cancelled",
-};
-
-const contractStatusColor: Record<string, string> = {
-  draft: "default",
-  sent: "processing",
-  signed: "orange",
-  active: "green",
-  expired: "red",
-  cancelled: "default",
-};
-
-const deliveryMethodLabel: Record<string, string> = {
-  app: "Via App",
-  email: "Via Email",
-};
-
-const deliveryMethodOptions = [
-  { value: "app", label: "Via App" },
-  { value: "email", label: "Via Email" },
-];
-
-function ContractDocumentListBRD({
-  documents,
-  type,
-  title,
-  onDelete,
+/**
+ * Everything the case records about the switch itself.
+ *
+ * Contracts are signed with the supplier, outside this application, so there is
+ * no document to send, review or store here — only the two dates the supplier
+ * confirmed, which the customer sees on their utility. They stay editable
+ * because suppliers move activation dates around.
+ */
+function CaseActivationSection({
+  caseData,
+  billStatus,
 }: {
-  documents: IContractDocument[];
-  type: "contract" | "signed";
-  title: string;
-  onDelete?: (docId: string) => void;
+  caseData: ICase;
+  billStatus: string;
 }) {
-  const filtered = documents.filter((d) => d.documentType === type);
-  if (filtered.length === 0) return null;
-
-  const borderClass = type === "contract" ? "border-slate-100" : "border-emerald-100";
-  const hoverClass = type === "contract" ? "hover:bg-slate-50" : "hover:bg-emerald-50";
-  const iconBgClass = type === "contract" ? "bg-blue-50 text-blue-500" : "bg-emerald-50 text-emerald-500";
-
-  return (
-    <div className="space-y-2">
-      <h5 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{title}</h5>
-      {filtered.map((doc) => {
-        const href = doc.fileUrl.startsWith("http")
-          ? doc.fileUrl
-          : `${server_origin}/${doc.fileUrl.replace(/^\//, "")}`;
-        return (
-          <div
-            key={doc.id}
-            className={`flex items-center gap-3 rounded-lg border ${borderClass} p-3 ${hoverClass} transition-colors`}
-          >
-            <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${iconBgClass}`}>
-              {type === "contract" ? (
-                <LuDownload className="h-4 w-4" />
-              ) : (
-                <LuFileCheck2 className="h-4 w-4" />
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-slate-700 truncate">
-                {doc.originalName || doc.fileName}
-              </p>
-              <p className="text-xs text-slate-400">
-                {doc.mimeType === "application/pdf" ? "PDF" : doc.mimeType?.startsWith("image/") ? "Image" : "Document"}
-                {doc.fileSizeBytes ? ` · ${(Number(doc.fileSizeBytes) / 1024).toFixed(0)} KB` : ""}
-              </p>
-            </div>
-            <a
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-slate-100 text-slate-500 hover:text-slate-700"
-              title="View / Download"
-            >
-              <LuDownload className="h-4 w-4" />
-            </a>
-            {/* Legacy entries are synthesized from the contract's own URL — there
-                is no document row on the server to delete. */}
-            {onDelete && !doc.id.startsWith("legacy-") && (
-              <button
-                onClick={() => onDelete(doc.id)}
-                className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-red-50 text-slate-400 hover:text-red-500"
-                title="Delete"
-              >
-                <FiFileText className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function CaseContractSection({ caseData }: { caseData: ICase }) {
-  const { data: contract, isLoading, error } = useGetContractByCaseQuery(caseData.id);
-  const [createContract, { isLoading: isCreating }] = useCreateContractMutation();
-  const [updateContract, { isLoading: isUpdatingContract }] = useUpdateContractMutation();
-  const [uploadContractDocuments] = useUploadContractDocumentsMutation();
-  const [deleteContractDocument] = useDeleteContractDocumentMutation();
-
-  const [contractNumber, setContractNumber] = useState("");
-  const [podPdrNumber, setPodPdrNumber] = useState(
-    caseData.bill?.podNumber || caseData.bill?.pdrNumber || ""
-  );
-  const [deliveryMethod, setDeliveryMethod] = useState<TContractDeliveryMethod | undefined>(undefined);
+  const { message } = App.useApp();
+  const [updateCase, { isLoading: isSaving }] = useUpdateCaseMutation();
+  const [isEditing, setIsEditing] = useState(false);
   const [activationDate, setActivationDate] = useState<Dayjs | null>(null);
   const [expiryDate, setExpiryDate] = useState<Dayjs | null>(null);
-  const [pendingFiles, setPendingFiles] = useState<{ file: File; uploading: boolean }[]>([]);
-  const [isUploadingDocs, setIsUploadingDocs] = useState(false);
 
-  const hasContract = contract && !error;
+  const isLiveUtility = billStatus === "awaiting_activation" || billStatus === "activated";
 
-  // Contracts created before documents were stored individually only carry the
-  // legacy `documentUrl`. The app falls back to it, so the dashboard has to show
-  // it as well — otherwise a contract the customer can open looks empty here.
-  const allDocuments: IContractDocument[] = useMemo(() => {
-    if (!contract) return [];
-    const stored = contract.documents || [];
-    const extras: IContractDocument[] = [];
-    const legacyEntry = (url: string, type: "contract" | "signed"): IContractDocument => ({
-      id: `legacy-${type}`,
-      contractId: contract.id,
-      documentType: type,
-      fileUrl: url,
-      fileName: url.split("/").pop() || url,
-      originalName: null,
-      mimeType: null,
-      fileSizeBytes: null,
-      uploadedById: "",
-      createdAt: contract.createdAt,
-    });
-
-    if (contract.documentUrl && !stored.some((d) => d.documentType === "contract")) {
-      extras.push(legacyEntry(contract.documentUrl, "contract"));
-    }
-    if (contract.signedDocumentUrl && !stored.some((d) => d.documentType === "signed")) {
-      extras.push(legacyEntry(contract.signedDocumentUrl, "signed"));
-    }
-    return [...stored, ...extras];
-  }, [contract]);
-
-  const hasContractFile = allDocuments.some((d) => d.documentType === "contract");
-
-  const handleUploadFiles = async (files: File[]): Promise<{ fileUrl: string; fileName: string; originalName: string; mimeType: string; fileSizeBytes: number }[]> => {
-    const uploaded: { fileUrl: string; fileName: string; originalName: string; mimeType: string; fileSizeBytes: number }[] = [];
-    const token = localStorage.getItem("auth_token");
-    for (const file of files) {
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await fetch(`${server_origin}/api/v1/upload`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-      });
-      const result = await res.json();
-      const data = result?.data || result;
-      if (res.ok && data?.url) {
-        uploaded.push({
-          fileUrl: data.url,
-          fileName: data.filename,
-          originalName: data.originalName || file.name,
-          mimeType: data.mimeType || file.type,
-          fileSizeBytes: data.size || file.size,
-        });
-      } else {
-        throw new Error(`Failed to upload ${file.name}`);
-      }
-    }
-    return uploaded;
+  const startEditing = () => {
+    setActivationDate(caseData.activationDate ? dayjs(caseData.activationDate) : null);
+    setExpiryDate(caseData.expiryDate ? dayjs(caseData.expiryDate) : null);
+    setIsEditing(true);
   };
 
-  const handleDeliveryMethodChange = (value: TContractDeliveryMethod) => {
-    setDeliveryMethod(value);
-  };
-
-  // Delivering through the app means the customer downloads the contract from
-  // there, so the file has to travel with it. By email it is optional — useful
-  // only as a copy on record.
-  const requiresDocument = deliveryMethod === "app";
-  const canCreate =
-    !!contractNumber.trim() &&
-    !!deliveryMethod &&
-    (!requiresDocument || pendingFiles.length > 0);
-
-  const handleCreate = async () => {
-    if (!canCreate || !deliveryMethod) return;
-
-    // Upload the files first and attach them to the create call: the contract is
-    // sent — and the customer notified — the moment it is created, so it must
-    // never come into existence without the document it announces.
-    let uploaded: Awaited<ReturnType<typeof handleUploadFiles>> = [];
-    if (pendingFiles.length > 0) {
-      setIsUploadingDocs(true);
-      try {
-        uploaded = await handleUploadFiles(pendingFiles.map((f) => f.file));
-      } catch {
-        message.error("Failed to upload the contract documents — the contract was not sent");
-        return;
-      } finally {
-        setIsUploadingDocs(false);
-      }
-    }
-
+  const handleSave = async () => {
+    if (!activationDate || !expiryDate) return;
     try {
-      await createContract({
-        caseId: caseData.id,
-        contractNumber: contractNumber.trim(),
-        podPdrNumber: podPdrNumber || undefined,
-        deliveryMethod,
-        documents: uploaded.length > 0 ? uploaded : undefined,
+      await updateCase({
+        id: caseData.id,
+        data: {
+          activationDate: activationDate.format("YYYY-MM-DD"),
+          expiryDate: expiryDate.format("YYYY-MM-DD"),
+        },
       }).unwrap();
-
-      setPendingFiles([]);
-      message.success("Contract created and sent");
-    } catch {
-      message.error("Failed to create contract");
+      message.success("Activation dates updated");
+      setIsEditing(false);
+    } catch (err: any) {
+      message.error(err?.data?.message?.[0] || err?.data?.message || "Failed to save dates");
     }
   };
 
-  const handleAddDocuments = async (files: File[]) => {
-    if (!contract) return;
-    setIsUploadingDocs(true);
-    try {
-      const uploaded = await handleUploadFiles(files);
-      await uploadContractDocuments({
-        contractId: contract.id,
-        caseId: caseData.id,
-        documents: uploaded,
-      }).unwrap();
-      message.success(`${uploaded.length} document(s) uploaded`);
-    } catch {
-      message.error("Failed to upload documents");
-    } finally {
-      setIsUploadingDocs(false);
-    }
-  };
-
-  const handleDeleteDocument = async (docId: string) => {
-    if (!contract) return;
-    try {
-      await deleteContractDocument({
-        contractId: contract.id,
-        documentId: docId,
-        caseId: caseData.id,
-      }).unwrap();
-      message.success("Document deleted");
-    } catch {
-      message.error("Failed to delete document");
-    }
-  };
-
-  const handleUpdateStatus = async (newStatus: string) => {
-    if (!contract) return;
-    try {
-      const data: Record<string, string> = { status: newStatus };
-      if (newStatus === "active") {
-        if (activationDate) data.activationDate = activationDate.format("YYYY-MM-DD");
-        if (expiryDate) data.expiryDate = expiryDate.format("YYYY-MM-DD");
-      }
-      await updateContract({ id: contract.id, data }).unwrap();
-      message.success(`Contract status updated to ${contractStatusLabel[newStatus]}`);
-    } catch {
-      message.error("Failed to update contract status");
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Spin size="large" />
-      </div>
-    );
-  }
-
-  // No contract yet — show creation form
-  if (!hasContract) {
-    return (
-      <div className="space-y-6">
-        <div className="rounded-xl bg-amber-50 border border-amber-200 p-4">
-          <h4 className="text-sm font-bold text-amber-800">Contract Needed</h4>
-          <p className="text-sm text-amber-600 mt-1">
-            This case requires a contract to be created and sent to the customer.
-          </p>
-        </div>
-
-        <div className="space-y-4">
-          <h4 className="text-sm font-semibold text-slate-800">Create & Send Contract</h4>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Contract Number *</label>
-              <Input
-                value={contractNumber}
-                onChange={(e) => setContractNumber(e.target.value)}
-                placeholder="CTR-2026-001234"
-                className="rounded-lg"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">POD/PDR Number</label>
-              <Input
-                value={podPdrNumber}
-                onChange={(e) => setPodPdrNumber(e.target.value)}
-                placeholder="IT001E98765432"
-                className="rounded-lg"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Delivery Method *</label>
-              <Select
-                value={deliveryMethod}
-                onChange={handleDeliveryMethodChange}
-                placeholder="Select delivery method"
-                className="w-full"
-                options={deliveryMethodOptions}
-              />
-            </div>
-          </div>
-
-          {/* Contract documents — required for the app, optional by email */}
-          {deliveryMethod && (
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">
-                Contract Documents {requiresDocument ? "*" : "(optional)"}
-              </label>
-              <Upload.Dragger
-                multiple
-                accept=".pdf,.jpg,.jpeg,.png,.webp"
-                beforeUpload={(file) => {
-                  setPendingFiles((prev) => [...prev, { file, uploading: false }]);
-                  return false;
-                }}
-                fileList={pendingFiles.map((f, i) => ({
-                  uid: String(i),
-                  name: f.file.name,
-                  status: "done" as const,
-                  size: f.file.size,
-                }))}
-                onRemove={(file) => {
-                  setPendingFiles((prev) => prev.filter((_, i) => String(i) !== file.uid));
-                }}
-                className="rounded-lg!"
-              >
-                <p className="text-slate-400">
-                  <LuUpload className="mx-auto h-8 w-8 mb-2" />
-                </p>
-                <p className="text-sm text-slate-600">Click or drag files to upload contract documents</p>
-                <p className="text-xs text-slate-400 mt-1">PDF, JPG, PNG, WebP (max 10 MB each)</p>
-              </Upload.Dragger>
-              <p className="mt-2 text-xs text-slate-500">
-                {requiresDocument
-                  ? "The customer opens and downloads these files in the app, then uploads the signed copy back."
-                  : "The customer receives the contract by email. Attaching a copy here keeps it on record."}
-              </p>
-            </div>
-          )}
-
-          <div className="flex justify-end pt-2">
-            <Button
-              type="primary"
-              onClick={handleCreate}
-              loading={isCreating || isUploadingDocs}
-              disabled={!canCreate}
-              className="h-10 rounded-lg bg-[#7061ED]! hover:bg-[#5f52d4]! border-0! font-semibold px-6"
-            >
-              Create & Send Contract
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Contract exists — show details and actions
   return (
     <div className="space-y-6">
-      {/* Contract Details */}
       <div className="rounded-xl border border-slate-200 p-5">
         <div className="flex items-center justify-between mb-4">
-          <h4 className="text-sm font-bold text-slate-800">Contract Details</h4>
-          <Tag
-            color={contractStatusColor[contract.status] || "default"}
-            className="m-0! rounded-md! border-0! px-2.5! py-0.5! text-xs! font-semibold!"
-          >
-            {contractStatusLabel[contract.status] || contract.status}
-          </Tag>
+          <h4 className="text-sm font-bold text-slate-800">Activation</h4>
+          {isLiveUtility && !isEditing && (
+            <Button size="small" icon={<FiEdit2 className="h-3 w-3" />} onClick={startEditing}>
+              Edit dates
+            </Button>
+          )}
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <div>
-            <span className="text-xs text-slate-400">Contract Number</span>
-            <p className="text-sm font-medium text-slate-700">{contract.contractNumber}</p>
+        {isEditing ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className="text-xs text-slate-500 mb-1 block">Activation Date *</label>
+                <DatePicker
+                  className="w-full"
+                  value={activationDate}
+                  onChange={(d) => {
+                    setActivationDate(d);
+                    if (d && expiryDate && !expiryDate.isAfter(d, "day")) setExpiryDate(null);
+                  }}
+                  format="DD/MM/YYYY"
+                  placeholder="Select activation date"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-slate-500 mb-1 block">Expiry Date *</label>
+                <DatePicker
+                  className="w-full"
+                  value={expiryDate}
+                  onChange={setExpiryDate}
+                  disabledDate={(d) => !!activationDate && !d.isAfter(activationDate, "day")}
+                  format="DD/MM/YYYY"
+                  placeholder="Select expiry date"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                type="primary"
+                loading={isSaving}
+                disabled={!activationDate || !expiryDate}
+                onClick={handleSave}
+              >
+                Save
+              </Button>
+              <Button onClick={() => setIsEditing(false)}>Cancel</Button>
+            </div>
           </div>
-          <div>
-            <span className="text-xs text-slate-400">POD/PDR</span>
-            <p className="text-sm font-medium text-slate-700">{contract.podPdrNumber || "—"}</p>
-          </div>
-          <div>
-            <span className="text-xs text-slate-400">Delivery Method</span>
-            <p className="text-sm font-medium text-slate-700">
-              {contract.deliveryMethod
-                ? deliveryMethodLabel[contract.deliveryMethod] || contract.deliveryMethod
-                : "—"}
-            </p>
-          </div>
-          {contract.activationDate && (
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div>
+              <span className="text-xs text-slate-400">Contract Sent On</span>
+              <p className="text-sm font-medium text-slate-700">
+                {fmtDateIt(caseData.contractSentAt)}
+              </p>
+            </div>
             <div>
               <span className="text-xs text-slate-400">Activation Date</span>
               <p className="text-sm font-medium text-slate-700">
-                {new Date(contract.activationDate).toLocaleDateString("en-US")}
+                {fmtDateIt(caseData.activationDate)}
               </p>
             </div>
-          )}
-          {contract.expiryDate && (
             <div>
               <span className="text-xs text-slate-400">Expiry Date</span>
               <p className="text-sm font-medium text-slate-700">
-                {new Date(contract.expiryDate).toLocaleDateString("en-US")}
+                {fmtDateIt(caseData.expiryDate)}
               </p>
             </div>
-          )}
-          {contract.signedAt && (
-            <div>
-              <span className="text-xs text-slate-400">Signed At</span>
-              <p className="text-sm font-medium text-slate-700">
-                {new Date(contract.signedAt).toLocaleDateString("en-US")}
-              </p>
-            </div>
-          )}
-          <div>
-            <span className="text-xs text-slate-400">Estimated Annual Savings</span>
-            <p className="text-sm font-medium text-slate-700">
-              {contract.estimatedSavings != null
-                ? `€ ${Number(contract.estimatedSavings).toFixed(2)}`
-                : "—"}
-            </p>
-          </div>
-          <div>
-            <span className="text-xs text-slate-400">Sent On</span>
-            <p className="text-sm font-medium text-slate-700">
-              {new Date(contract.createdAt).toLocaleDateString("en-US")}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Documents */}
-      <div className="rounded-xl border border-slate-200 p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h4 className="text-sm font-bold text-slate-800">Documents</h4>
-          <Upload
-            multiple
-            accept=".pdf,.jpg,.jpeg,.png,.webp"
-            showUploadList={false}
-            beforeUpload={(_, fileList) => {
-              handleAddDocuments(fileList as unknown as File[]);
-              return false;
-            }}
-          >
-            <Button
-              size="small"
-              loading={isUploadingDocs}
-              className="rounded-lg border-slate-200 text-slate-600"
-              icon={<LuUpload className="h-3.5 w-3.5" />}
-            >
-              Upload Documents
-            </Button>
-          </Upload>
-        </div>
-
-        {contract.deliveryMethod === "app" && !hasContractFile && (
-          <div className="mb-4 rounded-lg bg-amber-50 border border-amber-200 p-3">
-            <p className="text-xs text-amber-700">
-              This contract is delivered through the app but has no contract file attached —
-              the customer has nothing to open or download. Upload it here.
-            </p>
-          </div>
-        )}
-
-        {allDocuments.length === 0 ? (
-          <p className="text-sm text-slate-400 text-center py-4">No documents uploaded yet</p>
-        ) : (
-          <div className="space-y-4">
-            <ContractDocumentListBRD
-              documents={allDocuments}
-              type="contract"
-              title="Contract sent to the customer"
-              onDelete={handleDeleteDocument}
-            />
-            <ContractDocumentListBRD
-              documents={allDocuments}
-              type="signed"
-              title="Contract signed by the customer"
-            />
           </div>
         )}
       </div>
 
-      {/* Actions based on status */}
-      {contract.status === "draft" && (
-        <div className="rounded-xl bg-blue-50 border border-blue-200 p-4">
-          <h4 className="text-sm font-bold text-blue-800 mb-2">Send Contract</h4>
-          <p className="text-sm text-blue-600 mb-3">
-            The contract is in draft. Choose a delivery method and send it to the customer.
-          </p>
-          <div className="flex items-center gap-3">
-            <Select
-              value={deliveryMethod}
-              onChange={handleDeliveryMethodChange}
-              placeholder="Delivery method"
-              className="w-48"
-              options={deliveryMethodOptions}
-            />
-            <Button
-              type="primary"
-              onClick={async () => {
-                if (!deliveryMethod) return;
-                try {
-                  await updateContract({
-                    id: contract.id,
-                    data: {
-                      status: "sent",
-                      deliveryMethod,
-                    },
-                  }).unwrap();
-                  message.success("Contract sent to customer");
-                } catch {
-                  message.error("Failed to send contract");
-                }
-              }}
-              loading={isUpdatingContract}
-              disabled={!deliveryMethod || (deliveryMethod === "app" && !hasContractFile)}
-              className="h-9 rounded-lg bg-blue-600! hover:bg-blue-700! border-0! font-semibold"
-            >
-              Send Contract
-            </Button>
-          </div>
-          {deliveryMethod === "app" && !hasContractFile && (
-            <p className="mt-3 text-xs text-amber-700">
-              Upload the contract document above before sending it through the app — that
-              file is what the customer opens, downloads and signs.
-            </p>
-          )}
-        </div>
-      )}
-
-      {contract.status === "sent" && (
+      {billStatus === "contract_sent" && (
         <div className="rounded-xl bg-amber-50 border border-amber-200 p-4">
-          <h4 className="text-sm font-bold text-amber-800">Waiting for Signature</h4>
+          <h4 className="text-sm font-bold text-amber-800">Out for signature</h4>
           <p className="text-sm text-amber-600 mt-1">
-            Contract has been sent via{" "}
-            {contract.deliveryMethod
-              ? deliveryMethodLabel[contract.deliveryMethod] || contract.deliveryMethod
-              : "unknown method"}
-            .
-            Waiting for the customer to sign and upload the signed document.
+            The customer is signing with the supplier. Nothing happens in the app until the
+            supplier confirms — then move the case to In Activation with the two dates they gave
+            you.
           </p>
         </div>
       )}
 
-      {contract.status === "signed" && (
-        <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-4">
-          <h4 className="text-sm font-bold text-emerald-800 mb-2">Confirm & Activate</h4>
-          <p className="text-sm text-emerald-600 mb-3">
-            The customer has signed the contract. Review the signed document and activate the utility.
+      {billStatus === "awaiting_activation" && (
+        <div className="rounded-xl bg-blue-50 border border-blue-200 p-4">
+          <h4 className="text-sm font-bold text-blue-800">Switch in progress</h4>
+          <p className="text-sm text-blue-600 mt-1">
+            The customer already sees this utility in My Utilities, with the activation date above.
+            Mark it activated once the supply is live.
           </p>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 mb-3">
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Activation Date</label>
-              <DatePicker
-                value={activationDate}
-                onChange={(date) => setActivationDate(date)}
-                format="DD/MM/YYYY"
-                className="w-full rounded-lg"
-                placeholder="Select activation date"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Expiry Date</label>
-              <DatePicker
-                value={expiryDate}
-                onChange={(date) => setExpiryDate(date)}
-                format="DD/MM/YYYY"
-                className="w-full rounded-lg"
-                placeholder="Select expiry date"
-              />
-            </div>
-          </div>
-          <Button
-            type="primary"
-            onClick={() => handleUpdateStatus("active")}
-            loading={isUpdatingContract}
-            className="h-10 rounded-lg bg-emerald-600! hover:bg-emerald-700! border-0! font-semibold px-6"
-          >
-            Confirm & Activate Utility
-          </Button>
         </div>
       )}
 
-      {contract.status === "active" && (
+      {billStatus === "activated" && (
         <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-4">
           <div className="flex items-center gap-2">
             <FiCheckCircle className="h-5 w-5 text-emerald-600" />

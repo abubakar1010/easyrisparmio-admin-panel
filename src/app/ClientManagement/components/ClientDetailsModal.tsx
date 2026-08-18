@@ -27,18 +27,20 @@ const statusTranslationKeys: Record<string, string> = {
 };
 
 const billStatusColors: Record<string, string> = {
-  analyzed: "green",
+  pending_email: "gold",
   uploaded: "blue",
   analyzing: "processing",
+  analyzed: "green",
   error: "red",
+  verification_review: "gold",
+  verification_required: "orange",
+  verified: "green",
   offer_sent: "purple",
-  case_created: "cyan",
+  offer_accepted: "cyan",
+  contract_sent: "geekblue",
+  awaiting_activation: "processing",
   activated: "green",
   cancelled: "default",
-  pending_email: "gold",
-  verification_required: "orange",
-  contract_sent: "geekblue",
-  contract_signed: "lime",
 };
 
 const caseStatusColors: Record<string, string> = {
@@ -46,7 +48,7 @@ const caseStatusColors: Record<string, string> = {
   in_progress: "processing",
   documents_pending: "orange",
   contract_sent: "geekblue",
-  contract_signed: "lime",
+  awaiting_activation: "processing",
   activated: "green",
   rejected: "red",
   cancelled: "default",

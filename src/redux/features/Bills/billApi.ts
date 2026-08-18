@@ -47,6 +47,12 @@ export interface IBillVerification {
   id: string;
   billId: string;
   adminMessage: string;
+  /**
+   * What was sent back to the customer. Only `bill` is created now — contracts
+   * are signed with the supplier, outside the app. `contract` survives so
+   * historic rows still render.
+   */
+  type: "bill" | "contract";
   status: "pending" | "submitted" | "resolved";
   userMessage: string | null;
   files: IBillFile[];
@@ -69,7 +75,7 @@ export interface IBill {
   id: string;
   fileUrl: string | null;
   billType: "electricity" | "gas";
-  status: "pending_email" | "uploaded" | "analyzing" | "analyzed" | "error" | "verification_review" | "verification_required" | "verified" | "offer_sent" | "offer_accepted" | "contract_sent" | "contract_signed" | "contract_review" | "contract_verification_required" | "contract_verified" | "awaiting_activation" | "activated" | "cancelled";
+  status: "pending_email" | "uploaded" | "analyzing" | "analyzed" | "error" | "verification_review" | "verification_required" | "verified" | "offer_sent" | "offer_accepted" | "contract_sent" | "awaiting_activation" | "activated" | "cancelled";
   source?: "upload" | "email";
   podNumber: string | null;
   pdrNumber: string | null;
@@ -105,6 +111,9 @@ export interface IBill {
     caseType: string;
     priority: string;
     selectedOfferId: string;
+    contractSentAt?: string | null;
+    activationDate?: string | null;
+    expiryDate?: string | null;
     createdAt: string;
   }> | null;
 }
@@ -279,7 +288,14 @@ const billApi = baseApi.injectEndpoints({
 
     transitionBillStatus: builder.mutation<
       IBill,
-      { billId: string; targetStatus: string; message?: string }
+      {
+        billId: string;
+        targetStatus: string;
+        message?: string;
+        /** Both required when moving to `awaiting_activation`. `YYYY-MM-DD`. */
+        activationDate?: string;
+        expiryDate?: string;
+      }
     >({
       query: ({ billId, ...body }) => ({
         url: `bills/admin/${billId}/transition`,
@@ -287,17 +303,16 @@ const billApi = baseApi.injectEndpoints({
         body,
       }),
       transformResponse: (response: { success: boolean; data: IBill }) => response.data,
-      // A status change also rewrites the case timeline and can flip the
-      // contract between signed/active, so those caches are invalidated too.
+      // A status change also rewrites the case timeline and can set or clear the
+      // activation dates, so the case caches are invalidated too.
       invalidatesTags: (result, _e, { billId }) => [
         { type: "bill", id: billId },
         { type: "bill", id: "LIST" },
         { type: "case", id: "LIST" },
-        ...(result?.switchCases ?? []).flatMap((c) => [
-          { type: "case" as const, id: c.id },
-          { type: "contract" as const, id: `case-${c.id}` },
-        ]),
-        { type: "contract", id: "LIST" },
+        ...(result?.switchCases ?? []).map((c) => ({
+          type: "case" as const,
+          id: c.id,
+        })),
         { type: "dashboard", id: "ADMIN" },
         { type: "activityLog", id: "LIST" },
       ],
