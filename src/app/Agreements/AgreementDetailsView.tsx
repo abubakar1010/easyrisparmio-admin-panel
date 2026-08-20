@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button, Spin, Empty, Tag, Modal, Switch, message } from "antd";
-import { FiArrowLeft, FiEdit2, FiExternalLink, FiTag, FiTrash2 } from "react-icons/fi";
+import { FiArrowLeft, FiEdit2, FiExternalLink, FiMapPin, FiTag, FiTrash2 } from "react-icons/fi";
 import { LuCalendarDays, LuUsers, LuArrowUpDown } from "react-icons/lu";
 import { useNavigate, useParams } from "react-router";
 import dayjs from "dayjs";
@@ -72,6 +72,9 @@ const AgreementDetailsView = () => {
     termsUrl: agreement.termsUrl || undefined,
     address: agreement.address || undefined,
     discountDescription: agreement.discountDescription || undefined,
+    discountHeadline: agreement.discountHeadline || undefined,
+    discountCode: agreement.discountCode || undefined,
+    howToUse: agreement.howToUse ?? [],
     description: agreement.description || undefined,
     validFrom: agreement.validFrom ? dayjs(agreement.validFrom) : undefined,
     validUntil: agreement.validUntil ? dayjs(agreement.validUntil) : undefined,
@@ -140,6 +143,21 @@ const AgreementDetailsView = () => {
           {/* Discount Card */}
           <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
             <h3 className="mb-4 text-base font-semibold text-slate-800">Discount Details</h3>
+            {(agreement.discountHeadline || agreement.discountCode) && (
+              <div className="mb-4 flex flex-wrap items-center gap-3">
+                {agreement.discountHeadline && (
+                  <span className="rounded-xl bg-emerald-500 px-4 py-2 text-xl font-bold text-white">
+                    {agreement.discountHeadline}
+                  </span>
+                )}
+                {agreement.discountCode && (
+                  <span className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-2 font-mono text-base font-bold tracking-widest text-slate-700">
+                    {agreement.discountCode}
+                  </span>
+                )}
+              </div>
+            )}
+
             {agreement.discountDescription ? (
               <div className="flex items-start gap-3 rounded-xl bg-emerald-50 p-4">
                 <FiTag className="mt-0.5 h-5 w-5 shrink-0 text-emerald-500" />
@@ -161,6 +179,55 @@ const AgreementDetailsView = () => {
                   View Terms & Conditions
                 </a>
               </div>
+            )}
+          </div>
+
+          {/* Location Card */}
+          <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
+            <h3 className="mb-4 text-base font-semibold text-slate-800">Location</h3>
+            {agreement.address ? (
+              <div className="flex items-start gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-50">
+                  <FiMapPin className="h-4 w-4 text-indigo-500" />
+                </div>
+                <div>
+                  <p className="text-sm text-slate-700">{agreement.address}</p>
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(agreement.address)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-1 inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700"
+                  >
+                    <FiExternalLink className="h-4 w-4" />
+                    Open in Google Maps
+                  </a>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-slate-400">
+                No address provided — the location card is hidden in the app.
+              </p>
+            )}
+          </div>
+
+          {/* How to Use Card */}
+          <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
+            <h3 className="mb-4 text-base font-semibold text-slate-800">How to Use</h3>
+            {agreement.howToUse && agreement.howToUse.length > 0 ? (
+              <ol className="space-y-3">
+                {agreement.howToUse.map((step, index) => (
+                  <li key={index} className="flex items-start gap-3">
+                    <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-500 text-xs font-bold text-white">
+                      {index + 1}
+                    </span>
+                    <p className="text-sm leading-relaxed text-slate-700">{step}</p>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className="text-sm text-slate-400">
+                No steps set — the app falls back to its generic instructions.
+              </p>
             )}
           </div>
 

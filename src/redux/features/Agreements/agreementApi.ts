@@ -7,6 +7,9 @@ export interface IAgreement {
   partnerName: string;
   partnerLogoUrl: string | null;
   discountDescription: string | null;
+  discountHeadline: string | null;
+  discountCode: string | null;
+  howToUse: string[] | null;
   termsUrl: string | null;
   address: string | null;
   isActive: boolean;
@@ -28,16 +31,19 @@ export interface IAgreementQuery {
 
 export interface ICreateAgreement {
   title: string;
-  description?: string;
+  description?: string | null;
   partnerName: string;
-  partnerLogoUrl?: string;
-  discountDescription?: string;
-  termsUrl?: string;
-  address?: string;
+  partnerLogoUrl?: string | null;
+  discountDescription?: string | null;
+  discountHeadline?: string | null;
+  discountCode?: string | null;
+  howToUse?: string[] | null;
+  termsUrl?: string | null;
+  address?: string | null;
   isActive?: boolean;
   targetAudience?: string;
   validFrom: string;
-  validUntil?: string;
+  validUntil?: string | null;
   sortOrder?: number;
 }
 
