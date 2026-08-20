@@ -52,7 +52,7 @@ import {
 import { useAppSelector } from "../../redux/hooks";
 import { server_url, server_origin } from "../../config";
 import EditBillModal from "./EditBillModal";
-import EditCaseAddressesModal from "./EditCaseAddressesModal";
+import EditCaseModal from "./EditCaseModal";
 import VerificationFileList from "./VerificationFileList";
 
 /* ── Status & Step Configuration ─────────────────────────── */
@@ -1968,7 +1968,7 @@ function CaseDataSection({
 }) {
   const bill = caseData.bill;
   const dash = (v: string | null | undefined) => (v && v.trim() ? v : "—");
-  const [editingAddresses, setEditingAddresses] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   const supply: CaseAddress = {
     street: caseData.supplyStreet,
@@ -2042,15 +2042,6 @@ function CaseDataSection({
     },
     {
       title: "Addresses",
-      action: (
-        <Button
-          size="small"
-          icon={<FiEdit2 className="h-3 w-3" />}
-          onClick={() => setEditingAddresses(true)}
-        >
-          Edit addresses
-        </Button>
-      ),
       rows: [
         { label: "Supply Address", value: supplyDisplay, wide: true, raw: true },
         {
@@ -2191,6 +2182,26 @@ function CaseDataSection({
 
   return (
     <div className="space-y-8">
+      {/* One button for the whole tab: every field below is corrected in the
+          same modal, so the admin never has to guess which section owns one. */}
+      <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+        <div>
+          <h3 className="text-sm font-bold text-slate-800">Case Data</h3>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Everything the switch is filed against. The supply point comes from the bill and is
+            corrected on the Bill Data tab.
+          </p>
+        </div>
+        <Button
+          type="primary"
+          size="small"
+          icon={<FiEdit2 className="h-3 w-3" />}
+          onClick={() => setEditing(true)}
+        >
+          Edit Case Data
+        </Button>
+      </div>
+
       {groups.map((g) => (
         <div key={g.title}>
           <div className="flex items-center justify-between mb-4">
@@ -2216,10 +2227,10 @@ function CaseDataSection({
         </div>
       ))}
 
-      <EditCaseAddressesModal
+      <EditCaseModal
         caseData={caseData}
-        open={editingAddresses}
-        onClose={() => setEditingAddresses(false)}
+        open={editing}
+        onClose={() => setEditing(false)}
       />
     </div>
   );

@@ -154,15 +154,22 @@ type ICaseAddressFields<P extends string> = {
   [K in `${P}${"Street" | "StreetNumber" | "City" | "PostalCode" | "Province"}`]?: string | null;
 };
 
+/**
+ * Every field of a case an admin can correct. All optional — only what changed
+ * is sent — and `null` clears a field the case is allowed to hold nothing in.
+ */
 export interface IUpdateCase
   extends ICaseAddressFields<"supply">,
     ICaseAddressFields<"residential">,
     ICaseAddressFields<"shipping"> {
   status?: string;
+  caseType?: string;
   priority?: string;
-  notes?: string;
-  internalNotes?: string;
+  notes?: string | null;
+  internalNotes?: string | null;
   assignedAgentId?: string;
+  /** Moves the destination supplier with it, server-side. */
+  selectedOfferId?: string;
   /** `YYYY-MM-DD`. Correcting the dates an admin entered at activation. */
   activationDate?: string;
   expiryDate?: string;
@@ -172,6 +179,17 @@ export interface IUpdateCase
    */
   residentialSameAsSupply?: boolean;
   shippingSameAsSupply?: boolean;
+
+  // ── Payment & invoicing ──
+  /** Must stay one the selected offer accepts, or the server refuses the edit. */
+  paymentMethod?: string | null;
+  invoiceDelivery?: string | null;
+  invoiceEmail?: string | null;
+  /** Stored without spaces and upper-cased by the server. */
+  iban?: string | null;
+  ibanHolderFirstName?: string | null;
+  ibanHolderLastName?: string | null;
+  ibanHolderTaxCode?: string | null;
 }
 
 interface IPaginatedResponse<T> {
