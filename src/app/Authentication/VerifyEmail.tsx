@@ -45,10 +45,15 @@ const VerifyEmail = () => {
       } else if (state.email) {
         payload.email = state.email;
       }
-      await resendOtp(payload).unwrap();
+      const result = await resendOtp(payload).unwrap();
       // Wipe the previously typed code so the boxes start empty again
       form.resetFields(["otp"]);
-      successAlert({ message: t("auth.otp_resent") });
+      // The server's own wording, which is deliberately conditional: an unknown
+      // address, a suspended account and a request inside the 60s cooldown all
+      // get the same reply, and none of them sent anything. Asserting "OTP has
+      // been resent successfully" over the top of that is a claim this screen
+      // has no way to stand behind.
+      successAlert({ message: result.message || t("auth.otp_resent") });
       setCooldown(60);
     } catch (err) {
       errorAlert({ error: err as { data?: { message?: string | string[] } } });
@@ -80,6 +85,16 @@ const VerifyEmail = () => {
       const result = await verifyOtp(payload).unwrap();
 
       if (state?.type === "password_reset") {
+        // Without a reset token there is nothing the next screen can do — the
+        // code has just been spent, so it cannot be replayed. Navigating anyway
+        // bounced straight back to forgot-password with no explanation.
+        if (!result.resetToken) {
+          form.resetFields(["otp"]);
+          errorAlert({
+            error: { data: { message: t("auth.otp_verification_failed") } },
+          });
+          return;
+        }
         navigate("/auth/reset-password", {
           state: { resetToken: result.resetToken },
         });

@@ -69,6 +69,7 @@
     "please_enter_valid_email": "Please enter a valid email!",
     "please_input_password": "Please input your Password!",
     "otp_resent": "OTP has been resent successfully",
+    "otp_verification_failed": "The code could not be verified. Please request a new one.",
     "please_input_otp": "Please input the OTP!",
     "set_your_password": "Set your password",
     "please_confirm_password": "Please confirm your password!",
