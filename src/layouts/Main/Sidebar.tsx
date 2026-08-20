@@ -8,6 +8,8 @@ import { routeLinkGenerators } from "../../lib/helpers/generateLink";
 import { useAppSelector, useAppDispatch } from "../../redux/hooks";
 import { logout } from "../../redux/features/Auth/authSlice";
 import { usePostLogoutMutation } from "../../redux/features/Auth/authApi";
+import { useRemovePushTokenMutation } from "../../redux/features/Notifications/notificationApi";
+import { clearStoredPushToken, getStoredPushToken } from "../../lib/webPush";
 import type { TUserRole } from "../../types/common.type";
 import { cn } from "../../utils/cn";
 import { dashboardItems } from "../../constants/router.constants";
@@ -40,6 +42,7 @@ const Sidebar = ({ mobileOpen = false, onMobileClose }: SidebarProps) => {
   const { t } = useTranslation();
   const { user, refreshToken } = useAppSelector((state) => state.auth);
   const [postLogout] = usePostLogoutMutation();
+  const [removePushToken] = useRemovePushTokenMutation();
   const [openNome, setOpenNome] = useState<{ name: string | null }>({
     name: null,
   });
@@ -65,6 +68,17 @@ const Sidebar = ({ mobileOpen = false, onMobileClose }: SidebarProps) => {
           } catch {
             // Server-side revocation failed — still clear local state
           }
+        }
+        // Release this browser's push token, otherwise the next admin to sign
+        // in on this machine inherits the previous one's desktop alerts.
+        const pushToken = getStoredPushToken();
+        if (pushToken) {
+          try {
+            await removePushToken(pushToken).unwrap();
+          } catch {
+            // Best-effort — the backend also drops tokens FCM rejects
+          }
+          clearStoredPushToken();
         }
         dispatch(logout());
         navigate("/auth/sign-in");

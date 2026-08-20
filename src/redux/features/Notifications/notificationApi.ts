@@ -77,7 +77,7 @@ interface IPaginatedResponse<T> {
   meta: { total: number; page: number; limit: number; totalPages: number };
 }
 
-const notificationApi = baseApi.injectEndpoints({
+export const notificationApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getNotifications: builder.query<IPaginatedResponse<INotification>, INotificationQuery | void>({
       query: (params) => {
