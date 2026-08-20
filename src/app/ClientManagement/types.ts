@@ -46,6 +46,8 @@ export interface IBusinessProfile {
   legalRepresentative: string | null;
   companyType: string | null;
   atecoCode: string | null;
+  /** Position the account holder occupies in the company. */
+  jobRole: string | null;
 }
 
 export interface IUserAddress {

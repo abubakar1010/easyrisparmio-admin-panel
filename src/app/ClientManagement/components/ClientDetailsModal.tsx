@@ -161,6 +161,41 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
     return new Date(dateStr).toLocaleDateString();
   };
 
+  // The company a business client acts for. Registration captures it and the
+  // edit form writes it, but the details view showed none of it — an admin had
+  // to open the form to read back a Partita IVA.
+  const renderBusinessBlock = () => {
+    const business = detail?.businessProfile;
+    if (!business) return null;
+
+    const rows: Array<[string, string | null | undefined]> = [
+      [t("client_management.company_name"), business.companyName],
+      [t("client_management.partita_iva"), business.partitaIva],
+      [t("client_management.job_role"), business.jobRole],
+      [t("client_management.pec_email"), business.pecEmail],
+      [t("client_management.legal_representative"), business.legalRepresentative],
+      [t("client_management.company_type"), business.companyType],
+      [t("client_management.ateco_code"), business.atecoCode],
+    ];
+
+    return (
+      <div className="sm:col-span-2">
+        <Divider className="my-1" />
+        <p className="mb-2 text-base font-semibold text-brand">{t("client_management.business_information")}</p>
+        <div className="grid gap-x-4 sm:grid-cols-2">
+          {rows
+            .filter(([, value]) => value)
+            .map(([label, value]) => (
+              <div key={label}>
+                <p className="text-sm text-owngray">{label}</p>
+                <p className="mb-2 text-[15px] font-semibold text-brand">{value}</p>
+              </div>
+            ))}
+        </div>
+      </div>
+    );
+  };
+
   const renderAnagraficaTab = () => (
     <div className="grid gap-4 sm:grid-cols-2">
       <div>
@@ -201,6 +236,7 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
             : "—"}
         </p>
       </div>
+      {renderBusinessBlock()}
     </div>
   );
 
