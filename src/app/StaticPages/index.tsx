@@ -1,28 +1,19 @@
-import { Button, Empty, Input, Modal, Select, Spin, Switch, Table, Tag, message } from "antd";
+import { Button, Empty, Input, Modal, Select, Spin, Switch, Table, Tag, Tooltip, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { FiEdit3, FiPlus, FiSearch, FiTrash2 } from "react-icons/fi";
+import { FiEdit3, FiPlus, FiSearch, FiTrash2, FiUsers } from "react-icons/fi";
 import { useState } from "react";
 import AddEditStaticPageModal from "./components/AddEditStaticPageModal";
+import LegalAcceptancesDrawer from "./components/LegalAcceptancesDrawer";
 import {
   useGetAdminStaticPagesQuery,
   useCreateStaticPageMutation,
   useUpdateStaticPageMutation,
   useDeleteStaticPageMutation,
   type IStaticPage,
+  type IStaticPagePayload,
 } from "../../redux/features/StaticPages/staticPagesApi";
 import { debounce } from "../../utils/debounce";
-
-const slugLabel: Record<string, string> = {
-  "privacy-policy": "Privacy Policy",
-  "terms-conditions": "Terms & Conditions",
-  "about-us": "About Us",
-};
-
-const slugColor: Record<string, string> = {
-  "privacy-policy": "blue",
-  "terms-conditions": "green",
-  "about-us": "purple",
-};
+import { audienceLabel, slugColor, slugLabel, slugOptions } from "./constants";
 
 const StaticPages = () => {
   const [page, setPage] = useState(1);
@@ -32,6 +23,7 @@ const StaticPages = () => {
   const [statusFilter, setStatusFilter] = useState<boolean | undefined>();
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedPage, setSelectedPage] = useState<IStaticPage | null>(null);
+  const [acceptancesFor, setAcceptancesFor] = useState<IStaticPage | null>(null);
 
   const { data: pagesData, isLoading, isFetching } = useGetAdminStaticPagesQuery({
     page,
@@ -64,17 +56,17 @@ const StaticPages = () => {
     setModalVisible(true);
   };
 
-  const handleSavePage = async (values: {
-    slug: string;
-    title: string;
-    content: string;
-    locale: string;
-    isActive: boolean;
-  }) => {
+  const handleSavePage = async (values: IStaticPagePayload) => {
     try {
       if (selectedPage) {
+        const bumped =
+          values.version !== undefined && values.version !== selectedPage.version;
         await updatePage({ id: selectedPage.id, data: values }).unwrap();
-        message.success("Page updated successfully");
+        message.success(
+          bumped
+            ? `Published v${values.version} — users will be asked to accept again`
+            : "Page updated successfully",
+        );
       } else {
         await createPage(values).unwrap();
         message.success("Page created successfully");
@@ -125,16 +117,16 @@ const StaticPages = () => {
       title: "TITLE",
       dataIndex: "title",
       key: "title",
-      width: 250,
+      width: 230,
       render: (value: string) => (
-        <span className="text-slate-700 font-medium text-sm truncate block max-w-[250px]">{value}</span>
+        <span className="text-slate-700 font-medium text-sm truncate block max-w-[230px]">{value}</span>
       ),
     },
     {
       title: "PAGE TYPE",
       dataIndex: "slug",
       key: "slug",
-      width: 180,
+      width: 200,
       render: (value: string) => (
         <Tag color={slugColor[value] || "default"} className="rounded-full border-0 px-3 py-0.5 text-xs font-semibold">
           {slugLabel[value] || value}
@@ -154,10 +146,66 @@ const StaticPages = () => {
       align: "center",
     },
     {
+      title: "VERSION",
+      key: "version",
+      width: 150,
+      render: (_: any, record: IStaticPage) =>
+        record.requiresAcceptance ? (
+          <div className="flex flex-col gap-0.5">
+            <Tag color="geekblue" className="w-fit rounded-full border-0 px-3 py-0.5 text-xs font-bold">
+              v{record.version}
+            </Tag>
+            <span className="text-[11px] text-slate-400">
+              {record.publishedAt
+                ? `published ${new Date(record.publishedAt).toLocaleDateString("it-IT")}`
+                : "not published"}
+            </span>
+          </div>
+        ) : (
+          <span className="text-xs text-slate-300">—</span>
+        ),
+    },
+    {
+      title: "APPLIES TO",
+      dataIndex: "audience",
+      key: "audience",
+      width: 130,
+      render: (value: string, record: IStaticPage) =>
+        record.requiresAcceptance ? (
+          <span className="text-xs font-semibold text-slate-500">
+            {audienceLabel[value] || value}
+          </span>
+        ) : (
+          <span className="text-xs text-slate-300">Informational</span>
+        ),
+    },
+    {
+      title: "ACCEPTED",
+      key: "acceptedCount",
+      width: 120,
+      align: "center",
+      render: (_: any, record: IStaticPage) =>
+        record.requiresAcceptance ? (
+          <Tooltip title={`Users who accepted v${record.version} — click to view the log`}>
+            <Button
+              type="text"
+              size="small"
+              onClick={() => setAcceptancesFor(record)}
+              className="flex items-center gap-1.5 text-slate-500 hover:text-[#8b85f6]"
+            >
+              <FiUsers className="h-3.5 w-3.5" />
+              <span className="text-xs font-bold">{record.acceptedCount ?? 0}</span>
+            </Button>
+          </Tooltip>
+        ) : (
+          <span className="text-xs text-slate-300">—</span>
+        ),
+    },
+    {
       title: "STATUS",
       dataIndex: "isActive",
       key: "isActive",
-      width: 120,
+      width: 100,
       render: (isActive: boolean, record: IStaticPage) => (
         <Switch
           checked={isActive}
@@ -172,7 +220,7 @@ const StaticPages = () => {
       title: "UPDATED",
       dataIndex: "updatedAt",
       key: "updatedAt",
-      width: 130,
+      width: 120,
       render: (value: string) => (
         <span className="text-xs text-slate-400">
           {value ? new Date(value).toLocaleDateString("it-IT") : "—"}
@@ -209,7 +257,9 @@ const StaticPages = () => {
       <div className="mb-4 flex flex-col gap-3 border-b border-cborder/45 pb-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Static Pages</h2>
-          <p className="text-sm text-slate-400 font-medium">Manage Privacy Policy, Terms & Conditions, and About Us content</p>
+          <p className="text-sm text-slate-400 font-medium">
+            Manage Privacy Policy, Terms &amp; Conditions, Business Terms and About Us content
+          </p>
         </div>
         <Button
           type="primary"
@@ -236,12 +286,9 @@ const StaticPages = () => {
             allowClear
             placeholder="Page Type"
             onChange={(v) => { setSlugFilter(v); setPage(1); }}
-            className="w-48 [&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-xl"
-          >
-            <Select.Option value="privacy-policy">Privacy Policy</Select.Option>
-            <Select.Option value="terms-conditions">Terms & Conditions</Select.Option>
-            <Select.Option value="about-us">About Us</Select.Option>
-          </Select>
+            options={slugOptions}
+            className="w-60 [&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-xl"
+          />
           <Select
             allowClear
             placeholder="Language"
@@ -279,7 +326,7 @@ const StaticPages = () => {
             columns={columns}
             dataSource={pages}
             loading={isFetching && !isLoading}
-            scroll={{ x: 900 }}
+            scroll={{ x: 1280 }}
             pagination={{
               current: page,
               pageSize: meta?.limit || 20,
@@ -299,6 +346,11 @@ const StaticPages = () => {
         onSave={handleSavePage}
         initialValues={selectedPage}
         isLoading={isCreating || isUpdating}
+      />
+
+      <LegalAcceptancesDrawer
+        page={acceptancesFor}
+        onClose={() => setAcceptancesFor(null)}
       />
     </div>
   );
