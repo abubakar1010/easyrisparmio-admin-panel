@@ -7,12 +7,48 @@ export interface INotificationUser {
   email: string;
 }
 
+/** Customer-facing types. An admin only sees these on the "sent" tab. */
+export const CUSTOMER_NOTIFICATION_TYPES = [
+  "bill_analyzed",
+  "bill_verification",
+  "bill_updated",
+  "offer_available",
+  "case_update",
+  "contract_status",
+  "contract_verification",
+  "activation_complete",
+  "referral_status",
+  "support_reply",
+  "general",
+] as const;
+
+/** Types the platform raises for admins. These fill the "received" tab. */
+export const ADMIN_NOTIFICATION_TYPES = [
+  "admin_user",
+  "admin_bill",
+  "admin_verification",
+  "admin_offer_accepted",
+  "admin_offer",
+  "admin_case",
+  "admin_document",
+  "admin_support",
+  "admin_referral",
+  "admin_system",
+] as const;
+
+export const NOTIFICATION_TYPES = [
+  ...ADMIN_NOTIFICATION_TYPES,
+  ...CUSTOMER_NOTIFICATION_TYPES,
+] as const;
+
+export type NotificationTypeValue = (typeof NOTIFICATION_TYPES)[number];
+
 export interface INotification {
   id: string;
   userId: string;
   title: string;
   body: string;
-  type: "bill_analyzed" | "bill_verification" | "offer_available" | "case_update" | "contract_status" | "contract_verification" | "activation_complete" | "referral_status" | "support_reply" | "general";
+  type: NotificationTypeValue;
   data: Record<string, unknown> | null;
   isRead: boolean;
   readAt: string | null;
@@ -77,6 +113,8 @@ const notificationApi = baseApi.injectEndpoints({
       invalidatesTags: (_r, _e, id) => [
         { type: "notification", id },
         { type: "notification", id: "COUNT" },
+        { type: "notification", id: "LIST" },
+        { type: "notification", id: "ADMIN_LIST" },
       ],
     }),
 
@@ -121,6 +159,20 @@ const notificationApi = baseApi.injectEndpoints({
           : [{ type: "notification" as const, id: "ADMIN_LIST" }],
     }),
 
+    registerPushToken: builder.mutation<
+      unknown,
+      { token: string; platform: "web" | "ios" | "android" }
+    >({
+      query: (body) => ({ url: "notifications/push-token", method: "POST", body }),
+    }),
+
+    removePushToken: builder.mutation<unknown, string>({
+      query: (token) => ({
+        url: `notifications/push-token/${token}`,
+        method: "DELETE",
+      }),
+    }),
+
     getNotificationById: builder.query<INotification, string>({
       query: (id) => ({ url: `notifications/admin/${id}`, method: "GET" }),
       transformResponse: (response: { success: boolean; data: INotification }) => response.data,
@@ -137,4 +189,6 @@ export const {
   useSendNotificationMutation,
   useGetAdminNotificationsQuery,
   useGetNotificationByIdQuery,
+  useRegisterPushTokenMutation,
+  useRemovePushTokenMutation,
 } = notificationApi;

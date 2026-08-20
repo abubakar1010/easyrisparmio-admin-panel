@@ -5,6 +5,8 @@ import {
   useMarkAsReadMutation,
   useMarkAllAsReadMutation,
   useGetNotificationByIdQuery,
+  ADMIN_NOTIFICATION_TYPES,
+  CUSTOMER_NOTIFICATION_TYPES,
   type INotification,
 } from "../../redux/features/Notifications/notificationApi";
 import { useState } from "react";
@@ -12,8 +14,21 @@ import { useTranslation } from "react-i18next";
 import SendNotificationModal from "./SendNotificationModal";
 
 const typeColor: Record<string, string> = {
+  // Admin-facing
+  admin_user: "geekblue",
+  admin_bill: "blue",
+  admin_verification: "orange",
+  admin_offer_accepted: "green",
+  admin_offer: "purple",
+  admin_case: "gold",
+  admin_document: "cyan",
+  admin_support: "volcano",
+  admin_referral: "magenta",
+  admin_system: "default",
+  // Customer-facing
   bill_analyzed: "blue",
   bill_verification: "orange",
+  bill_updated: "blue",
   offer_available: "green",
   case_update: "gold",
   contract_status: "purple",
@@ -24,18 +39,6 @@ const typeColor: Record<string, string> = {
   general: "default",
 };
 
-const notificationTypes = [
-  "bill_analyzed",
-  "bill_verification",
-  "offer_available",
-  "case_update",
-  "contract_status",
-  "contract_verification",
-  "activation_complete",
-  "referral_status",
-  "support_reply",
-  "general",
-] as const;
 
 type Direction = "all" | "sent" | "received";
 
@@ -48,7 +51,9 @@ const tabs: { key: Direction; label: string; icon: React.ReactNode }[] = [
 const Notification = () => {
   const { t } = useTranslation();
   const [page, setPage] = useState(1);
-  const [direction, setDirection] = useState<Direction>("all");
+  // "received" is the admin's own inbox — what the bell links to. "all" mixes
+  // in messages the admin sent to customers, which buries the new arrivals.
+  const [direction, setDirection] = useState<Direction>("received");
   const [typeFilter, setTypeFilter] = useState<string | undefined>();
   const [sendOpen, setSendOpen] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
@@ -148,11 +153,20 @@ const Notification = () => {
           }}
           className="w-56"
         >
-          {notificationTypes.map((type) => (
-            <Select.Option key={type} value={type}>
-              {t(`notifications.type_${type}`)}
-            </Select.Option>
-          ))}
+          <Select.OptGroup label={t("notifications.group_admin")}>
+            {ADMIN_NOTIFICATION_TYPES.map((type) => (
+              <Select.Option key={type} value={type}>
+                {t(`notifications.type_${type}`)}
+              </Select.Option>
+            ))}
+          </Select.OptGroup>
+          <Select.OptGroup label={t("notifications.group_customer")}>
+            {CUSTOMER_NOTIFICATION_TYPES.map((type) => (
+              <Select.Option key={type} value={type}>
+                {t(`notifications.type_${type}`)}
+              </Select.Option>
+            ))}
+          </Select.OptGroup>
         </Select>
       </div>
 

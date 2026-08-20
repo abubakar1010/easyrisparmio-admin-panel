@@ -11,6 +11,11 @@ import {
   useMarkAsReadMutation,
 } from "../../redux/features/Notifications/notificationApi";
 import { useTranslation } from "react-i18next";
+import { getNotificationRoute } from "../../lib/helpers/notificationRoute";
+
+// The backend has no push channel to the dashboard beyond FCM, which the admin
+// may not have granted. Polling keeps the badge honest either way.
+const NOTIFICATION_POLL_MS = 30_000;
 
 type HeaderProps = {
   onMobileMenuClick?: () => void;
@@ -22,9 +27,14 @@ const Header = ({ onMobileMenuClick }: HeaderProps) => {
   const notificationRef = useRef(null);
   const { user } = useAppSelector((state) => state.auth);
   const [notificationPopup, setNotificationPopup] = useState(false);
-  const { data: unreadData } = useGetUnreadCountQuery();
+  const { data: unreadData } = useGetUnreadCountQuery(undefined, {
+    pollingInterval: NOTIFICATION_POLL_MS,
+  });
   const unreadCount = unreadData?.count || 0;
-  const { data: notificationsData } = useGetNotificationsQuery({ page: 1, limit: 5 });
+  const { data: notificationsData } = useGetNotificationsQuery(
+    { page: 1, limit: 5 },
+    { pollingInterval: NOTIFICATION_POLL_MS },
+  );
   const [markAsRead] = useMarkAsReadMutation();
   const recentNotifications = notificationsData?.data || [];
   const { t, i18n } = useTranslation();
@@ -142,7 +152,9 @@ const Header = ({ onMobileMenuClick }: HeaderProps) => {
                       className={`rounded-lg px-3 py-2 cursor-pointer transition-colors hover:bg-slate-50 ${!item.isRead ? "bg-indigo-50/50" : ""}`}
                       onClick={() => {
                         if (!item.isRead) markAsRead(item.id);
-                        navigate("/notifications");
+                        // Land on the record the notification is about; fall
+                        // back to the list when it carries no entity.
+                        navigate(getNotificationRoute(item) ?? "/notifications");
                       }}
                     >
                       <p className={`text-sm truncate ${!item.isRead ? "font-bold text-slate-800" : "font-normal text-slate-600"}`}>

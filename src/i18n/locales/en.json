@@ -534,7 +534,22 @@
     "date": "Date",
     "recipient_label": "Recipient",
     "read_at": "Read At",
-    "additional_data": "Additional Data"
+    "additional_data": "Additional Data",
+    "group_admin": "Platform events",
+    "group_customer": "Customer messages",
+    "type_bill_updated": "Bill updated",
+    "type_admin_user": "New user",
+    "type_admin_bill": "Bill",
+    "type_admin_verification": "Verification",
+    "type_admin_offer_accepted": "Offer accepted",
+    "type_admin_offer": "Offer",
+    "type_admin_case": "Case",
+    "type_admin_document": "Document",
+    "type_admin_support": "Support",
+    "type_admin_referral": "Referral",
+    "type_admin_system": "System",
+    "push_enabled": "Desktop notifications enabled",
+    "push_blocked": "Desktop notifications are blocked in your browser settings"
   },
   "settings": {
     "title": "Profile & Admin Settings",

@@ -116,6 +116,10 @@ const baseQueryWithReauth: BaseQueryFn<
 export const baseApi = createApi({
   reducerPath: "baseApi",
   baseQuery: baseQueryWithReauth,
+  // An admin leaves the dashboard open for hours; coming back to the tab
+  // should show current data rather than whatever was cached on load.
+  refetchOnFocus: true,
+  refetchOnReconnect: true,
   tagTypes: [
     "auth", "user", "setting", "meter", "dashboard", "supplier",
     "case", "offer", "bill", "referral",
