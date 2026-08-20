@@ -33,17 +33,12 @@ export function ClientFormModal({ open, onClose, mode, client = null }: ClientFo
 
     if (isEdit && client) {
       setCustomerType(client.role === "business" ? "Business" : "Private");
-      const primaryAddress = client.addresses?.[0];
       form.setFieldsValue({
         firstName: client.firstName,
         lastName: client.lastName,
         email: client.email,
         phone: client.phone,
         fiscalCode: client.codiceFiscale,
-        streetAddress: primaryAddress?.streetAddress,
-        city: primaryAddress?.city,
-        province: primaryAddress?.province,
-        postalCode: primaryAddress?.postalCode,
         companyName: client.businessProfile?.companyName,
         partitaIva: client.businessProfile?.partitaIva,
         pecEmail: client.businessProfile?.pecEmail,
@@ -87,14 +82,6 @@ export function ClientFormModal({ open, onClose, mode, client = null }: ClientFo
           createData.companyName = values.companyName;
           createData.partitaIva = values.partitaIva;
           createData.pecEmail = values.pecEmail || undefined;
-        }
-        if (values.streetAddress && values.city && values.postalCode) {
-          createData.address = {
-            streetAddress: values.streetAddress,
-            city: values.city,
-            province: values.province || undefined,
-            postalCode: values.postalCode,
-          };
         }
         await createClient(createData).unwrap();
         successAlert({ message: t("client_management.client_created_successfully") });
@@ -196,24 +183,6 @@ export function ClientFormModal({ open, onClose, mode, client = null }: ClientFo
         <Form.Item name="fiscalCode" label={t("client_management.fiscal_code")} className="mb-3">
           <Input />
         </Form.Item>
-
-        <p className="mb-2 text-base font-semibold text-brand">{t("home.address")}</p>
-        <Form.Item name="streetAddress" label={t("client_management.street_address")} className="mb-3">
-          <Input />
-        </Form.Item>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Form.Item name="city" label={t("client_management.city")} className="mb-3">
-            <Input />
-          </Form.Item>
-          <Form.Item name="province" label={t("client_management.province")} className="mb-3">
-            <Input placeholder={t("client_management.province")} allowClear />
-          </Form.Item>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Form.Item name="postalCode" label={t("client_management.postal_code")} className="mb-4">
-            <Input />
-          </Form.Item>
-        </div>
 
         <div className="flex justify-end gap-2">
           <Button onClick={onClose}>{t("common.cancel")}</Button>
