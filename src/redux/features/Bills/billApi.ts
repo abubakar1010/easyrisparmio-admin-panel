@@ -14,6 +14,11 @@ export interface IBillFieldConfidence {
   billingPeriodStart?: "high" | "medium" | "low" | null;
   billingPeriodEnd?: "high" | "medium" | "low" | null;
   supplyAddress?: "high" | "medium" | "low" | null;
+  supplyStreet?: "high" | "medium" | "low" | null;
+  supplyStreetNumber?: "high" | "medium" | "low" | null;
+  supplyCity?: "high" | "medium" | "low" | null;
+  supplyPostalCode?: "high" | "medium" | "low" | null;
+  supplyProvince?: "high" | "medium" | "low" | null;
   codiceFiscale?: "high" | "medium" | "low" | null;
   partitaIva?: "high" | "medium" | "low" | null;
   contractNumber?: "high" | "medium" | "low" | null;
@@ -34,6 +39,11 @@ export interface IBillExtractionResult {
   billingPeriodStart: string | null;
   billingPeriodEnd: string | null;
   supplyAddress: string | null;
+  supplyStreet: string | null;
+  supplyStreetNumber: string | null;
+  supplyCity: string | null;
+  supplyPostalCode: string | null;
+  supplyProvince: string | null;
   codiceFiscale: string | null;
   partitaIva: string | null;
   contractNumber: string | null;
@@ -87,7 +97,13 @@ export interface IBill {
   costPerUnit: number | null;
   fixedCharges: number | null;
   taxes: number | null;
+  /** The five fields below rendered as one line. Derived — never edited on its own. */
   supplyAddress: string | null;
+  supplyStreet: string | null;
+  supplyStreetNumber: string | null;
+  supplyCity: string | null;
+  supplyPostalCode: string | null;
+  supplyProvince: string | null;
   codiceFiscale: string | null;
   partitaIva: string | null;
   contractNumber: string | null;

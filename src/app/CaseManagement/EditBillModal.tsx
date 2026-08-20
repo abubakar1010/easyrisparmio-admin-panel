@@ -33,7 +33,11 @@ export default function EditBillModal({ bill, open, onClose }: EditBillModalProp
       taxes: bill.taxes != null ? Number(bill.taxes) : null,
       billingPeriodStart: bill.billingPeriodStart ? dayjs(bill.billingPeriodStart) : null,
       billingPeriodEnd: bill.billingPeriodEnd ? dayjs(bill.billingPeriodEnd) : null,
-      supplyAddress: bill.supplyAddress,
+      supplyStreet: bill.supplyStreet,
+      supplyStreetNumber: bill.supplyStreetNumber,
+      supplyCity: bill.supplyCity,
+      supplyPostalCode: bill.supplyPostalCode,
+      supplyProvince: bill.supplyProvince,
       codiceFiscale: bill.codiceFiscale,
       partitaIva: bill.partitaIva,
       contractNumber: bill.contractNumber,
@@ -162,14 +166,46 @@ export default function EditBillModal({ bill, open, onClose }: EditBillModalProp
             <Form.Item name="customerName" label="Account Holder">
               <Input maxLength={200} />
             </Form.Item>
-            <Form.Item name="supplyAddress" label="Supply Address">
-              <Input maxLength={500} />
-            </Form.Item>
             <Form.Item name="codiceFiscale" label="Codice Fiscale">
               <Input maxLength={16} />
             </Form.Item>
             <Form.Item name="partitaIva" label="Partita IVA">
               <Input maxLength={11} />
+            </Form.Item>
+          </div>
+        </div>
+
+        {/* ── Supply Address ── */}
+        {/* The five fields the address is stored as. The single line the bill
+            shows elsewhere is rendered from these by the server, so it is not
+            edited here — editing both would let them disagree. */}
+        <div className="mb-4">
+          <h4 className="text-sm font-semibold text-slate-700 mb-3">Supply Address</h4>
+          <div className="grid grid-cols-6 gap-x-4">
+            <Form.Item name="supplyStreet" label="Street" className="col-span-4">
+              <Input maxLength={255} placeholder="Via Roma" />
+            </Form.Item>
+            <Form.Item name="supplyStreetNumber" label="No." className="col-span-2">
+              <Input maxLength={20} placeholder="42" />
+            </Form.Item>
+            <Form.Item name="supplyCity" label="City" className="col-span-2">
+              <Input maxLength={100} placeholder="Milano" />
+            </Form.Item>
+            <Form.Item
+              name="supplyPostalCode"
+              label="Postal Code (CAP)"
+              className="col-span-2"
+              rules={[
+                {
+                  pattern: /^\d{5}$/,
+                  message: "CAP must be 5 digits",
+                },
+              ]}
+            >
+              <Input maxLength={5} placeholder="20121" />
+            </Form.Item>
+            <Form.Item name="supplyProvince" label="Province" className="col-span-2">
+              <Input maxLength={100} placeholder="MI" />
             </Form.Item>
           </div>
         </div>

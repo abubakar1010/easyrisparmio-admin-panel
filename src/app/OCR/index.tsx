@@ -340,11 +340,29 @@ const OCRBills = () => {
                 confidence={extractedData.confidence?.billingPeriodStart}
               />
               <PreviewField label="Customer Name" value={extractedData.customerName} confidence={extractedData.confidence?.customerName} />
-              <PreviewField label="Supply Address" value={extractedData.supplyAddress} confidence={extractedData.confidence?.supplyAddress} />
               <PreviewField label="Contract No." value={extractedData.contractNumber} confidence={extractedData.confidence?.contractNumber} mono />
               <PreviewField label="Meter No." value={extractedData.meterNumber} confidence={extractedData.confidence?.meterNumber} mono />
               <PreviewField label="Codice Fiscale" value={extractedData.codiceFiscale} confidence={extractedData.confidence?.codiceFiscale} mono />
               <PreviewField label="Partita IVA" value={extractedData.partitaIva} confidence={extractedData.confidence?.partitaIva} mono />
+            </div>
+
+            {/* The address is stored as these five fields, so this is what has
+                to be checked — the line underneath is only how it was printed,
+                and a plausible-looking line can still have split badly. */}
+            <div className="mt-4">
+              <div className="flex items-baseline gap-2 mb-2">
+                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Supply Address</span>
+                {extractedData.supplyAddress && (
+                  <span className="text-xs text-slate-400 truncate">as printed: {extractedData.supplyAddress}</span>
+                )}
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                <PreviewField label="Street" value={extractedData.supplyStreet} confidence={extractedData.confidence?.supplyStreet} />
+                <PreviewField label="No." value={extractedData.supplyStreetNumber} confidence={extractedData.confidence?.supplyStreetNumber} />
+                <PreviewField label="City" value={extractedData.supplyCity} confidence={extractedData.confidence?.supplyCity} />
+                <PreviewField label="CAP" value={extractedData.supplyPostalCode} confidence={extractedData.confidence?.supplyPostalCode} mono />
+                <PreviewField label="Province" value={extractedData.supplyProvince} confidence={extractedData.confidence?.supplyProvince} />
+              </div>
             </div>
           </div>
         )}
