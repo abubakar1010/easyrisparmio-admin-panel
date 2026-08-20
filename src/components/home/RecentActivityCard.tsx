@@ -24,7 +24,7 @@ function getDotColor(entityType: string): string {
 function getEntityRoute(entityType: string, entityId: string): string | null {
   const routes: Record<string, string> = {
     user: `/client-list`,
-    bill: `/ocr/${entityId}`,
+    bill: `/case-management/${entityId}`,
     case: `/case-management/case/${entityId}`,
     offer: `/offers-market/${entityId}`,
     supplier: `/suppliers/${entityId}`,

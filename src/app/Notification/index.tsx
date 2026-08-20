@@ -1,5 +1,5 @@
 import { Button, Empty, List, Modal, Select, Spin, Tag, message } from "antd";
-import { FiCheck, FiCheckCircle, FiBell, FiSend, FiInbox, FiEye } from "react-icons/fi";
+import { FiCheck, FiCheckCircle, FiBell, FiSend, FiInbox, FiEye, FiExternalLink } from "react-icons/fi";
 import {
   useGetAdminNotificationsQuery,
   useMarkAsReadMutation,
@@ -11,7 +11,9 @@ import {
 } from "../../redux/features/Notifications/notificationApi";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router";
 import SendNotificationModal from "./SendNotificationModal";
+import { getNotificationRoute } from "../../lib/helpers/notificationRoute";
 
 const typeColor: Record<string, string> = {
   // Admin-facing
@@ -309,9 +311,11 @@ function NotificationDetailModal({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { data: notification, isLoading } = useGetNotificationByIdQuery(notificationId!, {
     skip: !notificationId,
   });
+  const recordRoute = notification ? getNotificationRoute(notification) : null;
 
   return (
     <Modal
@@ -377,6 +381,21 @@ function NotificationDetailModal({
               </div>
             )}
           </div>
+
+          {/* Jump to the record the notification is about. */}
+          {recordRoute && (
+            <Button
+              type="primary"
+              icon={<FiExternalLink />}
+              onClick={() => {
+                onClose();
+                navigate(recordRoute);
+              }}
+              className="rounded-lg"
+            >
+              {t("notifications.view_record")}
+            </Button>
+          )}
 
           {/* Data payload (if any) */}
           {notification.data && Object.keys(notification.data).length > 0 && (

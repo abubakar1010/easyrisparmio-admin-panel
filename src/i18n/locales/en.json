@@ -534,6 +534,7 @@
     "date": "Date",
     "recipient_label": "Recipient",
     "read_at": "Read At",
+    "view_record": "Open record",
     "additional_data": "Additional Data",
     "group_admin": "Platform events",
     "group_customer": "Customer messages",

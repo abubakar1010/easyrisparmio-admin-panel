@@ -23,10 +23,10 @@ import Settings from "../app/Settings/Settings";
 import ClientManagement from "../app/ClientManagement";
 import CaseManagement from "../app/CaseManagement";
 import BillRequestDetailView from "../app/CaseManagement/BillRequestDetailView";
+import CaseRedirect from "../app/CaseManagement/CaseRedirect";
 import MeterReading from "../app/MetterReading";
 import MeterDetails from "../app/MetterReading/MeterDetails";
 import OCRBills from "../app/OCR";
-import BillDetailsView from "../app/OCR/BillDetailsView";
 import Suppliers from "../app/Suppliers";
 import SupplierDetails from "../app/Suppliers/SupplierDetails";
 import OffersMarket from "../app/OffersMarket";
@@ -107,6 +107,12 @@ export const dashboardItems: DashboardItem[] = [
     element: <CaseManagement />,
   },
   {
+    // Notifications and activity logs about a case only carry its caseId; this
+    // resolves the case to its bill and forwards to the detail view below.
+    path: "case-management/case/:caseId",
+    element: <CaseRedirect />,
+  },
+  {
     path: "case-management/:billId",
     element: <BillRequestDetailView />,
   },
@@ -127,10 +133,6 @@ export const dashboardItems: DashboardItem[] = [
     icon: LuScanLine,
     role: [ROLE.ADMIN],
     element: <OCRBills />,
-  },
-  {
-    path: "ocr/:billId",
-    element: <BillDetailsView />,
   },
   {
     name: "Suppliers",
