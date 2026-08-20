@@ -28,6 +28,11 @@ const billStatusConfig: Record<string, { color: string; label: string }> = {
   cancelled: { color: "default", label: "Cancelled" },
 };
 
+/** Uniform placeholder for a field OCR could not read off the bill. */
+const Missing = ({ label = "Not detected" }: { label?: string }) => (
+  <span className="text-slate-400 italic text-xs">{label}</span>
+);
+
 const CaseManagement = () => {
   const navigate = useNavigate();
   const [queryParams, setQueryParams] = useState<IBillQuery>({ page: 1, limit: 20 });
@@ -64,32 +69,34 @@ const CaseManagement = () => {
     setQueryParams((prev) => ({ ...prev, page: 1, status: value }));
   };
 
-  const formatCurrency = (val: number | null) =>
-    val != null ? `€ ${Number(val).toFixed(2)}` : "—";
+  const formatCurrency = (val: number | null) => `€ ${Number(val).toFixed(2)}`;
 
   const columns: ColumnsType<IBill> = [
     {
       title: "TYPE",
       key: "billType",
       width: 100,
-      render: (_, record) => (
-        <Tag
-          className={`border-0 rounded font-bold text-[10px] px-2 py-0 uppercase ${
-            record.billType === "electricity"
-              ? "bg-emerald-50 text-emerald-600"
-              : "bg-blue-50 text-blue-600"
-          }`}
-          icon={
-            record.billType === "electricity" ? (
-              <LuZap className="inline mr-1 h-3 w-3" />
-            ) : (
-              <LuFlame className="inline mr-1 h-3 w-3" />
-            )
-          }
-        >
-          {record.billType}
-        </Tag>
-      ),
+      render: (_, record) =>
+        record.billType ? (
+          <Tag
+            className={`border-0 rounded font-bold text-[10px] px-2 py-0 uppercase ${
+              record.billType === "electricity"
+                ? "bg-emerald-50 text-emerald-600"
+                : "bg-blue-50 text-blue-600"
+            }`}
+            icon={
+              record.billType === "electricity" ? (
+                <LuZap className="inline mr-1 h-3 w-3" />
+              ) : (
+                <LuFlame className="inline mr-1 h-3 w-3" />
+              )
+            }
+          >
+            {record.billType}
+          </Tag>
+        ) : (
+          <Missing label="Unknown" />
+        ),
       align: "center",
     },
     {
@@ -97,9 +104,11 @@ const CaseManagement = () => {
       key: "customer",
       width: 180,
       render: (_, record) => {
-        const name = record.user
-          ? `${record.user.firstName} ${record.user.lastName}`
-          : "—";
+        // Email-uploaded bills sit unassociated until an admin links an account.
+        const name = [record.user?.firstName, record.user?.lastName]
+          .filter(Boolean)
+          .join(" ");
+        if (!name) return <Missing label="Not linked" />;
         return (
           <div className="flex items-center gap-2.5">
             <Avatar
@@ -118,27 +127,43 @@ const CaseManagement = () => {
       title: "POD / PDR",
       key: "pod_pdr",
       width: 170,
-      render: (_, record) => (
-        <span className="font-medium text-slate-700 text-xs font-mono">
-          {record.podNumber || record.pdrNumber || "—"}
-        </span>
-      ),
+      render: (_, record) => {
+        const code = record.podNumber || record.pdrNumber;
+        return code ? (
+          <span className="font-medium text-slate-700 text-xs font-mono">{code}</span>
+        ) : (
+          <Missing />
+        );
+      },
     },
     {
       title: "SUPPLIER",
       key: "supplier",
       width: 130,
-      render: (_, record) => (
-        <span className="text-slate-500">{record.supplier?.name || "—"}</span>
-      ),
+      render: (_, record) => {
+        // The name OCR read off the bill is the source of truth here — a linked
+        // supplier record is optional and often absent.
+        const supplier =
+          record.supplierName ||
+          record.supplier?.name ||
+          (record.rawAnalysisData?.ocrSupplierName as string | undefined);
+        return supplier ? (
+          <span className="text-slate-700 font-medium">{supplier}</span>
+        ) : (
+          <Missing />
+        );
+      },
     },
     {
       title: "AMOUNT",
       key: "totalAmount",
       width: 110,
-      render: (_, record) => (
-        <span className="font-bold text-slate-800">{formatCurrency(record.totalAmount)}</span>
-      ),
+      render: (_, record) =>
+        record.totalAmount != null ? (
+          <span className="font-bold text-slate-800">{formatCurrency(record.totalAmount)}</span>
+        ) : (
+          <Missing />
+        ),
       align: "right",
     },
     {
@@ -147,12 +172,15 @@ const CaseManagement = () => {
       width: 150,
       responsive: ["lg"],
       render: (_, record) => {
-        if (!record.billingPeriodStart) return <span className="text-slate-400">—</span>;
+        if (!record.billingPeriodStart) return <Missing />;
         const start = new Date(record.billingPeriodStart).toLocaleDateString("it-IT");
+        // Half-read periods are common — show the one date rather than a stray dash.
         const end = record.billingPeriodEnd
           ? new Date(record.billingPeriodEnd).toLocaleDateString("it-IT")
-          : "—";
-        return <span className="text-slate-500 text-xs">{start} - {end}</span>;
+          : null;
+        return (
+          <span className="text-slate-500 text-xs">{end ? `${start} - ${end}` : start}</span>
+        );
       },
     },
     {
@@ -160,6 +188,7 @@ const CaseManagement = () => {
       key: "status",
       width: 130,
       render: (_: unknown, record: IBill) => {
+        if (!record.status) return <Missing label="Unknown" />;
         const cfg = billStatusConfig[record.status] || { color: "default", label: record.status };
         return (
           <Tag
