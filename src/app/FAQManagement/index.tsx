@@ -5,12 +5,17 @@ import { useMemo, useState } from "react";
 import AddEditFAQModal from "./components/AddEditFAQModal";
 import {
   useGetAdminFaqsQuery,
+  useGetFaqCategoriesQuery,
   useCreateFaqMutation,
   useUpdateFaqMutation,
   useDeleteFaqMutation,
   type IFaq,
 } from "../../redux/features/Support/supportApi";
 import { debounce } from "../../utils/debounce";
+
+// Mirrors the FaqCategory enum on the server. Used only if the categories
+// request fails — the picker must never be empty, or no FAQ can be created.
+const FALLBACK_CATEGORIES = ["Cambio Fornitore", "Bollette", "Documenti"];
 
 const audienceLabel: Record<string, string> = {
   both: "Both",
@@ -49,10 +54,15 @@ const FAQManagement = () => {
   const faqs = faqsData?.data || [];
   const meta = faqsData?.meta;
 
-  const existingCategories = useMemo(() => {
-    const cats = new Set(faqs.map((f) => f.category));
-    return Array.from(cats).sort();
-  }, [faqs]);
+  const { data: serverCategories } = useGetFaqCategoriesQuery();
+
+  // The category list is a fixed set from the server, not something derived from
+  // the rows on screen — deriving it meant an empty database (or a filter that
+  // matched nothing) left the create form with no category to pick.
+  const categories = useMemo(
+    () => (serverCategories?.length ? serverCategories : FALLBACK_CATEGORIES),
+    [serverCategories],
+  );
 
   const handleSearch = debounce((value: string) => {
     setSearch(value);
@@ -253,7 +263,7 @@ const FAQManagement = () => {
             onChange={(v) => { setCategoryFilter(v); setPage(1); }}
             className="w-44 [&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-xl"
           >
-            {existingCategories.map((cat) => (
+            {categories.map((cat) => (
               <Select.Option key={cat} value={cat}>
                 <span className="capitalize">{cat}</span>
               </Select.Option>
@@ -317,7 +327,7 @@ const FAQManagement = () => {
         onSave={handleSaveFAQ}
         initialValues={selectedFAQ}
         isLoading={isCreating || isUpdating}
-        existingCategories={existingCategories}
+        categories={categories}
       />
     </div>
   );

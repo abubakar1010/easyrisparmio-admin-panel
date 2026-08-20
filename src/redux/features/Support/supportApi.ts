@@ -228,6 +228,11 @@ const supportApi = baseApi.injectEndpoints({
           : [{ type: "faq" as const, id: "LIST" }],
     }),
 
+    getFaqCategories: builder.query<string[], void>({
+      query: () => ({ url: "support/faqs/categories", method: "GET" }),
+      transformResponse: (response: { success: boolean; data: string[] }) => response.data,
+    }),
+
     getFaqs: builder.query<IFaq[], string | void>({
       query: (category) => {
         const qp = new URLSearchParams();
@@ -273,6 +278,7 @@ export const {
   useGetTicketMessagesQuery,
   useGetAdminFaqsQuery,
   useGetFaqsQuery,
+  useGetFaqCategoriesQuery,
   useCreateFaqMutation,
   useUpdateFaqMutation,
   useDeleteFaqMutation,

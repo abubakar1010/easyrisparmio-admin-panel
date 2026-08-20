@@ -16,7 +16,7 @@ interface AddEditFAQModalProps {
   }) => void;
   initialValues?: IFaq | null;
   isLoading?: boolean;
-  existingCategories?: string[];
+  categories?: string[];
 }
 
 const AddEditFAQModal = ({
@@ -25,7 +25,7 @@ const AddEditFAQModal = ({
   onSave,
   initialValues,
   isLoading,
-  existingCategories = [],
+  categories = [],
 }: AddEditFAQModalProps) => {
   const [form] = Form.useForm();
   const [questionCount, setQuestionCount] = useState(0);
@@ -60,7 +60,13 @@ const AddEditFAQModal = ({
     });
   };
 
-  const categoryOptions = existingCategories.map((c) => ({ label: c, value: c }));
+  // Keep the FAQ's own category selectable even if it predates the current set,
+  // so editing an old entry doesn't silently blank the field.
+  const categoryOptions = (
+    initialValues?.category && !categories.includes(initialValues.category)
+      ? [...categories, initialValues.category]
+      : categories
+  ).map((c) => ({ label: c, value: c }));
 
   return (
     <Modal
@@ -84,28 +90,17 @@ const AddEditFAQModal = ({
           <Form.Item
             name="category"
             label={<span className="text-sm font-medium text-slate-500">Category <span className="text-red-500">*</span></span>}
-            rules={[{ required: true, message: "Please enter a category" }]}
+            rules={[{ required: true, message: "Please select a category" }]}
             className="mb-0"
           >
             <Select
               showSearch
-              allowClear
-              placeholder="Select or type a category"
+              placeholder="Select a category"
               options={categoryOptions}
               className="[&_.ant-select-selector]:rounded-xl [&_.ant-select-selector]:border-slate-200 [&_.ant-select-selector]:h-11"
-              mode={undefined}
               filterOption={(input, option) =>
                 (option?.label as string)?.toLowerCase().includes(input.toLowerCase())
               }
-              dropdownRender={(menu) => (
-                <>
-                  {menu}
-                  <div className="px-3 py-2 text-xs text-slate-400 border-t border-slate-100">
-                    Type to search or enter a new category
-                  </div>
-                </>
-              )}
-              onSearch={() => {}}
             />
           </Form.Item>
 
