@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 const slugIcons: Record<string, string> = {
   "privacy-policy": "shield",
   "terms-conditions": "file-text",
+  "business-terms-conditions": "briefcase",
   "about-us": "info",
 };
 
@@ -59,6 +60,11 @@ const PublicPage = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
             )}
+            {icon === "briefcase" && (
+              <svg className="w-5 h-5 sm:w-6 sm:h-6 text-[#7061ED]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            )}
             {icon === "info" && (
               <svg className="w-5 h-5 sm:w-6 sm:h-6 text-[#7061ED]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
@@ -71,12 +77,19 @@ const PublicPage = () => {
         </div>
         <div className="h-1 w-16 rounded-full bg-gradient-to-r from-[#7061ED] to-[#5B4FCF]" />
         <p className="mt-3 text-xs text-gray-400">
+          {data.requiresAcceptance && (
+            <>
+              <span className="font-semibold text-[#7061ED]">
+                {locale === "it" ? "Versione" : "Version"} {data.version}
+              </span>
+              <span className="mx-2">·</span>
+            </>
+          )}
           {locale === "it" ? "Ultimo aggiornamento" : "Last updated"}:{" "}
-          {new Date(data.updatedAt).toLocaleDateString(locale === "it" ? "it-IT" : "en-US", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          })}
+          {new Date(data.publishedAt || data.updatedAt).toLocaleDateString(
+            locale === "it" ? "it-IT" : "en-US",
+            { year: "numeric", month: "long", day: "numeric" },
+          )}
         </p>
       </div>
 
