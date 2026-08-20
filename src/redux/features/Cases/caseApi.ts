@@ -146,7 +146,18 @@ export interface ICaseQuery {
   userId?: string;
 }
 
-export interface IUpdateCase {
+/**
+ * The five fields one address block is stored as, under its prefix. Supply,
+ * residence and shipping all read the same way.
+ */
+type ICaseAddressFields<P extends string> = {
+  [K in `${P}${"Street" | "StreetNumber" | "City" | "PostalCode" | "Province"}`]?: string | null;
+};
+
+export interface IUpdateCase
+  extends ICaseAddressFields<"supply">,
+    ICaseAddressFields<"residential">,
+    ICaseAddressFields<"shipping"> {
   status?: string;
   priority?: string;
   notes?: string;
@@ -155,6 +166,12 @@ export interface IUpdateCase {
   /** `YYYY-MM-DD`. Correcting the dates an admin entered at activation. */
   activationDate?: string;
   expiryDate?: string;
+  /**
+   * While true, the matching block is kept as a copy of the supply address by
+   * the server — correcting the supply address moves it too.
+   */
+  residentialSameAsSupply?: boolean;
+  shippingSameAsSupply?: boolean;
 }
 
 interface IPaginatedResponse<T> {

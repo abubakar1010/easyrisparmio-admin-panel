@@ -52,6 +52,7 @@ import {
 import { useAppSelector } from "../../redux/hooks";
 import { server_url, server_origin } from "../../config";
 import EditBillModal from "./EditBillModal";
+import EditCaseAddressesModal from "./EditCaseAddressesModal";
 import VerificationFileList from "./VerificationFileList";
 
 /* ── Status & Step Configuration ─────────────────────────── */
@@ -1942,11 +1943,21 @@ type DataRow = {
   value: string;
   /** Spans both columns — for addresses and other long values. */
   wide?: boolean;
-  /** Identifiers (IBAN, POD, email) keep the casing they were entered with. */
+  /**
+   * Values that must read exactly as they were entered — identifiers (IBAN,
+   * POD, email) and addresses, where title-casing would turn a province typed
+   * "mi" into "Mi".
+   */
   raw?: boolean;
 };
 
-type DataGroup = { title: string; rows?: DataRow[]; content?: React.ReactNode };
+type DataGroup = {
+  title: string;
+  rows?: DataRow[];
+  content?: React.ReactNode;
+  /** Rendered on the right of the group heading — an Edit button, typically. */
+  action?: React.ReactNode;
+};
 
 function CaseDataSection({
   caseData,
@@ -1957,6 +1968,7 @@ function CaseDataSection({
 }) {
   const bill = caseData.bill;
   const dash = (v: string | null | undefined) => (v && v.trim() ? v : "—");
+  const [editingAddresses, setEditingAddresses] = useState(false);
 
   const supply: CaseAddress = {
     street: caseData.supplyStreet,
@@ -1984,6 +1996,17 @@ function CaseDataSection({
   // OCR'd supply line on the bill — fall back to it so the row is never blank.
   const supplyLine = fmtAddress(supply);
   const supplyDisplay = supplyLine !== "—" ? supplyLine : dash(bill?.supplyAddress);
+
+  // What is stored wins. The flag is only the fallback, for cases saved before
+  // a block declared identical to the supply address was kept as a copy of it.
+  const resolveAddress = (address: CaseAddress, sameAsSupply: boolean): string => {
+    const line = fmtAddress(address);
+    if (line !== "—") return line;
+    return sameAsSupply ? supplyDisplay : "—";
+  };
+
+  const residentialDisplay = resolveAddress(residential, caseData.residentialSameAsSupply);
+  const shippingDisplay = resolveAddress(shipping, caseData.shippingSameAsSupply);
 
   // The supplier the customer is leaving is only linked to a supplier record
   // when the OCR'd name matched one, so fall back to the name off the bill.
@@ -2018,31 +2041,46 @@ function CaseDataSection({
       ],
     },
     {
-      title: "Delivery Address",
+      title: "Addresses",
+      action: (
+        <Button
+          size="small"
+          icon={<FiEdit2 className="h-3 w-3" />}
+          onClick={() => setEditingAddresses(true)}
+        >
+          Edit addresses
+        </Button>
+      ),
       rows: [
-        { label: "Supply Address", value: supplyDisplay, wide: true },
+        { label: "Supply Address", value: supplyDisplay, wide: true, raw: true },
+        {
+          label: "Residence same as supply",
+          value: caseData.residentialSameAsSupply ? "Yes" : "No",
+        },
+        {
+          label: "Ships to supply address",
+          // Only paper invoices are posted anywhere, so for a digital case the
+          // answer is not "No" — the question does not arise.
+          value: isPaper ? (caseData.shippingSameAsSupply ? "Yes" : "No") : "—",
+        },
+        { label: "Residential Address", value: residentialDisplay, wide: true, raw: true },
+        {
+          label: "Shipping Address",
+          value: isPaper ? shippingDisplay : "Digital invoices — no shipping address",
+          wide: true,
+          raw: true,
+        },
+      ],
+    },
+    {
+      title: "Supply Point",
+      rows: [
         {
           label: bill?.billType === "gas" ? "PDR" : "POD",
           value: dash(bill?.podNumber || bill?.pdrNumber),
           raw: true,
         },
         { label: "Meter Number", value: dash(bill?.meterNumber), raw: true },
-      ],
-    },
-    {
-      title: "Residential Address",
-      rows: [
-        {
-          label: "Same as supply address",
-          value: caseData.residentialSameAsSupply ? "Yes" : "No",
-        },
-        {
-          label: "Residence",
-          value: caseData.residentialSameAsSupply
-            ? supplyDisplay
-            : fmtAddress(residential),
-          wide: true,
-        },
       ],
     },
     {
@@ -2085,21 +2123,6 @@ function CaseDataSection({
                 label: "Invoice Email",
                 value: dash(caseData.invoiceEmail || caseData.user?.email),
                 raw: true,
-              },
-            ]
-          : []),
-        ...(isPaper
-          ? [
-              {
-                label: "Ships to supply address",
-                value: caseData.shippingSameAsSupply ? "Yes" : "No",
-              },
-              {
-                label: "Shipping Address",
-                value: caseData.shippingSameAsSupply
-                  ? supplyDisplay
-                  : fmtAddress(shipping),
-                wide: true,
               },
             ]
           : []),
@@ -2170,7 +2193,10 @@ function CaseDataSection({
     <div className="space-y-8">
       {groups.map((g) => (
         <div key={g.title}>
-          <h4 className="text-sm font-semibold text-slate-800 mb-4">{g.title}</h4>
+          <div className="flex items-center justify-between mb-4">
+            <h4 className="text-sm font-semibold text-slate-800">{g.title}</h4>
+            {g.action}
+          </div>
           {g.content ?? (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {g.rows?.map((r) => (
@@ -2189,6 +2215,12 @@ function CaseDataSection({
           )}
         </div>
       ))}
+
+      <EditCaseAddressesModal
+        caseData={caseData}
+        open={editingAddresses}
+        onClose={() => setEditingAddresses(false)}
+      />
     </div>
   );
 }
