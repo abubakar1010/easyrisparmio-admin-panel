@@ -12,10 +12,14 @@ import {
 } from "../../redux/features/Notifications/notificationApi";
 import { useTranslation } from "react-i18next";
 import { getNotificationRoute } from "../../lib/helpers/notificationRoute";
+import { useWebPush } from "../../lib/webPush";
 
-// The backend has no push channel to the dashboard beyond FCM, which the admin
-// may not have granted. Polling keeps the badge honest either way.
-const NOTIFICATION_POLL_MS = 30_000;
+// FCM web push delivers in about a second, so with permission granted the
+// poll is only a safety net for a push that never lands. Without it — the
+// admin declined the prompt, or the browser cannot do push at all — polling
+// is the whole channel, so it stays brisk.
+const PUSH_FALLBACK_POLL_MS = 120_000;
+const POLL_ONLY_MS = 30_000;
 
 type HeaderProps = {
   onMobileMenuClick?: () => void;
@@ -27,13 +31,18 @@ const Header = ({ onMobileMenuClick }: HeaderProps) => {
   const notificationRef = useRef(null);
   const { user } = useAppSelector((state) => state.auth);
   const [notificationPopup, setNotificationPopup] = useState(false);
+  // Registering here rather than in Main keeps the state next to the bell,
+  // which is where it is both shown and acted on.
+  const { status: pushStatus, enable: enablePush } = useWebPush();
+  const pollMs =
+    pushStatus === "granted" ? PUSH_FALLBACK_POLL_MS : POLL_ONLY_MS;
   const { data: unreadData } = useGetUnreadCountQuery(undefined, {
-    pollingInterval: NOTIFICATION_POLL_MS,
+    pollingInterval: pollMs,
   });
   const unreadCount = unreadData?.count || 0;
   const { data: notificationsData } = useGetNotificationsQuery(
     { page: 1, limit: 5 },
-    { pollingInterval: NOTIFICATION_POLL_MS },
+    { pollingInterval: pollMs },
   );
   const [markAsRead] = useMarkAsReadMutation();
   const recentNotifications = notificationsData?.data || [];
@@ -142,6 +151,20 @@ const Header = ({ onMobileMenuClick }: HeaderProps) => {
                   </span>
                 )}
               </div>
+              {pushStatus === "default" && (
+                <button
+                  type="button"
+                  onClick={() => void enablePush()}
+                  className="w-full mb-3 rounded-lg border border-indigo-100 bg-indigo-50/60 px-3 py-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-50 transition-colors"
+                >
+                  {t("header.enable_push")}
+                </button>
+              )}
+              {pushStatus === "denied" && (
+                <p className="mb-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
+                  {t("header.push_blocked")}
+                </p>
+              )}
               {recentNotifications.length === 0 ? (
                 <p className="text-sm text-slate-400 text-center py-4">{t("notifications.no_notifications")}</p>
               ) : (

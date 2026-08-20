@@ -2,15 +2,10 @@ import { useEffect, useState } from "react";
 import { Outlet, useLocation } from "react-router";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
-import { useWebPush } from "../../lib/webPush";
 
 const Main = () => {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const location = useLocation();
-
-  // No-op unless a Firebase project is configured and the admin grants
-  // permission; the polling bell covers the rest.
-  useWebPush();
 
   useEffect(() => {
     setMobileNavOpen(false);

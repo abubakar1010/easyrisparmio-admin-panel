@@ -87,7 +87,9 @@
     "welcome": "Welcome,",
     "notifications": "Notifications",
     "see_more": "See More",
-    "admin": "Admin"
+    "admin": "Admin",
+    "enable_push": "Enable desktop notifications",
+    "push_blocked": "Desktop notifications are blocked in your browser settings."
   },
   "sidebar": {
     "dashboard": "Dashboard",

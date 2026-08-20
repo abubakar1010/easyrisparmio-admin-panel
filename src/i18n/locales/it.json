@@ -87,7 +87,9 @@
     "welcome": "Benvenuto,",
     "notifications": "Notifiche",
     "see_more": "Vedi altro",
-    "admin": "Amministratore"
+    "admin": "Amministratore",
+    "enable_push": "Attiva le notifiche desktop",
+    "push_blocked": "Le notifiche desktop sono bloccate nelle impostazioni del browser."
   },
   "sidebar": {
     "dashboard": "Dashboard",
