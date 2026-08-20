@@ -123,6 +123,10 @@ export const notificationApi = baseApi.injectEndpoints({
       invalidatesTags: [
         { type: "notification", id: "LIST" },
         { type: "notification", id: "COUNT" },
+        // The "Mark all read" button sits on the notification centre, which
+        // is fed by ADMIN_LIST. Without this the badge clears while every row
+        // on screen stays bold.
+        { type: "notification", id: "ADMIN_LIST" },
       ],
     }),
 
