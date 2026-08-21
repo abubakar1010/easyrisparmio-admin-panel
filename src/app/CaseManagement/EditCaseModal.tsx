@@ -3,7 +3,7 @@ import { App, Modal, Form, Input, Select, Checkbox, Alert, Spin } from "antd";
 import type { ICase, IUpdateCase } from "../../redux/features/Cases/caseApi";
 import { useUpdateCaseMutation } from "../../redux/features/Cases/caseApi";
 import { useGetOffersAdminQuery } from "../../redux/features/Offers/offerApi";
-import { isValidItalianTaxId, normalizeTaxId, TAX_ID_MESSAGE } from "../../utils/italianTaxId";
+import { normalizeTaxId, taxIdMessage } from "../../utils/italianTaxId";
 
 interface EditCaseModalProps {
   caseData: ICase | null;
@@ -325,10 +325,15 @@ export default function EditCaseModal({ caseData, open, onClose }: EditCaseModal
                   // rule is the server's own — see utils/italianTaxId.
                   rules={[
                     {
-                      validator: (_, value: string) =>
-                        !value || isValidItalianTaxId(value)
-                          ? Promise.resolve()
-                          : Promise.reject(new Error(TAX_ID_MESSAGE)),
+                      validator: (_, value: string) => {
+                        // Naming the wrong part beats "invalid": a code that
+                        // fails only on its check character is fifteen
+                        // sixteenths correct, and retyping it is not the fix.
+                        const problem = taxIdMessage(value);
+                        return problem
+                          ? Promise.reject(new Error(problem))
+                          : Promise.resolve();
+                      },
                     },
                   ]}
                 >
