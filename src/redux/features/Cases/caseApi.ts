@@ -7,6 +7,8 @@ export interface ICaseUser {
   email: string;
   phone?: string | null;
   codiceFiscale?: string | null;
+  /** A company is identified by its VAT number, which lives on its profile. */
+  businessProfile?: { partitaIva?: string | null } | null;
 }
 
 /** The bill the case was opened from, as returned by `GET /cases/:id`. */
@@ -108,8 +110,15 @@ export interface ICase {
   /** Where digital invoices go — defaults to the account email. */
   invoiceEmail: string | null;
   iban: string | null;
+  /**
+   * Whether the account the direct debit is taken from belongs to the contract
+   * holder. Null on cases filed before the app started asking — which is not
+   * the same answer as `false`, so the detail view says so rather than guessing.
+   */
+  ibanSameAsContract: boolean | null;
   ibanHolderFirstName: string | null;
   ibanHolderLastName: string | null;
+  /** Codice Fiscale or Partita IVA — the mandate is filed against it. */
   ibanHolderTaxCode: string | null;
 
   // ── Activation ──
@@ -187,8 +196,13 @@ export interface IUpdateCase
   invoiceEmail?: string | null;
   /** Stored without spaces and upper-cased by the server. */
   iban?: string | null;
+  ibanSameAsContract?: boolean | null;
   ibanHolderFirstName?: string | null;
   ibanHolderLastName?: string | null;
+  /**
+   * Stored without spaces and upper-cased, and checked against its own check
+   * character — the server refuses one that is merely the right shape.
+   */
   ibanHolderTaxCode?: string | null;
 }
 

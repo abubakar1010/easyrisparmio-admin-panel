@@ -50,6 +50,7 @@ import {
   type ICaseDocument,
 } from "../../redux/features/Cases/caseApi";
 import { useAppSelector } from "../../redux/hooks";
+import { formatMoney, formatQuantity, formatUnitPrice } from "../../utils/format";
 import { server_url, server_origin } from "../../config";
 import EditBillModal from "./EditBillModal";
 import EditCaseModal from "./EditCaseModal";
@@ -215,13 +216,13 @@ const fmtDateIt = (val: string | null | undefined) => {
   }
 };
 
-const fmt = (val: number | null | undefined, decimals = 2): string | null =>
-  val != null ? `€ ${Number(val).toFixed(decimals)}` : null;
+/* Both yield null rather than a dash for a missing figure, so the detail rows
+   that render `value` drop out entirely instead of showing an empty amount. */
+const fmt = (val: number | null | undefined): string | null =>
+  formatMoney(val, { fallback: null });
 
 const fmtNum = (val: number | null | undefined, unit = ""): string | null =>
-  val != null
-    ? `${Number(val).toLocaleString("it-IT", { maximumFractionDigits: 2 })} ${unit}`.trim()
-    : null;
+  formatQuantity(val, unit, { fallback: null });
 
 /* ── Case Status Dropdown ────────────────────────────────── */
 
@@ -1110,7 +1111,7 @@ function AvailableOffersTab({
           : (isElectricity ? record.pricePerKwh : record.pricePerSmc);
         return (
           <span className="text-sm font-bold text-slate-700">
-            {price != null ? `€ ${Number(price).toFixed(4)}` : "—"}
+            {formatUnitPrice(price)}
           </span>
         );
       },
@@ -1128,7 +1129,7 @@ function AvailableOffersTab({
       key: "fixedFee",
       width: 90,
       render: (_, record) => (
-        <span className="text-xs text-slate-600">€ {Number(record.fixedMonthlyFee).toFixed(2)}</span>
+        <span className="text-xs text-slate-600">{formatMoney(record.fixedMonthlyFee)}</span>
       ),
       align: "right",
     },
@@ -1524,7 +1525,7 @@ function BillDataTab({
         { label: "Total Amount", value: fmt(bill.totalAmount) },
         {
           label: "Cost per Unit",
-          value: bill.costPerUnit != null ? `€ ${Number(bill.costPerUnit).toFixed(6)}` : null,
+          value: formatUnitPrice(bill.costPerUnit, undefined, { fallback: null }),
         },
         { label: "Fixed Charges", value: fmt(bill.fixedCharges) },
         { label: "Taxes", value: fmt(bill.taxes) },
@@ -2018,6 +2019,24 @@ function CaseDataSection({
     .filter(Boolean)
     .join(" ");
 
+  // The customer's own tax ID, which is what the holder columns held implicitly
+  // on cases filed before the app sent them for its own customer.
+  const customerTaxId =
+    caseData.user?.codiceFiscale ||
+    caseData.user?.businessProfile?.partitaIva ||
+    bill?.codiceFiscale ||
+    bill?.partitaIva;
+  const legacyHolderTaxCode = ibanHolder ? null : customerTaxId;
+
+  // Whether the mandate needs a second signature turns on this, so an unasked
+  // question is reported as unasked rather than answered "No".
+  const holderIsContractHolder =
+    caseData.ibanSameAsContract === null || caseData.ibanSameAsContract === undefined
+      ? "Not recorded"
+      : caseData.ibanSameAsContract
+        ? "Yes"
+        : "No — third-party account";
+
   const documents = caseData.documents || [];
   const verifiedCount = documents.filter((d) => d.verified).length;
 
@@ -2033,8 +2052,18 @@ function CaseDataSection({
           value: dash(caseData.user?.codiceFiscale || bill?.codiceFiscale),
           raw: true,
         },
-        ...(bill?.partitaIva
-          ? [{ label: "Partita IVA", value: bill.partitaIva, raw: true }]
+        // The account's own VAT number where there is one; the bill's OCR'd
+        // value is the fallback, since a business account holds it on its
+        // profile rather than on the user row.
+        ...(caseData.user?.businessProfile?.partitaIva || bill?.partitaIva
+          ? [
+              {
+                label: "Partita IVA",
+                value: (caseData.user?.businessProfile?.partitaIva ||
+                  bill?.partitaIva) as string,
+                raw: true,
+              },
+            ]
           : []),
         { label: "Case Type", value: dash(caseData.caseType?.replace("_", " ")) },
         { label: "Priority", value: dash(caseData.priority) },
@@ -2083,16 +2112,29 @@ function CaseDataSection({
             ? paymentMethodLabel[caseData.paymentMethod] || caseData.paymentMethod
             : "—",
         },
+        // A postal order has no account behind it, so there is no holder to
+        // describe. Under direct debit the whole block always shows, including
+        // when the account is the customer's own — the mandate is filed against
+        // these three values whoever they belong to.
         ...(isDirectDebit
           ? [
               { label: "IBAN", value: dash(caseData.iban), raw: true },
               {
                 label: "Account Holder",
+                // Cases filed before the app sent the holder for its own
+                // customer have the columns empty; the contract holder is who
+                // it was, so name them rather than showing a dash.
                 value: ibanHolder || customerName,
               },
               {
-                label: "Holder Codice Fiscale",
-                value: dash(caseData.ibanHolderTaxCode || caseData.user?.codiceFiscale),
+                label: "Holder Tax Code / VAT",
+                value: dash(caseData.ibanHolderTaxCode || legacyHolderTaxCode),
+                raw: true,
+              },
+              {
+                label: "Holder is the contract holder",
+                value: holderIsContractHolder,
+                // Reads as a sentence, so it must not be title-cased.
                 raw: true,
               },
             ]

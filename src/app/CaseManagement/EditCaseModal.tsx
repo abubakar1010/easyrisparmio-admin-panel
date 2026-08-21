@@ -3,6 +3,7 @@ import { App, Modal, Form, Input, Select, Checkbox, Alert, Spin } from "antd";
 import type { ICase, IUpdateCase } from "../../redux/features/Cases/caseApi";
 import { useUpdateCaseMutation } from "../../redux/features/Cases/caseApi";
 import { useGetOffersAdminQuery } from "../../redux/features/Offers/offerApi";
+import { isValidItalianTaxId, normalizeTaxId, TAX_ID_MESSAGE } from "../../utils/italianTaxId";
 
 interface EditCaseModalProps {
   caseData: ICase | null;
@@ -92,6 +93,9 @@ export default function EditCaseModal({ caseData, open, onClose }: EditCaseModal
 
   const [residentialSame, setResidentialSame] = useState(true);
   const [shippingSame, setShippingSame] = useState(true);
+  // Tri-state on purpose: null means the case predates the question, and
+  // saving it as `false` would assert a third-party mandate nobody asked about.
+  const [ibanSame, setIbanSame] = useState<boolean | null>(null);
 
   // Only fetched while the modal is open — the offer list is long and nobody
   // reading the case needs it.
@@ -142,6 +146,7 @@ export default function EditCaseModal({ caseData, open, onClose }: EditCaseModal
     form.setFieldsValue(initialValues);
     setResidentialSame(caseData.residentialSameAsSupply);
     setShippingSame(caseData.shippingSameAsSupply);
+    setIbanSame(caseData.ibanSameAsContract ?? null);
   }, [open, caseData, form, initialValues]);
 
   /** Mirrors the supply fields into a block the admin just declared identical. */
@@ -166,11 +171,18 @@ export default function EditCaseModal({ caseData, open, onClose }: EditCaseModal
       if (shippingSame !== caseData.shippingSameAsSupply) {
         changed.shippingSameAsSupply = shippingSame;
       }
+      if (ibanSame !== (caseData.ibanSameAsContract ?? null)) {
+        changed.ibanSameAsContract = ibanSame;
+      }
 
       for (const key of [...ADDRESS_KEYS, ...TEXT_KEYS, ...SELECT_KEYS]) {
         // Blank means "clear this field", which the server reads as null. The
         // offer is the one field the case cannot be left without.
-        const next = (values[key] ?? null) || null;
+        let next = (values[key] ?? null) || null;
+        // The server validates the tax ID before it normalises it, so a code
+        // typed in the grouped form it is printed in would be refused for the
+        // spaces alone. Send it as it will be stored.
+        if (key === "ibanHolderTaxCode" && next) next = normalizeTaxId(next);
         const previous = initialValues[key] ?? null;
         if (next !== previous) changed[key] = next;
       }
@@ -291,6 +303,13 @@ export default function EditCaseModal({ caseData, open, onClose }: EditCaseModal
               <Form.Item name="iban" label="IBAN">
                 <Input maxLength={34} placeholder="IT60X0542811101000000123456" />
               </Form.Item>
+              <Checkbox
+                className="mb-4"
+                checked={ibanSame === true}
+                onChange={(e) => setIbanSame(e.target.checked)}
+              >
+                The account belongs to the contract holder
+              </Checkbox>
               <div className="grid grid-cols-3 gap-x-4">
                 <Form.Item name="ibanHolderFirstName" label="Holder First Name">
                   <Input maxLength={100} placeholder="Mario" />
@@ -298,12 +317,27 @@ export default function EditCaseModal({ caseData, open, onClose }: EditCaseModal
                 <Form.Item name="ibanHolderLastName" label="Holder Last Name">
                   <Input maxLength={100} placeholder="Rossi" />
                 </Form.Item>
-                <Form.Item name="ibanHolderTaxCode" label="Holder Codice Fiscale">
-                  <Input maxLength={16} placeholder="RSSMRA80A01H501Z" />
+                <Form.Item
+                  name="ibanHolderTaxCode"
+                  label="Holder Tax Code / VAT"
+                  // Checked here so a mistyped code is caught by the form
+                  // rather than coming back as a raw 400 from the save. The
+                  // rule is the server's own — see utils/italianTaxId.
+                  rules={[
+                    {
+                      validator: (_, value: string) =>
+                        !value || isValidItalianTaxId(value)
+                          ? Promise.resolve()
+                          : Promise.reject(new Error(TAX_ID_MESSAGE)),
+                    },
+                  ]}
+                >
+                  <Input maxLength={16} placeholder="RSSMRA85T10A562S" />
                 </Form.Item>
               </div>
               <p className="-mt-2 mb-2 text-xs text-slate-400">
-                Leave the holder fields blank when the account belongs to the contract holder.
+                The app records the holder on every direct debit, including the customer's own
+                account. Blank holder fields mean the case predates that.
               </p>
             </div>
           </>,
