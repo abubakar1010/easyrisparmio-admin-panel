@@ -10,6 +10,7 @@ import {
   type IReferral,
 } from "../../redux/features/Referrals/referralApi";
 import { debounce } from "../../utils/debounce";
+import { formatMoney } from "../../utils/format";
 import { sweetAlertConfirmation } from "../../lib/helpers/sweetAlertConfirmation";
 
 const statusColor: Record<string, string> = {
@@ -146,7 +147,7 @@ const Referrals = () => {
       render: (_, record) => (
         <span className="inline-flex items-center gap-1 font-semibold text-slate-700">
           <FiDollarSign className="h-3.5 w-3.5 text-amber-500" />
-          {record.rewardAmount ? `EUR${record.rewardAmount}` : "—"}
+          {formatMoney(record.rewardAmount)}
         </span>
       ),
     },
@@ -236,7 +237,7 @@ const Referrals = () => {
             { title: t("referrals.rewarded"), value: String(stats?.rewarded || 0), icon: <FiUsers className="h-4 w-4" /> },
             {
               title: t("referrals.total_paid"),
-              value: stats?.totalRewardsPaid ? `EUR${stats.totalRewardsPaid}` : "EUR0",
+              value: formatMoney(stats?.totalRewardsPaid, { fallback: "€ 0.00" }),
               icon: <FiDollarSign className="h-4 w-4" />,
             },
           ].map((item) => (

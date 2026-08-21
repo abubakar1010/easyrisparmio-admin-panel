@@ -11,6 +11,7 @@ import { useGetBillsAdminQuery, type IBill } from "../../../redux/features/Bills
 import { useGetCasesQuery, type ICase } from "../../../redux/features/Cases/caseApi";
 import { sweetAlertConfirmation } from "../../../lib/helpers/sweetAlertConfirmation";
 import { formatPhone } from "../../../utils/formatPhone";
+import { formatMoney } from "../../../utils/format";
 import { successAlert, errorAlert } from "../../../lib/helpers/alert";
 
 type ClientDetailsModalProps = {
@@ -326,7 +327,7 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
             </div>
             <div className="flex items-center gap-3 text-right">
               {bill.totalAmount != null && (
-                <span className="text-sm font-semibold text-brand">€{Number(bill.totalAmount).toFixed(2)}</span>
+                <span className="text-sm font-semibold text-brand">{formatMoney(bill.totalAmount)}</span>
               )}
               <Tag color={billStatusColors[bill.status] || "default"} className="rounded-full text-xs">
                 {bill.status.replace(/_/g, " ")}

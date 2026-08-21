@@ -16,6 +16,7 @@ import {
   type OfferPaymentMethod,
 } from "../../redux/features/Offers/offerApi";
 import { debounce } from "../../utils/debounce";
+import { formatMoney } from "../../utils/format";
 
 const { Option } = Select;
 
@@ -256,7 +257,7 @@ const OffersMarket = () => {
       key: "activationCost",
       render: (val) => (
         <span className="text-emerald-600 font-bold">
-          {val != null ? `\u20AC ${Number(val).toFixed(2)}` : "—"}
+          {formatMoney(val)}
         </span>
       ),
     },

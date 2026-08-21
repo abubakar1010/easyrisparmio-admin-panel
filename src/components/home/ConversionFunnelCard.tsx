@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { DashboardCard } from "./DashboardCard";
 import type { AdminDashboardData } from "../../redux/features/Dashboard/dashboardApi";
+import { formatCount, formatPercent } from "../../utils/format";
 
 type Props = { data?: AdminDashboardData["conversionFunnel"] };
 
@@ -24,13 +25,13 @@ export function ConversionFunnelCard({ data }: Props) {
     <DashboardCard title={t("dashboard.conversion_funnel")}>
       <div className="space-y-4">
         {funnelStages.map((s, i) => {
-          const pct = Math.round((s.value / base) * 100);
+          const pct = (s.value / base) * 100;
           return (
             <div key={s.label}>
               <div className="mb-1 flex justify-between text-xs sm:text-sm">
                 <span className="font-medium text-brand">{s.label}</span>
                 <span className="tabular-nums text-gray-600">
-                  {s.value}{i > 0 && requestReceived > 0 ? ` (${pct}%)` : ""}
+                  {formatCount(s.value)}{i > 0 && requestReceived > 0 ? ` (${formatPercent(pct)})` : ""}
                 </span>
               </div>
               <div className="h-2.5 overflow-hidden rounded-full bg-gray-100">
@@ -47,7 +48,7 @@ export function ConversionFunnelCard({ data }: Props) {
           <div className="mb-1 flex justify-between text-xs sm:text-sm">
             <span className="font-medium text-red-600">{t("dashboard.rejected_ko")}</span>
             <span className="tabular-nums text-gray-600">
-              {rejected}{requestReceived > 0 ? ` (${Math.round((rejected / base) * 100)}%)` : ""}
+              {formatCount(rejected)}{requestReceived > 0 ? ` (${formatPercent((rejected / base) * 100)})` : ""}
             </span>
           </div>
           <div className="h-2.5 overflow-hidden rounded-full bg-gray-100">
@@ -59,7 +60,7 @@ export function ConversionFunnelCard({ data }: Props) {
         </div>
       </div>
       <p className="mt-5 border-t border-gray-100 pt-4 text-center text-xs text-gray-500">
-        {t("dashboard.conversion_rate")}: <span className="font-semibold text-brand">{d?.conversionRate ?? 0}%</span>
+        {t("dashboard.conversion_rate")}: <span className="font-semibold text-brand">{formatPercent(d?.conversionRate ?? 0)}</span>
       </p>
     </DashboardCard>
   );

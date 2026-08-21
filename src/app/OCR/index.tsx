@@ -17,6 +17,7 @@ import {
   type IBillExtractionResult,
 } from "../../redux/features/Bills/billApi";
 import { useSearchUsersQuery } from "../../redux/features/Users/clientApi";
+import { formatMoney, formatQuantity, formatUnitPrice } from "../../utils/format";
 
 const { Dragger } = Upload;
 
@@ -303,31 +304,31 @@ const OCRBills = () => {
               />
               <PreviewField
                 label="Total Amount"
-                value={extractedData.totalAmount != null ? `€ ${Number(extractedData.totalAmount).toFixed(2)}` : null}
+                value={formatMoney(extractedData.totalAmount, { fallback: null })}
                 confidence={extractedData.confidence?.totalAmount}
               />
               <PreviewField
                 label={isElectricity ? "Consumption (kWh)" : "Consumption (Smc)"}
                 value={
                   isElectricity
-                    ? extractedData.consumptionKwh != null ? `${extractedData.consumptionKwh} kWh` : null
-                    : extractedData.consumptionSmc != null ? `${extractedData.consumptionSmc} Smc` : null
+                    ? formatQuantity(extractedData.consumptionKwh, "kWh", { fallback: null })
+                    : formatQuantity(extractedData.consumptionSmc, "Smc", { fallback: null })
                 }
                 confidence={isElectricity ? extractedData.confidence?.consumptionKwh : extractedData.confidence?.consumptionSmc}
               />
               <PreviewField
                 label="Cost per Unit"
-                value={extractedData.costPerUnit != null ? `€ ${Number(extractedData.costPerUnit).toFixed(6)}` : null}
+                value={formatUnitPrice(extractedData.costPerUnit, undefined, { fallback: null })}
                 confidence={extractedData.confidence?.costPerUnit}
               />
               <PreviewField
                 label="Fixed Charges"
-                value={extractedData.fixedCharges != null ? `€ ${Number(extractedData.fixedCharges).toFixed(2)}` : null}
+                value={formatMoney(extractedData.fixedCharges, { fallback: null })}
                 confidence={extractedData.confidence?.fixedCharges}
               />
               <PreviewField
                 label="Taxes"
-                value={extractedData.taxes != null ? `€ ${Number(extractedData.taxes).toFixed(2)}` : null}
+                value={formatMoney(extractedData.taxes, { fallback: null })}
                 confidence={extractedData.confidence?.taxes}
               />
               <PreviewField

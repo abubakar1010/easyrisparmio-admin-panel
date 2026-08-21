@@ -10,6 +10,7 @@ import {
   type IBillQuery,
 } from "../../redux/features/Bills/billApi";
 import { debounce } from "../../utils/debounce";
+import { formatMoney } from "../../utils/format";
 
 const billStatusConfig: Record<string, { color: string; label: string }> = {
   pending_email: { color: "purple", label: "Pending (Email)" },
@@ -68,8 +69,6 @@ const CaseManagement = () => {
     setStatusFilter(value);
     setQueryParams((prev) => ({ ...prev, page: 1, status: value }));
   };
-
-  const formatCurrency = (val: number | null) => `€ ${Number(val).toFixed(2)}`;
 
   const columns: ColumnsType<IBill> = [
     {
@@ -160,7 +159,7 @@ const CaseManagement = () => {
       width: 110,
       render: (_, record) =>
         record.totalAmount != null ? (
-          <span className="font-bold text-slate-800">{formatCurrency(record.totalAmount)}</span>
+          <span className="font-bold text-slate-800">{formatMoney(record.totalAmount)}</span>
         ) : (
           <Missing />
         ),

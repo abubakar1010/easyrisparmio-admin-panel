@@ -8,6 +8,7 @@ import {
   useLazyGetOfferByIdQuery,
   type IOffer,
 } from "../../../redux/features/Offers/offerApi";
+import { formatMoney, formatUnitPrice } from "../../../utils/format";
 
 type OfferDetailsModalProps = {
   open: boolean;
@@ -38,12 +39,6 @@ const InfoRow = ({ label, value }: { label: string; value: React.ReactNode }) =>
 
 const formatDate = (date: string | null | undefined) =>
   date ? new Date(date).toLocaleDateString("it-IT") : "—";
-
-const formatCurrency = (val: number | null | undefined) =>
-  val != null ? `\u20AC ${Number(val).toFixed(2)}` : "—";
-
-const formatPrice = (val: number | null | undefined) =>
-  val != null ? `\u20AC ${Number(val).toFixed(6)}` : "—";
 
 export const OfferDetailsModal = ({ open, onClose, offer }: OfferDetailsModalProps) => {
   const [triggerGetOffer, { data: offerDetail, isLoading, isFetching }] =
@@ -130,17 +125,17 @@ export const OfferDetailsModal = ({ open, onClose, offer }: OfferDetailsModalPro
           {/* Pricing */}
           <p className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">Pricing</p>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-            <InfoRow label="Fixed Monthly Fee" value={formatCurrency(detail.fixedMonthlyFee)} />
-            <InfoRow label="Activation Cost" value={formatCurrency(detail.activationCost)} />
+            <InfoRow label="Fixed Monthly Fee" value={formatMoney(detail.fixedMonthlyFee)} />
+            <InfoRow label="Activation Cost" value={formatMoney(detail.activationCost)} />
             {detail.marketType === "variable" || detail.marketType === "indexed" ? (
-              <InfoRow label="Spread" value={formatPrice(detail.spread)} />
+              <InfoRow label="Spread" value={formatUnitPrice(detail.spread)} />
             ) : (
               <>
                 {(detail.energyType === "electricity" || detail.energyType === "dual") && (
-                  <InfoRow label="Price / kWh" value={formatPrice(detail.pricePerKwh)} />
+                  <InfoRow label="Price / kWh" value={formatUnitPrice(detail.pricePerKwh)} />
                 )}
                 {(detail.energyType === "gas" || detail.energyType === "dual") && (
-                  <InfoRow label="Price / SMc" value={formatPrice(detail.pricePerSmc)} />
+                  <InfoRow label="Price / SMc" value={formatUnitPrice(detail.pricePerSmc)} />
                 )}
               </>
             )}
