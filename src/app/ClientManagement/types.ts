@@ -42,17 +42,39 @@ export interface IBusinessProfile {
   id: string;
   companyName: string;
   partitaIva: string;
-  pecEmail: string | null;
   legalRepresentative: string | null;
   companyType: string | null;
   atecoCode: string | null;
   /** Position the account holder occupies in the company. */
   jobRole: string | null;
+  /**
+   * PEC — the company's certified email. A business case with no explicit
+   * invoice address falls back to it rather than to the sign-in email, which on
+   * a company account is very often somebody's personal mailbox.
+   */
+  pecEmail: string | null;
+  /** Codice Destinatario — the 7-character SDI address for e-invoices. */
+  sdiCode: string | null;
 }
+
+/**
+ * What an address on an account is. A company has a registered office — a sede
+ * legale — and no residence, so `legal` is not a variant of `residential`: it
+ * is the only thing that tells a company's legal seat from someone's home.
+ */
+export type AddressType = "residential" | "supply" | "legal" | "billing";
+
+/** How each type is named in the client drawer. */
+export const addressTypeLabelKey: Record<AddressType, string> = {
+  residential: "client_management.address_residential",
+  supply: "client_management.address_supply",
+  legal: "client_management.address_legal",
+  billing: "client_management.address_billing",
+};
 
 export interface IUserAddress {
   id: string;
-  addressType: string;
+  addressType: AddressType;
   streetAddress: string;
   city: string;
   province: string | null;
@@ -111,15 +133,22 @@ export interface ICreateClient {
   codiceFiscale?: string;
   companyName?: string;
   partitaIva?: string;
-  pecEmail?: string;
   legalRepresentative?: string;
   companyType?: string;
   atecoCode?: string;
+  pecEmail?: string;
+  sdiCode?: string;
   address?: {
     streetAddress: string;
     city: string;
     postalCode: string;
     province?: string;
+    /**
+     * Omitted, the API picks by role: `legal` for a business account, whose
+     * address is its registered office, and `residential` for a personal one.
+     * Sent explicitly only to override that.
+     */
+    addressType?: AddressType;
   };
 }
 
@@ -133,10 +162,12 @@ export interface IUpdateClient {
   codiceFiscale?: string;
   companyName?: string;
   partitaIva?: string;
-  pecEmail?: string;
   legalRepresentative?: string;
   companyType?: string;
   atecoCode?: string;
+  /** Null or an empty string clears either one. */
+  pecEmail?: string | null;
+  sdiCode?: string | null;
 }
 
 export interface IPaginatedResponse<T> {

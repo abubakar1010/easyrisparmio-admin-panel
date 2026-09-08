@@ -186,3 +186,80 @@ export const taxIdMessage = (value: string): string | null => {
       return TAX_ID_MESSAGE;
   }
 };
+
+/**
+ * Why a value was refused by a field that asks for a Codice Fiscale and only a
+ * Codice Fiscale.
+ *
+ * Separate from {@link TaxIdProblem}, which passes a Partita IVA. A SEPA direct
+ * debit mandate is filed against the person who signs it, so the holder field
+ * takes their tax code whatever the account type — a company's VAT number
+ * identifies the company instead, and is refused there. Mirrors
+ * `CodiceFiscaleProblem` in the mobile app's `tax_id_validator.dart`, which has
+ * always held this line; this copy exists because the CRM did not, and an admin
+ * could save through it a case the app itself would have blocked.
+ */
+export type CodiceFiscaleProblem = "shape" | "checkCharacter" | "vatNumber";
+
+/**
+ * What is wrong with `value` read as a Codice Fiscale, or null when nothing is.
+ * As with {@link taxIdProblem}, an empty value is nobody's error.
+ */
+export const codiceFiscaleProblem = (
+  value: string,
+): CodiceFiscaleProblem | null => {
+  const cleaned = normalizeTaxId(value);
+  if (!cleaned) return null;
+  if (isValidCodiceFiscale(cleaned)) return null;
+
+  // Any eleven digits, not only a VAT number whose check digit adds up: a
+  // mistyped one is still a VAT number the admin meant to give, and telling
+  // them to fix its last digit would send them further the wrong way.
+  if (PARTITA_IVA_PATTERN.test(cleaned)) return "vatNumber";
+
+  if (
+    codiceFiscaleCheckCharacter(cleaned) !== null &&
+    hasPlausibleBirthDay(cleaned)
+  ) {
+    return "checkCharacter";
+  }
+  return "shape";
+};
+
+/** What the form says about a Codice Fiscale it will not accept. */
+export const codiceFiscaleMessage = (value: string): string | null => {
+  switch (codiceFiscaleProblem(value)) {
+    case null:
+      return null;
+    case "vatNumber":
+      // Named rather than called invalid: the mandate is signed by a person, and
+      // a business admin reaches for the company's VAT here first.
+      return "A Partita IVA cannot be used here — enter the holder's Codice Fiscale (16 characters)";
+    case "checkCharacter":
+      return `Check character does not match the rest of the code — it should end in "${codiceFiscaleCheckCharacter(
+        value,
+      )}"`;
+    default:
+      return "Enter a valid Codice Fiscale (16 characters)";
+  }
+};
+
+/**
+ * Codice Destinatario — the seven-character SDI address an electronic invoice
+ * is routed to. Mirrors `is-sdi-code.validator.ts` on the server.
+ *
+ * `0000000` is the value the Agenzia delle Entrate defines for a recipient with
+ * no SDI channel, who is invoiced by PEC instead, so it passes.
+ */
+const SDI_CODE_PATTERN = /^[A-Z0-9]{7}$/;
+
+/** The value as it is stored and sent: no whitespace, upper case. */
+export const normalizeSdiCode = (value: string): string =>
+  value.replace(/\s/g, "").toUpperCase();
+
+export const isValidSdiCode = (value: string): boolean =>
+  SDI_CODE_PATTERN.test(normalizeSdiCode(value));
+
+/** What the form says about an SDI code it will not accept. */
+export const SDI_CODE_MESSAGE =
+  "Codice Destinatario must be exactly 7 letters or digits — use 0000000 for a company invoiced by PEC";

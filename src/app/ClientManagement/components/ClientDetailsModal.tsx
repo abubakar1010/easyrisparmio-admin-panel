@@ -1,18 +1,24 @@
 import { useEffect, useMemo, useState } from "react";
 import type { JSX } from "react";
 import { Avatar, Button, Divider, Form, Input, Modal, Spin, Tabs, Tag } from "antd";
-import { FiEdit3, FiFileText, FiLock, FiMail, FiMapPin, FiPhone, FiUnlock, FiZap } from "react-icons/fi";
+import { FiEdit3, FiFileText, FiLock, FiMail, FiMapPin, FiPhone, FiSend, FiUnlock, FiZap } from "react-icons/fi";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 import type { CustomerStatus, IClient } from "../types";
-import { statusClass, statusToDisplay } from "../types";
+import { addressTypeLabelKey, statusClass, statusToDisplay } from "../types";
 import { useLazyGetClientByIdQuery, useToggleClientStatusMutation, useResetClientPasswordMutation } from "../../../redux/features/Users/clientApi";
 import { useGetBillsAdminQuery, type IBill } from "../../../redux/features/Bills/billApi";
 import { useGetCasesQuery, type ICase } from "../../../redux/features/Cases/caseApi";
+import {
+  useGetCustomerNotificationHistoryQuery,
+  type INotificationHistoryItem,
+} from "../../../redux/features/Notifications/notificationApi";
 import { sweetAlertConfirmation } from "../../../lib/helpers/sweetAlertConfirmation";
 import { formatPhone } from "../../../utils/formatPhone";
 import { formatMoney } from "../../../utils/format";
+import { passwordValidationRule } from "../../../utils/password";
 import { successAlert, errorAlert } from "../../../lib/helpers/alert";
+import SendCustomerNotificationModal from "./SendCustomerNotificationModal";
 
 type ClientDetailsModalProps = {
   open: boolean;
@@ -25,6 +31,24 @@ const statusTranslationKeys: Record<string, string> = {
   Pending: "client_management.status_pending",
   Blocked: "client_management.status_blocked",
   Inactive: "client_management.status_inactive",
+};
+
+/**
+ * Same palette as the notification centre, so a message looks the same wherever
+ * an operator meets it.
+ */
+const notificationTypeColors: Record<string, string> = {
+  bill_analyzed: "blue",
+  bill_verification: "gold",
+  bill_updated: "cyan",
+  offer_available: "green",
+  case_update: "geekblue",
+  contract_status: "purple",
+  contract_verification: "orange",
+  activation_complete: "green",
+  referral_status: "magenta",
+  support_reply: "volcano",
+  general: "default",
 };
 
 const billStatusColors: Record<string, string> = {
@@ -60,6 +84,7 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("anagrafica");
   const [resetModalOpen, setResetModalOpen] = useState(false);
+  const [notifyModalOpen, setNotifyModalOpen] = useState(false);
   const [resetForm] = Form.useForm();
   const [triggerGetClient, { data: clientDetail, isLoading, isFetching }] = useLazyGetClientByIdQuery();
   const [toggleStatus, { isLoading: toggling }] = useToggleClientStatusMutation();
@@ -78,8 +103,15 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
     { skip: !open || !clientId },
   );
 
+  const { data: notificationsData, isLoading: notificationsLoading } =
+    useGetCustomerNotificationHistoryQuery(
+      { userId: clientId!, limit: 50 },
+      { skip: !open || !clientId },
+    );
+
   const bills = billsData?.data || [];
   const cases = casesData?.data || [];
+  const notifications = notificationsData?.data || [];
 
   // Extract unique supplies from bills (grouped by POD/PDR)
   const supplies = useMemo(() => {
@@ -173,10 +205,14 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
       [t("client_management.company_name"), business.companyName],
       [t("client_management.partita_iva"), business.partitaIva],
       [t("client_management.job_role"), business.jobRole],
-      [t("client_management.pec_email"), business.pecEmail],
       [t("client_management.legal_representative"), business.legalRepresentative],
       [t("client_management.company_type"), business.companyType],
       [t("client_management.ateco_code"), business.atecoCode],
+      // The two addresses an invoice is delivered to. Worth showing next to the
+      // VAT rather than only in the edit form: when a supplier asks where the
+      // invoices went, this is the answer.
+      [t("client_management.pec_email"), business.pecEmail],
+      [t("client_management.sdi_code"), business.sdiCode],
     ];
 
     return (
@@ -374,6 +410,58 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
     );
   };
 
+  /**
+   * Every notification this customer received, with the operator who sent it.
+   *
+   * Rows the platform raised automatically have no sender and are labelled as
+   * sent by the system — a blank would read as missing data rather than as
+   * "nobody typed this". Unlike the other tabs these rows are not clickable:
+   * a notification is a record of something said, not a place to navigate to.
+   */
+  const renderNotificheTab = () => {
+    if (notificationsLoading) return <div className="flex justify-center py-8"><Spin /></div>;
+    if (notifications.length === 0) {
+      return <p className="py-6 text-center text-sm text-owngray">{t("client_management.no_notifications")}</p>;
+    }
+    return (
+      <div className="space-y-2">
+        {notifications.map((n: INotificationHistoryItem) => (
+          <div key={n.id} className="rounded-lg border border-cborder/45 p-3">
+            <div className="flex items-start justify-between gap-2 mb-1">
+              <span className="text-sm font-semibold text-brand">{n.title}</span>
+              <Tag
+                color={notificationTypeColors[n.type] || "default"}
+                className="rounded-full text-xs shrink-0"
+              >
+                {t(`notifications.type_${n.type}`, { defaultValue: n.type.replace(/_/g, " ") })}
+              </Tag>
+            </div>
+            <p className="whitespace-pre-wrap text-xs text-owngray">{n.body}</p>
+            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-0.5 text-xs text-owngray">
+              <span>{new Date(n.createdAt).toLocaleString("it-IT")}</span>
+              <span>
+                {t("client_management.sent_by")}:{" "}
+                <span className="text-brand">
+                  {n.sender
+                    ? `${n.sender.firstName || ""} ${n.sender.lastName || ""}`.trim() || n.sender.email
+                    : t("client_management.sent_by_system")}
+                </span>
+              </span>
+              {n.templateName && (
+                <Tag className="rounded-full border-0 bg-slate-100 text-xs text-slate-500">
+                  {n.templateName}
+                </Tag>
+              )}
+              {!n.isRead && (
+                <span className="text-[#7061ED]">{t("client_management.notification_unread")}</span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   const renderGdprTab = () => {
     if (!preferences) {
       return <p className="py-6 text-center text-sm text-owngray">{t("client_management.no_gdpr_data")}</p>;
@@ -423,6 +511,7 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
     forniture: renderFornitureTab,
     bollette: renderBolletteTab,
     case: renderCaseTab,
+    notifiche: renderNotificheTab,
     gdpr: renderGdprTab,
   };
 
@@ -476,9 +565,13 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
                 <FiFileText className="h-3.5 w-3.5 text-owngray" /> {t("client_management.codice_fiscale_label")}: {detail.codiceFiscale}
               </p>
             )}
+            {/* Named by type, because a company's address is its registered
+                office and calling it a residence is simply wrong. */}
             {primaryAddress && (
               <p className="flex items-center gap-2">
-                <FiMapPin className="h-3.5 w-3.5 text-owngray" /> {primaryAddress.streetAddress}, {primaryAddress.city}
+                <FiMapPin className="h-3.5 w-3.5 text-owngray" />
+                {t(addressTypeLabelKey[primaryAddress.addressType] ?? "client_management.address_residential")}:{" "}
+                {primaryAddress.streetAddress}, {primaryAddress.city}
                 {primaryAddress.province ? ` (${primaryAddress.province})` : ""}
                 {primaryAddress.postalCode ? ` ${primaryAddress.postalCode}` : ""}
               </p>
@@ -514,6 +607,7 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
               { key: "forniture", label: `${t("client_management.tab_supplies")}${supplies.length ? ` (${supplies.length})` : ""}` },
               { key: "bollette", label: `${t("client_management.tab_bills")}${bills.length ? ` (${bills.length})` : ""}` },
               { key: "case", label: `${t("client_management.tab_cases")}${cases.length ? ` (${cases.length})` : ""}` },
+              { key: "notifiche", label: `${t("client_management.tab_notifications")}${notifications.length ? ` (${notifications.length})` : ""}` },
               { key: "gdpr", label: t("client_management.tab_gdpr") },
             ]}
           />
@@ -529,6 +623,14 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
           <div className="flex gap-3">
             <Button
               type="primary"
+              icon={<FiSend />}
+              className="flex-1 pb-0.5!"
+              size="large"
+              onClick={() => setNotifyModalOpen(true)}
+            >
+              {t("notifications.send_notification")}
+            </Button>
+            <Button
               icon={<FiEdit3 />}
               className="flex-1 pb-0.5!"
               size="large"
@@ -548,6 +650,12 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
             </Button>
           </div>
 
+          <SendCustomerNotificationModal
+            isOpen={notifyModalOpen}
+            client={detail}
+            onClose={() => setNotifyModalOpen(false)}
+          />
+
           {/* Reset Password Modal */}
           <Modal
             open={resetModalOpen}
@@ -561,16 +669,24 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
             <p className="mb-4 text-sm text-owngray">
               {t("client_management.set_new_password_for")} <strong>{detail.email}</strong>
             </p>
-            <Form form={resetForm} layout="vertical" onFinish={handleResetPassword}>
+            {/* See the same dialog on the customer table — the password box must
+                not be offered the admin's own saved credential. */}
+            <Form
+              form={resetForm}
+              name="reset_client_password_detail_form"
+              autoComplete="off"
+              layout="vertical"
+              onFinish={handleResetPassword}
+            >
               <Form.Item
                 name="newPassword"
                 label={t("client_management.new_password")}
                 rules={[
                   { required: true, message: t("client_management.password_required") },
-                  { min: 8, message: t("client_management.password_required") },
+                  passwordValidationRule(t("client_management.password_policy")),
                 ]}
               >
-                <Input.Password autoFocus />
+                <Input.Password autoFocus autoComplete="new-password" />
               </Form.Item>
               <Form.Item
                 name="confirmPassword"
@@ -588,7 +704,7 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
                   }),
                 ]}
               >
-                <Input.Password />
+                <Input.Password autoComplete="new-password" />
               </Form.Item>
               <div className="flex justify-end gap-2">
                 <Button onClick={() => { setResetModalOpen(false); resetForm.resetFields(); }}>
