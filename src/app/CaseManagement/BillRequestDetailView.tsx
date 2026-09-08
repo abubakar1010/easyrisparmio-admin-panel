@@ -1,7 +1,8 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useContext, useMemo, useRef, createContext } from "react";
 import { App, Button, Input, InputNumber, Spin, Empty, Tag, Select, Table, Upload, Tooltip, DatePicker, Modal, message } from "antd";
 import dayjs, { type Dayjs } from "dayjs";
 import type { ColumnsType } from "antd/es/table";
+import type { SortOrder } from "antd/es/table/interface";
 import {
   FiArrowLeft,
   FiCheck,
@@ -15,6 +16,12 @@ import {
   LuZap,
   LuFlame,
   LuLeaf,
+  LuHouse,
+  LuMail,
+  LuBuilding2,
+  LuRotateCcw,
+  LuGripVertical,
+  LuStar,
   LuPackageSearch,
   LuFileCheck2,
   LuUpload,
@@ -30,6 +37,8 @@ import {
   useGetBillByIdAdminQuery,
   useGetAllOffersForBillQuery,
   useSendSelectedOffersMutation,
+  useReorderBillOffersMutation,
+  applyOfferOrderLocally,
   useTransitionBillStatusMutation,
   useGetBillNotesQuery,
   useAddBillNoteMutation,
@@ -49,7 +58,8 @@ import {
   type ICaseEvent,
   type ICaseDocument,
 } from "../../redux/features/Cases/caseApi";
-import { useAppSelector } from "../../redux/hooks";
+import { useAppDispatch, useAppSelector } from "../../redux/hooks";
+import { cn } from "../../utils/cn";
 import { formatMoney, formatQuantity, formatUnitPrice } from "../../utils/format";
 import { server_url, server_origin } from "../../config";
 import EditBillModal from "./EditBillModal";
@@ -437,7 +447,9 @@ const BillRequestDetailView = () => {
     skip: !billId || bill?.status === "pending_email",
   });
   const [sendSelectedOffers, { isLoading: isSending }] = useSendSelectedOffersMutation();
+  const [reorderBillOffers] = useReorderBillOffersMutation();
   const [transitionBillStatus] = useTransitionBillStatusMutation();
+  const dispatch = useAppDispatch();
   const [activeTab, setActiveTab] = useState("overview");
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [savingsOverrides, setSavingsOverrides] = useState<Record<string, number>>({});
@@ -448,6 +460,58 @@ const BillRequestDetailView = () => {
   const [showActivationModal, setShowActivationModal] = useState(false);
   const [activationDate, setActivationDate] = useState<Dayjs | null>(null);
   const [expiryDate, setExpiryDate] = useState<Dayjs | null>(null);
+  const offerOrderSave = useRef<Promise<unknown>>(Promise.resolve());
+
+  /**
+   * Saves the order the customer sees the offers in.
+   *
+   * The list on screen moves first and is saved after, so a dropped row stays
+   * where it was let go instead of springing back for the length of the round
+   * trip. The saves are chained rather than fired off in parallel: each one
+   * carries the whole run, so two overlapping requests could land the wrong way
+   * round and leave the server holding an order the admin only passed through
+   * on the way to the one they wanted.
+   */
+  const handleReorderOffers = useCallback(
+    (offerIds: string[]) => {
+      if (!billId) return;
+      dispatch(applyOfferOrderLocally(billId, offerIds));
+      offerOrderSave.current = offerOrderSave.current
+        .catch(() => undefined)
+        .then(() => reorderBillOffers({ billId, offerIds }).unwrap())
+        .catch((err: { data?: { message?: string | string[] } }) => {
+          const msg = err?.data?.message;
+          notification.error({
+            message: "Could not save the offer order",
+            description: Array.isArray(msg)
+              ? msg.join(", ")
+              : typeof msg === "string"
+                ? msg
+                : "The customer still sees the previous order — the list has been reloaded.",
+            duration: 6,
+          });
+        });
+    },
+    [billId, dispatch, reorderBillOffers, notification],
+  );
+
+  /**
+   * Keeps the tick order meaningful.
+   *
+   * `selectedRowKeys` is not just a set here — its order is the order the batch
+   * will be sent in, and so the order the customer will first see. Ant Design
+   * hands back the selection in table order on every change, which would undo
+   * any arranging the admin had done, so the offers still ticked keep the
+   * places they were given and only the new ones join the end.
+   */
+  const handleSelectionChange = useCallback((keys: React.Key[]) => {
+    setSelectedRowKeys((previous) => {
+      const stillTicked = new Set(keys.map(String));
+      const kept = previous.filter((key) => stillTicked.has(String(key)));
+      const keptKeys = new Set(kept.map(String));
+      return [...kept, ...keys.filter((key) => !keptKeys.has(String(key)))];
+    });
+  }, []);
 
   const handleTransition = async (
     targetStatus: string,
@@ -577,6 +641,9 @@ const BillRequestDetailView = () => {
       return;
     }
 
+    // `selectedRowKeys` is held in the order the admin arranged, so the batch
+    // goes out in it — that is the order the customer first sees, and it is
+    // settled here rather than after the fact.
     const offersPayload = selectedRowKeys.map((key) => {
       const id = String(key);
       const override = savingsOverrides[id];
@@ -677,12 +744,14 @@ const BillRequestDetailView = () => {
             isLoading={offersLoading}
             isElectricity={isElectricity}
             selectedRowKeys={selectedRowKeys}
-            onSelectionChange={setSelectedRowKeys}
+            onSelectionChange={handleSelectionChange}
+            onReorderQueued={setSelectedRowKeys}
             savingsOverrides={savingsOverrides}
             onSavingsChange={(offerId, value) =>
               setSavingsOverrides((prev) => ({ ...prev, [offerId]: value }))
             }
             onSendOffers={handleSendOffers}
+            onReorderOffers={handleReorderOffers}
             isSending={isSending}
             billStatus={bill.status}
             caseCreated={!!activeCase && !["cancelled", "rejected"].includes(activeCase.status)}
@@ -793,7 +862,7 @@ const BillRequestDetailView = () => {
         return (
           <CaseDetailsTab
             caseId={activeCase?.id ?? null}
-            billStatus={bill.status}
+            bill={bill}
             onStatusSelect={handleStatusSelect}
             statusUpdating={isTransitioning}
           />
@@ -1037,15 +1106,128 @@ const BillRequestDetailView = () => {
 
 /* ── Available Offers Tab ───────────────────────────────── */
 
+/**
+ * The two runs of offers the admin arranges.
+ *
+ * `sent` is the list the customer already has, and moving within it writes
+ * straight through to the server. `queued` is the batch ticked but not yet
+ * sent: it is arranged here first and goes out in that order, so the customer's
+ * list is right the first time rather than needing a second pass afterwards.
+ *
+ * They are arranged separately because only one of them exists on the server. A
+ * queued offer has no row to renumber yet, so it cannot be dropped among the
+ * sent ones; once sent it joins the end of that run and moves freely.
+ */
+type OfferRun = "sent" | "queued";
+
+/**
+ * What a row needs in order to be dropped onto.
+ *
+ * It travels by context because Ant Design builds the `<tr>` elements itself
+ * and gives no way to pass props down to them — only a component to build them
+ * with.
+ */
+type OfferDragState = {
+  draggingId: string | null;
+  overId: string | null;
+  /** Position in the customer's list, 1-based; undefined for an offer in neither run. */
+  positionOf: (offerId: string) => number | undefined;
+  /** Which run the offer sits in, or null when it is in neither. */
+  runOf: (offerId: string) => OfferRun | null;
+  /** Whether the offer can be picked up at all — a lone offer has nothing to swap with. */
+  canDrag: (offerId: string) => boolean;
+  /** The row the offer would land on, or null once the cursor leaves the run. */
+  onDragOverRow: (offerId: string | null) => void;
+  onDropOnRow: (offerId: string) => void;
+};
+
+const OfferDragContext = createContext<OfferDragState | null>(null);
+
+type OfferRowProps = React.HTMLAttributes<HTMLTableRowElement> & {
+  "data-row-key"?: string;
+};
+
+/**
+ * A table row that a dragged offer can be dropped onto.
+ *
+ * The drag starts from the handle in the ORDER cell rather than from the row,
+ * because the row carries an editable savings field and a row-wide `draggable`
+ * would swallow every attempt to select the text inside it. The row only
+ * receives the drop, and marks the edge the offer would land on.
+ */
+function DroppableOfferRow({ children, className, ...props }: OfferRowProps) {
+  const drag = useContext(OfferDragContext);
+  const offerId = props["data-row-key"];
+
+  // A row only takes the drop when it shares a run with the offer in flight:
+  // the two are arranged in different places — one on the server, one in the
+  // batch waiting to go — so an offer cannot cross from one into the other.
+  const draggedRun = drag?.draggingId ? drag.runOf(drag.draggingId) : null;
+  const ownRun = offerId ? (drag?.runOf(offerId) ?? null) : null;
+  const accepts = !!offerId && !!draggedRun && ownRun === draggedRun;
+
+  const isDropTarget =
+    !!drag && accepts && drag.overId === offerId && drag.draggingId !== offerId;
+
+  // Dragging down, the offer lands under the row it was dropped on; dragging
+  // up, above it. The line is drawn on the cells rather than the row: a
+  // collapsed table border swallows a border set on the `<tr>` itself.
+  const draggedPosition = drag?.draggingId
+    ? drag.positionOf(drag.draggingId)
+    : undefined;
+  const ownPosition = offerId ? drag?.positionOf(offerId) : undefined;
+  const landsBelow =
+    isDropTarget &&
+    draggedPosition !== undefined &&
+    ownPosition !== undefined &&
+    ownPosition > draggedPosition;
+
+  return (
+    <tr
+      {...props}
+      onDragOver={(event) => {
+        if (!drag?.draggingId || !offerId) return;
+        // Dragging out past the run takes the line with it. Without this it
+        // would sit on the last offer passed over, pointing at a place the row
+        // can no longer be dropped.
+        if (!accepts) {
+          drag.onDragOverRow(null);
+          return;
+        }
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "move";
+        drag.onDragOverRow(offerId);
+      }}
+      onDrop={(event) => {
+        if (!drag?.draggingId || !offerId || !accepts) return;
+        event.preventDefault();
+        drag.onDropOnRow(offerId);
+      }}
+      className={cn(
+        className,
+        drag?.draggingId === offerId && "opacity-40",
+        isDropTarget &&
+          (landsBelow
+            ? "[&>td]:border-b-2 [&>td]:border-b-violet-500"
+            : "[&>td]:border-t-2 [&>td]:border-t-violet-500"),
+      )}
+    >
+      {children}
+    </tr>
+  );
+}
+
 function AvailableOffersTab({
   offers,
   isLoading: isLoadingOffers,
   isElectricity,
   selectedRowKeys,
   onSelectionChange,
+  onReorderQueued,
   savingsOverrides,
   onSavingsChange,
   onSendOffers,
+  onReorderOffers,
   isSending,
   billStatus,
   caseCreated,
@@ -1056,9 +1238,11 @@ function AvailableOffersTab({
   isElectricity: boolean;
   selectedRowKeys: React.Key[];
   onSelectionChange: (keys: React.Key[]) => void;
+  onReorderQueued: (keys: React.Key[]) => void;
   savingsOverrides: Record<string, number>;
   onSavingsChange: (offerId: string, value: number) => void;
   onSendOffers: () => void;
+  onReorderOffers: (offerIds: string[]) => void;
   isSending: boolean;
   billStatus: string;
   caseCreated: boolean;
@@ -1066,7 +1250,235 @@ function AvailableOffersTab({
 }) {
   const unit = isElectricity ? "kWh" : "Smc";
 
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
+  const [sortedColumn, setSortedColumn] = useState<React.Key | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortOrder>(null);
+
+  /**
+   * The list the customer already has, in the order the admin put it in. The
+   * API returns the sent offers first and already ordered, so this holds
+   * whatever they arranged even while an Ant Design sorter is rearranging what
+   * is drawn on screen.
+   */
+  const sentOrder = useMemo(
+    () => offers.filter((offer) => offer.isSent).map((offer) => offer.id),
+    [offers],
+  );
+
+  /**
+   * The batch ticked but not yet sent, in the order it will go out in.
+   *
+   * The tick order is the arrangement — `selectedRowKeys` is kept ordered for
+   * exactly this — so the admin settles the customer's order while composing
+   * the batch rather than having to fix it up after sending.
+   */
+  const queuedOrder = useMemo(() => {
+    const sent = new Set(sentOrder);
+    const known = new Set(offers.map((offer) => offer.id));
+    return selectedRowKeys
+      .map(String)
+      .filter((id) => known.has(id) && !sent.has(id));
+  }, [selectedRowKeys, offers, sentOrder]);
+
+  /** Both runs end to end: the places the customer's list will have, in order. */
+  const arrangement = useMemo(
+    () => [...sentOrder, ...queuedOrder],
+    [sentOrder, queuedOrder],
+  );
+  const positions = useMemo(
+    () => new Map(arrangement.map((id, index) => [id, index + 1])),
+    [arrangement],
+  );
+  const sentIds = useMemo(() => new Set(sentOrder), [sentOrder]);
+  const queuedIds = useMemo(() => new Set(queuedOrder), [queuedOrder]);
+
+  // A sorter rearranges the rows on screen without touching the arrangement, so
+  // dropping a row under one would mean nothing — the position it was let go
+  // over is not the position it would take. The handles come back the moment
+  // the sort is cleared.
+  //
+  // Once the customer has chosen, the app stops showing them this bill's offers
+  // at all, so there is no list left to arrange either.
+  const isSorted = sortDirection !== null && sortedColumn !== null;
+  const reorderingAllowed = !isSorted && !caseCreated;
+
+  const runOf = (offerId: string): OfferRun | null =>
+    sentIds.has(offerId) ? "sent" : queuedIds.has(offerId) ? "queued" : null;
+
+  const runFor = (run: OfferRun) => (run === "sent" ? sentOrder : queuedOrder);
+
+  /** A run of one has nothing to swap with, so its handle stays inert. */
+  const canDrag = (offerId: string) => {
+    const run = runOf(offerId);
+    return reorderingAllowed && run !== null && runFor(run).length > 1;
+  };
+
+  /**
+   * Moves an offer within its own run. A sent offer is renumbered on the
+   * server; a queued one only rearranges the batch that has yet to go out.
+   */
+  const move = (offerId: string, toIndex: number) => {
+    const run = runOf(offerId);
+    if (!run) return;
+    const list = runFor(run);
+    const fromIndex = list.indexOf(offerId);
+    if (
+      fromIndex < 0 ||
+      toIndex < 0 ||
+      toIndex >= list.length ||
+      toIndex === fromIndex
+    ) {
+      return;
+    }
+    const next = [...list];
+    next.splice(toIndex, 0, next.splice(fromIndex, 1)[0]);
+    if (run === "sent") onReorderOffers(next);
+    else onReorderQueued(next);
+  };
+
+  /** Puts the keyboard back on the handle after the row moved out from under it. */
+  const refocusHandle = (offerId: string) => {
+    requestAnimationFrame(() => {
+      document
+        .querySelector<HTMLElement>(`[data-offer-handle="${offerId}"]`)
+        ?.focus();
+    });
+  };
+
+  const dragState: OfferDragState = {
+    draggingId,
+    overId,
+    positionOf: (offerId) => positions.get(offerId),
+    runOf,
+    canDrag,
+    onDragOverRow: (offerId) => setOverId((current) => (current === offerId ? current : offerId)),
+    onDropOnRow: (offerId) => {
+      const run = draggingId ? runOf(draggingId) : null;
+      if (draggingId && run) move(draggingId, runFor(run).indexOf(offerId));
+      setDraggingId(null);
+      setOverId(null);
+    },
+  };
+
+  /**
+   * The rows in the order they are arranged: the customer's list first, then
+   * the batch waiting to go, then the rest of the catalogue in the price order
+   * the API gave it. Ticking an offer lifts it into the run so it sits next to
+   * the others it will be sent with, and can be dragged among them.
+   */
+  const orderedOffers = useMemo(() => {
+    const rank = new Map(arrangement.map((id, index) => [id, index]));
+    return [...offers].sort((a, b) => {
+      const left = rank.get(a.id);
+      const right = rank.get(b.id);
+      if (left === undefined && right === undefined) return 0;
+      if (left === undefined) return 1;
+      if (right === undefined) return -1;
+      return left - right;
+    });
+  }, [offers, arrangement]);
+
   const columns: ColumnsType<IOfferWithSavings> = [
+    {
+      title: "ORDER",
+      key: "displayOrder",
+      width: 78,
+      render: (_, record) => {
+        const position = positions.get(record.id);
+        if (position === undefined) {
+          return (
+            <Tooltip title="Tick this offer to give it a place in the customer's list, then drag it where you want it.">
+              <span className="text-xs text-slate-300">—</span>
+            </Tooltip>
+          );
+        }
+        const run = runOf(record.id);
+        const draggable = canDrag(record.id);
+        return (
+          <div className="flex items-center gap-1.5">
+            <Tooltip
+              title={
+                draggable
+                  ? run === "queued"
+                    ? "Drag to set the order these will be sent in — or focus this handle and use ↑ ↓"
+                    : "Drag to set the order the customer sees — or focus this handle and use ↑ ↓"
+                  : caseCreated
+                    ? "The customer has already chosen — the order no longer changes what they see"
+                    : isSorted
+                      ? "Clear the column sort to rearrange the order"
+                      : run === "queued"
+                        ? "Tick another offer to arrange the batch before sending it"
+                        : "There is nothing to reorder yet — only one offer has been sent"
+              }
+            >
+              <span
+                data-offer-handle={record.id}
+                role="button"
+                aria-label={
+                  `Reorder ${record.name}, position ${position} of ${arrangement.length}` +
+                  (run === "queued" ? " — waiting to be sent" : "")
+                }
+                aria-disabled={!draggable}
+                tabIndex={draggable ? 0 : -1}
+                draggable={draggable}
+                onDragStart={(event) => {
+                  const row = event.currentTarget.closest("tr");
+                  // Without this the ghost following the cursor is the handle
+                  // alone, and there is no telling which offer is in flight.
+                  if (row) {
+                    event.dataTransfer.setDragImage(row, 24, row.clientHeight / 2);
+                  }
+                  event.dataTransfer.effectAllowed = "move";
+                  // Firefox refuses to start a drag that carries no data.
+                  event.dataTransfer.setData("text/plain", record.id);
+                  setDraggingId(record.id);
+                }}
+                onDragEnd={() => {
+                  setDraggingId(null);
+                  setOverId(null);
+                }}
+                onKeyDown={(event) => {
+                  if (!draggable || !run) return;
+                  if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+                  event.preventDefault();
+                  const withinRun = runFor(run).indexOf(record.id);
+                  move(record.id, withinRun + (event.key === "ArrowUp" ? -1 : 1));
+                  refocusHandle(record.id);
+                }}
+                className={cn(
+                  "flex items-center rounded text-slate-300 outline-none",
+                  draggable
+                    ? "cursor-grab hover:text-violet-500 focus-visible:ring-2 focus-visible:ring-violet-400 active:cursor-grabbing"
+                    : "cursor-not-allowed",
+                )}
+              >
+                <LuGripVertical className="h-4 w-4" />
+              </span>
+            </Tooltip>
+            <Tooltip
+              title={
+                run === "queued"
+                  ? `Position ${position} of ${arrangement.length} once this batch is sent`
+                  : undefined
+              }
+            >
+              <span
+                className={cn(
+                  "text-sm font-bold tabular-nums",
+                  run === "queued"
+                    ? "text-amber-600 underline decoration-dashed decoration-amber-400 underline-offset-4"
+                    : "text-slate-700",
+                )}
+              >
+                {position}
+              </span>
+            </Tooltip>
+          </div>
+        );
+      },
+      align: "left",
+    },
     {
       title: "OFFER",
       key: "name",
@@ -1075,6 +1487,21 @@ function AvailableOffersTab({
         <div className="min-w-0">
           <p className="text-sm font-bold text-slate-800 truncate">{record.name}</p>
           <p className="text-xs text-slate-400 truncate">{record.supplier?.name || "—"}</p>
+          {positions.get(record.id) === 1 && (
+            <span
+              className={cn(
+                "mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold",
+                runOf(record.id) === "queued"
+                  ? "bg-amber-50 text-amber-600"
+                  : "bg-violet-50 text-violet-600",
+              )}
+            >
+              <LuStar className="h-2.5 w-2.5" />
+              {runOf(record.id) === "queued"
+                ? "Will be shown first"
+                : "Shown first in app"}
+            </span>
+          )}
         </div>
       ),
     },
@@ -1122,6 +1549,7 @@ function AvailableOffersTab({
             : (isElectricity ? (r.pricePerKwh ?? 999) : (r.pricePerSmc ?? 999));
         return getPrice(a) - getPrice(b);
       },
+      sortOrder: sortedColumn === "price" ? sortDirection : null,
       align: "right",
     },
     {
@@ -1194,6 +1622,7 @@ function AvailableOffersTab({
         const sb = savingsOverrides[b.id] ?? b.estimatedSavings;
         return sa - sb;
       },
+      sortOrder: sortedColumn === "savings" ? sortDirection : null,
       align: "right",
     },
     {
@@ -1246,10 +1675,18 @@ function AvailableOffersTab({
 
       {/* Send action bar */}
       {!caseCreated && billStatus !== "pending_email" && selectedRowKeys.length > 0 && (
-        <div className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50/50 p-3">
-          <p className="text-sm font-semibold text-emerald-800">
-            {selectedRowKeys.length} offer{selectedRowKeys.length > 1 ? "s" : ""} selected
-          </p>
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-emerald-50/50 p-3">
+          <div>
+            <p className="text-sm font-semibold text-emerald-800">
+              {selectedRowKeys.length} offer{selectedRowKeys.length > 1 ? "s" : ""} selected
+            </p>
+            {queuedOrder.length > 1 && !isSorted && (
+              <p className="text-xs text-emerald-700 mt-0.5">
+                They will be sent in the order shown at the top of the table — drag the
+                handles to change it before sending.
+              </p>
+            )}
+          </div>
           <Button
             type="primary"
             icon={<FiSend className="h-3.5 w-3.5" />}
@@ -1263,7 +1700,7 @@ function AvailableOffersTab({
       )}
 
       {!caseCreated && (() => {
-        const sentCount = offers.filter((o) => o.isSent).length;
+        const sentCount = sentOrder.length;
         if (billStatus === "offer_sent" || sentCount > 0) {
           return (
             <div className="rounded-lg bg-cyan-50 px-3 py-2">
@@ -1278,6 +1715,48 @@ function AvailableOffersTab({
         return null;
       })()}
 
+      {/* How the order works, and how to get the handles back when a sort hides them */}
+      {arrangement.length > 1 && !caseCreated && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-violet-200 bg-violet-50/60 px-3 py-2">
+          <p className="text-xs text-violet-700">
+            {isSorted ? (
+              <>
+                The rows are sorted for browsing only — the customer still sees the order
+                you set. Clear the sort to rearrange it.
+              </>
+            ) : (
+              <>
+                <span className="font-semibold">
+                  Drag the handles to set the order the customer sees.
+                </span>{" "}
+                The offer at the top is shown first in the app. Nothing is re-sorted by
+                price or savings on top of it.
+                {queuedOrder.length > 0 && sentOrder.length > 0 && (
+                  <>
+                    {" "}
+                    The{" "}
+                    <span className="font-semibold text-amber-600">amber</span> positions
+                    are the batch you have yet to send: arrange it now and it joins the end
+                    of the list in that order.
+                  </>
+                )}
+              </>
+            )}
+          </p>
+          {isSorted && (
+            <Button
+              size="small"
+              onClick={() => {
+                setSortedColumn(null);
+                setSortDirection(null);
+              }}
+            >
+              Clear sort
+            </Button>
+          )}
+        </div>
+      )}
+
       {isLoadingOffers ? (
         <div className="flex items-center justify-center py-12">
           <Spin size="large" />
@@ -1290,36 +1769,51 @@ function AvailableOffersTab({
             <LuPackageSearch className="h-4 w-4 text-amber-500" />
             <h4 className="text-sm font-semibold text-slate-800">
               Available Offers ({offers.length})
-              {(() => {
-                const sentCount = offers.filter((o) => o.isSent).length;
-                return sentCount > 0 ? (
-                  <span className="text-slate-400 font-normal ml-1">
-                    ({sentCount} already sent)
-                  </span>
-                ) : null;
-              })()}
+              {sentOrder.length > 0 && (
+                <span className="text-slate-400 font-normal ml-1">
+                  ({sentOrder.length} already sent)
+                </span>
+              )}
             </h4>
           </div>
-          <Table<IOfferWithSavings>
-            rowKey="id"
-            columns={columns}
-            dataSource={offers}
-            size="small"
-            pagination={offers.length > 20 ? { pageSize: 20, showSizeChanger: false } : false}
-            scroll={{ x: 900 }}
-            rowSelection={caseCreated || billStatus === "pending_email" ? undefined : {
-              type: "checkbox",
-              selectedRowKeys,
-              onChange: onSelectionChange,
-              getCheckboxProps: (record: IOfferWithSavings) => ({
-                disabled: record.isSent === true,
-              }),
-            }}
-            rowClassName={(record) =>
-              record.id === userSelectedOfferId ? "bg-purple-50/70" : ""
-            }
-            className="[&_.ant-table-thead_th]:bg-slate-50/50 [&_.ant-table-thead_th]:text-slate-500 [&_.ant-table-thead_th]:text-[10px] [&_.ant-table-thead_th]:font-bold [&_.ant-table-thead_th]:uppercase [&_.ant-table-thead_th]:tracking-widest [&_.ant-table-row]:hover:bg-slate-50/30 [&_.ant-table-cell]:py-3"
-          />
+          <OfferDragContext.Provider value={dragState}>
+            <Table<IOfferWithSavings>
+              rowKey="id"
+              columns={columns}
+              dataSource={orderedOffers}
+              size="small"
+              // Paging would put part of the arranged run on one page and the
+              // drop targets on another, so it has to stay whole. Only the
+              // catalogue below it is paged.
+              pagination={
+                offers.length > Math.max(20, arrangement.length)
+                  ? {
+                      pageSize: Math.max(20, arrangement.length),
+                      showSizeChanger: false,
+                    }
+                  : false
+              }
+              scroll={{ x: 980 }}
+              onChange={(_pagination, _filters, sorter) => {
+                const active = Array.isArray(sorter) ? sorter[0] : sorter;
+                setSortedColumn(active?.order ? (active.columnKey ?? null) : null);
+                setSortDirection(active?.order ?? null);
+              }}
+              components={{ body: { row: DroppableOfferRow } }}
+              rowSelection={caseCreated || billStatus === "pending_email" ? undefined : {
+                type: "checkbox",
+                selectedRowKeys,
+                onChange: onSelectionChange,
+                getCheckboxProps: (record: IOfferWithSavings) => ({
+                  disabled: record.isSent === true,
+                }),
+              }}
+              rowClassName={(record) =>
+                record.id === userSelectedOfferId ? "bg-purple-50/70" : ""
+              }
+              className="[&_.ant-table-thead_th]:bg-slate-50/50 [&_.ant-table-thead_th]:text-slate-500 [&_.ant-table-thead_th]:text-[10px] [&_.ant-table-thead_th]:font-bold [&_.ant-table-thead_th]:uppercase [&_.ant-table-thead_th]:tracking-widest [&_.ant-table-row]:hover:bg-slate-50/30 [&_.ant-table-cell]:py-3"
+            />
+          </OfferDragContext.Provider>
         </>
       )}
     </div>
@@ -1390,17 +1884,12 @@ function BillDataTab({
 
   const handleDownload = async (bf: IBillFile) => {
     try {
-      const url = `${server_url}bills/${bill.id}/files/${bf.id}`;
-      const blob = await fetchFileBlobByUrl(url);
-      const objUrl = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = objUrl;
       const ext = bf.fileUrl?.split(".").pop() || "pdf";
-      a.download = bf.originalName || `bill-${bill.id.slice(0, 8)}.${ext}`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(objUrl);
+      await downloadAuthedFile(
+        `${server_url}bills/${bill.id}/files/${bf.id}`,
+        token,
+        bf.originalName || `bill-${bill.id.slice(0, 8)}.${ext}`,
+      );
     } catch {
       message.error("Failed to download document");
     }
@@ -1692,25 +2181,27 @@ const eventIconMap: Record<string, { icon: React.ReactNode; color: string }> = {
 };
 
 const caseSubTabs: { key: string; label: string; counted?: boolean }[] = [
+  { key: "case_data", label: "Case Overview" },
   { key: "timeline", label: "Timeline" },
-  { key: "case_data", label: "Case Data" },
   { key: "documents", label: "Documents", counted: true },
   { key: "activation", label: "Activation" },
 ];
 
 function CaseDetailsTab({
   caseId,
-  billStatus,
+  bill,
   onStatusSelect,
   statusUpdating,
 }: {
   caseId: string | null;
-  billStatus: string;
+  /** The bill this case was opened from — the overview quotes the OCR off it. */
+  bill: IBill;
   onStatusSelect: (status: string) => void;
   statusUpdating: boolean;
 }) {
   const { data: caseData, isLoading } = useGetCaseByIdQuery(caseId!, { skip: !caseId });
-  const [subTab, setSubTab] = useState("timeline");
+  const [subTab, setSubTab] = useState("case_data");
+  const billStatus = bill.status;
 
   if (!caseId) {
     return (
@@ -1752,7 +2243,7 @@ function CaseDetailsTab({
       case "timeline":
         return <CaseTimeline events={events} />;
       case "case_data":
-        return <CaseDataSection caseData={caseData} customerName={customerName} />;
+        return <CaseDataSection caseData={caseData} bill={bill} customerName={customerName} />;
       case "documents":
         return <CaseDocumentsSection documents={caseData.documents || []} caseId={caseData.id} />;
       case "activation":
@@ -1941,35 +2432,464 @@ const documentTypeLabel: Record<string, string> = {
 
 type DataRow = {
   label: string;
-  value: string;
-  /** Spans both columns — for addresses and other long values. */
-  wide?: boolean;
+  value: React.ReactNode;
   /**
-   * Values that must read exactly as they were entered — identifiers (IBAN,
-   * POD, email) and addresses, where title-casing would turn a province typed
-   * "mi" into "Mi".
+   * Title-cases the value. Opt-in rather than opt-out: nearly everything a case
+   * holds is an identifier or something a person typed — capitalising a
+   * province entered "mi" would render it "Mi" — and only the handful of enum
+   * values stored lower-cased actually want it.
    */
-  raw?: boolean;
+  cap?: boolean;
+  /**
+   * Puts the label on its own line with the value beneath it, across the whole
+   * card. For the rows whose value is a file name — a half-width column in a
+   * four-across grid truncates those to three characters.
+   */
+  stacked?: boolean;
 };
 
-type DataGroup = {
+/** One numbered card of the case overview grid. */
+type DataCard = {
+  /** Identifies the card across rearrangements — never its position. */
+  key: CardKey;
   title: string;
   rows?: DataRow[];
+  /** Cards whose contents are not label/value pairs — addresses, documents. */
   content?: React.ReactNode;
-  /** Rendered on the right of the group heading — an Edit button, typically. */
-  action?: React.ReactNode;
 };
 
+/**
+ * Hands the browser a file the API only serves to an authenticated request.
+ *
+ * An anchor cannot point straight at the endpoint — both bill files and case
+ * documents sit behind the bearer token — so the bytes are fetched first and
+ * offered as an object URL. Throws on a failed fetch; the caller decides what
+ * to tell the admin.
+ */
+async function downloadAuthedFile(url: string, token: string | null, fileName: string) {
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) throw new Error("Failed to fetch file");
+  const objectUrl = URL.createObjectURL(await res.blob());
+  const anchor = document.createElement("a");
+  anchor.href = objectUrl;
+  anchor.download = fileName;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  URL.revokeObjectURL(objectUrl);
+}
+
+/**
+ * What this supply uses in a year, mirroring `MetersService.annualConsumption`
+ * on the server so the admin reads the same figure the customer sees in the
+ * app: the consumption printed on the bill scaled by how many of its own
+ * billing periods fit in a year, falling back to six — the common Italian
+ * bimonthly cycle — for a bill the OCR read a consumption off but no dates.
+ * Null when there is no consumption at all, so the row shows a dash rather
+ * than a zero the admin would read as a fact.
+ */
+function annualConsumption(bill: IBill): number | null {
+  const raw = bill.billType === "gas" ? bill.consumptionSmc : bill.consumptionKwh;
+  const consumption = raw == null ? null : Number(raw);
+  if (consumption == null || !Number.isFinite(consumption) || consumption <= 0) return null;
+
+  const start = bill.billingPeriodStart ? new Date(bill.billingPeriodStart).getTime() : NaN;
+  const end = bill.billingPeriodEnd ? new Date(bill.billingPeriodEnd).getTime() : NaN;
+  const periodDays =
+    !Number.isNaN(start) && !Number.isNaN(end) && end > start
+      ? (end - start) / 86_400_000
+      : 0;
+
+  return Math.round(consumption * (periodDays > 0 ? 365 / periodDays : 6));
+}
+
+/** Date and time, for the rows where the hour of the upload is the point. */
+const fmtDateTime = (val: string | null | undefined) => {
+  if (!val) return "—";
+  try {
+    const d = new Date(val);
+    return `${fmtDateIt(val)} ${d.toLocaleTimeString("it-IT", {
+      hour: "2-digit",
+      minute: "2-digit",
+    })}`;
+  } catch {
+    return val;
+  }
+};
+
+/**
+ * The order the cards read in until an admin rearranges them, and what the
+ * "Reset layout" button puts back. Arrived at by the admins arranging the
+ * screen themselves; an admin who drags a card still overrides it, and theirs
+ * wins on every later visit.
+ */
+const DEFAULT_CARD_ORDER = [
+  "customer",
+  "addresses",
+  "utility",
+  "offer",
+  "bill_ocr",
+  "case",
+  "documents",
+  "payment",
+] as const;
+
+type CardKey = (typeof DEFAULT_CARD_ORDER)[number];
+
+/**
+ * Where an admin's own arrangement is kept.
+ *
+ * The order is a personal reading preference rather than anything about the
+ * case — two admins on the same case may each want their own — so it lives in
+ * the browser and never reaches the server.
+ */
+const CARD_ORDER_STORAGE_KEY = "easyrisparmio:case-overview-card-order";
+
+/**
+ * The saved arrangement, reconciled with the cards that exist today.
+ *
+ * Keys that no longer name a card are dropped and cards added since the order
+ * was saved are appended, so releasing a new card never hides it from an admin
+ * who arranged the screen before it existed.
+ */
+function readStoredCardOrder(): CardKey[] {
+  try {
+    const raw = localStorage.getItem(CARD_ORDER_STORAGE_KEY);
+    if (!raw) return [...DEFAULT_CARD_ORDER];
+    const stored: unknown = JSON.parse(raw);
+    if (!Array.isArray(stored)) return [...DEFAULT_CARD_ORDER];
+    const known = [
+      ...new Set(
+        stored.filter((key): key is CardKey =>
+          (DEFAULT_CARD_ORDER as readonly string[]).includes(key as string),
+        ),
+      ),
+    ];
+    return [...known, ...DEFAULT_CARD_ORDER.filter((key) => !known.includes(key))];
+  } catch {
+    // A browser that refuses storage, or a value some other tab corrupted —
+    // either way the default order is a perfectly good screen.
+    return [...DEFAULT_CARD_ORDER];
+  }
+}
+
+/** What a card needs in order to be picked up and dropped onto. */
+type CardDragState = {
+  draggingKey: CardKey | null;
+  overKey: CardKey | null;
+  /** Where the card sits in the arrangement, 1-based. */
+  positionOf: (key: CardKey) => number;
+  total: number;
+  onDragStart: (key: CardKey) => void;
+  onDragEnd: () => void;
+  /** The card the one in flight would land on, or null once it leaves the grid. */
+  onDragOverCard: (key: CardKey | null) => void;
+  onDropOnCard: (key: CardKey) => void;
+  /** Keyboard equivalent — moves the card by one place in either direction. */
+  onNudge: (key: CardKey, delta: number) => void;
+};
+
+/**
+ * One numbered card, which the admin can drag into the place they want it.
+ *
+ * The drag starts from the handle rather than the card, so selecting a value
+ * to copy — an IBAN, a POD — still works everywhere inside it. The card itself
+ * only receives the drop, and marks the edge the card in flight would land on.
+ */
+function OverviewCard({
+  cardKey,
+  title,
+  drag,
+  children,
+}: {
+  cardKey: CardKey;
+  title: string;
+  drag: CardDragState;
+  children: React.ReactNode;
+}) {
+  const position = drag.positionOf(cardKey);
+  const isDropTarget = drag.overKey === cardKey && drag.draggingKey !== cardKey;
+  // Dragged forward, the card lands after the one it was dropped on; dragged
+  // back, before it. An inset bar rather than a border, so marking the target
+  // does not shift the grid by the width of it.
+  const landsAfter =
+    isDropTarget && drag.draggingKey != null && position > drag.positionOf(drag.draggingKey);
+
+  return (
+    <div
+      data-card={cardKey}
+      onDragOver={(event) => {
+        if (!drag.draggingKey) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "move";
+        drag.onDragOverCard(cardKey);
+      }}
+      onDrop={(event) => {
+        if (!drag.draggingKey) return;
+        event.preventDefault();
+        drag.onDropOnCard(cardKey);
+      }}
+      className={cn(
+        "rounded-xl border border-slate-200 bg-white p-5 shadow-sm",
+        drag.draggingKey === cardKey && "opacity-40",
+        isDropTarget &&
+          (landsAfter
+            ? "shadow-[inset_-3px_0_0_0_#7061ED]"
+            : "shadow-[inset_3px_0_0_0_#7061ED]"),
+      )}
+    >
+      <div className="mb-4 flex items-center gap-2">
+        <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-md bg-[#7061ED] text-[11px] font-bold text-white">
+          {position}
+        </span>
+        <h4 className="text-sm font-bold text-slate-800">{title}</h4>
+        <Tooltip title="Drag to rearrange the cards — or focus this handle and use ← →">
+          <span
+            data-card-handle={cardKey}
+            role="button"
+            aria-label={`Reorder ${title}, card ${position} of ${drag.total}`}
+            tabIndex={0}
+            draggable
+            onDragStart={(event) => {
+              const card = event.currentTarget.closest<HTMLElement>("[data-card]");
+              // Without this the ghost following the cursor is the handle
+              // alone, and there is no telling which card is in flight.
+              if (card) event.dataTransfer.setDragImage(card, 24, 24);
+              event.dataTransfer.effectAllowed = "move";
+              // Firefox refuses to start a drag that carries no data.
+              event.dataTransfer.setData("text/plain", cardKey);
+              drag.onDragStart(cardKey);
+            }}
+            onDragEnd={drag.onDragEnd}
+            onKeyDown={(event) => {
+              const delta =
+                event.key === "ArrowLeft" || event.key === "ArrowUp"
+                  ? -1
+                  : event.key === "ArrowRight" || event.key === "ArrowDown"
+                    ? 1
+                    : 0;
+              if (!delta) return;
+              event.preventDefault();
+              drag.onNudge(cardKey, delta);
+            }}
+            className="ml-auto flex cursor-grab items-center rounded text-slate-300 outline-none transition-colors hover:text-[#7061ED] focus-visible:ring-2 focus-visible:ring-violet-400 active:cursor-grabbing"
+          >
+            <LuGripVertical className="h-4 w-4" />
+          </span>
+        </Tooltip>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/** Label left, value right — the shape all but the address and document cards take. */
+function CardRows({ rows }: { rows: DataRow[] }) {
+  return (
+    <div className="space-y-3">
+      {rows.map((r) =>
+        r.stacked ? (
+          <div key={r.label}>
+            <span className="text-xs leading-snug text-slate-400">{r.label}</span>
+            <div className="mt-1 text-sm font-medium text-slate-700">{r.value}</div>
+          </div>
+        ) : (
+          <div key={r.label} className="flex items-start justify-between gap-3">
+            <span className="w-[44%] shrink-0 text-xs leading-snug text-slate-400">
+              {r.label}
+            </span>
+            <span
+              className={`min-w-0 break-words text-right text-sm font-medium text-slate-700 ${
+                r.cap ? "capitalize" : ""
+              }`}
+            >
+              {r.value}
+            </span>
+          </div>
+        ),
+      )}
+    </div>
+  );
+}
+
+/** One address on the Addresses card: icon, what it is, then the line itself. */
+function AddressBlock({
+  icon,
+  label,
+  value,
+  note,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  note?: string;
+}) {
+  return (
+    <div className="flex items-start gap-2.5">
+      <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-slate-50 text-slate-400">
+        {icon}
+      </span>
+      <div className="min-w-0">
+        <p className="text-xs font-semibold text-slate-700">{label}</p>
+        <p className="mt-1 break-words text-sm text-slate-500">{value}</p>
+        {note && <p className="mt-1 text-xs text-slate-400">{note}</p>}
+      </div>
+    </div>
+  );
+}
+
+/** A file the admin can pull down, wherever the API keeps it. */
+type OverviewFile = {
+  id: string;
+  /** What this file is — the label the row is filed under. */
+  group: string;
+  name: string;
+  uploadedAt: string;
+  /** Authenticated endpoint the bytes come from. */
+  url: string;
+  /** Only identity documents carry a verification state; bill files do not. */
+  verified?: boolean;
+};
+
+function FileRow({
+  file,
+  onDownload,
+  busy,
+}: {
+  file: OverviewFile;
+  onDownload: (file: OverviewFile) => void;
+  busy: boolean;
+}) {
+  return (
+    <div>
+      <span className="text-xs leading-snug text-slate-400">{file.group}</span>
+      <div className="mt-0.5 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => onDownload(file)}
+          disabled={busy}
+          title={file.name}
+          className="flex min-w-0 flex-1 items-center gap-1.5 text-sm font-medium text-indigo-600 transition-colors hover:text-indigo-800 disabled:opacity-50"
+        >
+          <FiFileText className="h-3.5 w-3.5 shrink-0" />
+          <span className="truncate">{file.name}</span>
+        </button>
+        <span className="shrink-0 text-xs text-slate-400">{fmtDateIt(file.uploadedAt)}</span>
+        {file.verified != null && (
+          <span
+            title={file.verified ? "Verified" : "Awaiting verification"}
+            className={file.verified ? "text-emerald-500" : "text-amber-500"}
+          >
+            {file.verified ? (
+              <FiCheckCircle className="h-3.5 w-3.5" />
+            ) : (
+              <LuClock3 className="h-3.5 w-3.5" />
+            )}
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={() => onDownload(file)}
+          disabled={busy}
+          title="Download"
+          className="shrink-0 text-slate-400 transition-colors hover:text-slate-700 disabled:opacity-50"
+        >
+          <LuDownload className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Everything the switch is filed against, on one screen.
+ *
+ * Laid out as seven numbered cards rather than one long column: an admin
+ * checking a case reads across a supplier's requirements — who the customer is,
+ * where the supply is, what the meter says, what the bill said, how it is paid
+ * for, what they signed, what was uploaded — and a card per question lets them
+ * find one without scrolling past the other six.
+ */
 function CaseDataSection({
   caseData,
+  bill,
   customerName,
 }: {
   caseData: ICase;
+  /** The full bill the case was opened from — the case's own copy is a subset. */
+  bill: IBill;
   customerName: string;
 }) {
-  const bill = caseData.bill;
+  const token = useAppSelector((state) => state.auth.token);
   const dash = (v: string | null | undefined) => (v && v.trim() ? v : "—");
   const [editing, setEditing] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [cardOrder, setCardOrder] = useState<CardKey[]>(readStoredCardOrder);
+  const [draggingKey, setDraggingKey] = useState<CardKey | null>(null);
+  const [overKey, setOverKey] = useState<CardKey | null>(null);
+
+  const isCustomOrder = cardOrder.some((key, i) => key !== DEFAULT_CARD_ORDER[i]);
+
+  /**
+   * Lifts a card out of the arrangement and puts it back at `toIndex`, saving
+   * the result. A browser refusing storage still rearranges the screen for the
+   * rest of the visit — the preference simply does not outlive it.
+   */
+  const moveCard = (key: CardKey, toIndex: number) => {
+    const from = cardOrder.indexOf(key);
+    const to = Math.max(0, Math.min(cardOrder.length - 1, toIndex));
+    if (from === -1 || from === to) return;
+    const next = [...cardOrder];
+    next.splice(from, 1);
+    next.splice(to, 0, key);
+    setCardOrder(next);
+    try {
+      localStorage.setItem(CARD_ORDER_STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      /* nothing saved — the arrangement still holds for this visit */
+    }
+  };
+
+  const resetCardOrder = () => {
+    setCardOrder([...DEFAULT_CARD_ORDER]);
+    try {
+      localStorage.removeItem(CARD_ORDER_STORAGE_KEY);
+    } catch {
+      /* nothing was saved to clear */
+    }
+  };
+
+  /** Keeps the keyboard on the card it just moved, rather than on the place it left. */
+  const refocusHandle = (key: CardKey) => {
+    requestAnimationFrame(() => {
+      document.querySelector<HTMLElement>(`[data-card-handle="${key}"]`)?.focus();
+    });
+  };
+
+  const cardDrag: CardDragState = {
+    draggingKey,
+    overKey,
+    positionOf: (key) => cardOrder.indexOf(key) + 1,
+    total: cardOrder.length,
+    onDragStart: setDraggingKey,
+    onDragEnd: () => {
+      setDraggingKey(null);
+      setOverKey(null);
+    },
+    onDragOverCard: (key) => setOverKey((current) => (current === key ? current : key)),
+    onDropOnCard: (key) => {
+      if (draggingKey) moveCard(draggingKey, cardOrder.indexOf(key));
+      setDraggingKey(null);
+      setOverKey(null);
+    },
+    onNudge: (key, delta) => {
+      moveCard(key, cardOrder.indexOf(key) + delta);
+      refocusHandle(key);
+    },
+  };
+
+  const isElectricity = bill.billType === "electricity";
+  const unit = isElectricity ? "kWh" : "Smc";
 
   const supply: CaseAddress = {
     street: caseData.supplyStreet,
@@ -1996,7 +2916,7 @@ function CaseDataSection({
   // Cases opened before the structured address fields existed only carry the
   // OCR'd supply line on the bill — fall back to it so the row is never blank.
   const supplyLine = fmtAddress(supply);
-  const supplyDisplay = supplyLine !== "—" ? supplyLine : dash(bill?.supplyAddress);
+  const supplyDisplay = supplyLine !== "—" ? supplyLine : dash(bill.supplyAddress);
 
   // What is stored wins. The flag is only the fallback, for cases saved before
   // a block declared identical to the supply address was kept as a copy of it.
@@ -2006,12 +2926,17 @@ function CaseDataSection({
     return sameAsSupply ? supplyDisplay : "—";
   };
 
+  // A company has a registered office and no residence: same columns, and the
+  // only honest word for what is in them depends on who filed the case.
+  const isBusinessCase =
+    caseData.user?.role === "business" || !!caseData.user?.businessProfile;
+
   const residentialDisplay = resolveAddress(residential, caseData.residentialSameAsSupply);
   const shippingDisplay = resolveAddress(shipping, caseData.shippingSameAsSupply);
 
   // The supplier the customer is leaving is only linked to a supplier record
   // when the OCR'd name matched one, so fall back to the name off the bill.
-  const fromSupplier = dash(caseData.fromSupplier?.name || bill?.supplierName);
+  const fromSupplier = dash(caseData.fromSupplier?.name || bill.supplierName);
 
   const isDirectDebit = caseData.paymentMethod === "rid_bancario";
   const isPaper = caseData.invoiceDelivery === "paper";
@@ -2024,90 +2949,159 @@ function CaseDataSection({
   const customerTaxId =
     caseData.user?.codiceFiscale ||
     caseData.user?.businessProfile?.partitaIva ||
-    bill?.codiceFiscale ||
-    bill?.partitaIva;
+    bill.codiceFiscale ||
+    bill.partitaIva;
   const legacyHolderTaxCode = ibanHolder ? null : customerTaxId;
 
-  // Whether the mandate needs a second signature turns on this, so an unasked
-  // question is reported as unasked rather than answered "No".
-  const holderIsContractHolder =
-    caseData.ibanSameAsContract === null || caseData.ibanSameAsContract === undefined
-      ? "Not recorded"
-      : caseData.ibanSameAsContract
-        ? "Yes"
-        : "No — third-party account";
+  const offer = caseData.selectedOffer;
+  // Variable and indexed offers quote a spread over the market index rather
+  // than a price of their own — the same rule the offers table renders by.
+  const offerPrice =
+    offer?.marketType === "variable" || offer?.marketType === "indexed"
+      ? offer?.spread
+      : isElectricity
+        ? offer?.pricePerKwh
+        : offer?.pricePerSmc;
 
   const documents = caseData.documents || [];
-  const verifiedCount = documents.filter((d) => d.verified).length;
+  const billFiles: IBillFile[] = bill.files ?? [];
 
-  const groups: DataGroup[] = [
+  const files: OverviewFile[] = [
+    ...billFiles.map((bf) => ({
+      id: `bill-${bf.id}`,
+      group: bf.verificationId ? "Re-uploaded Bill" : "Uploaded Bill",
+      name: bf.originalName || bf.fileUrl.split("/").pop() || "bill",
+      uploadedAt: bf.createdAt,
+      url: `${server_url}bills/${bill.id}/files/${bf.id}`,
+    })),
+    ...documents.map((doc) => ({
+      id: `doc-${doc.id}`,
+      group: documentTypeLabel[doc.documentType] || doc.documentType,
+      name: doc.fileName,
+      uploadedAt: doc.createdAt,
+      url: `${server_url}cases/${caseData.id}/documents/${doc.id}/file`,
+      verified: doc.verified,
+    })),
+  ];
+
+  const handleDownload = async (file: OverviewFile) => {
+    setDownloadingId(file.id);
+    try {
+      await downloadAuthedFile(file.url, token, file.name);
+    } catch {
+      message.error("Failed to download file");
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
+  // The bill the case was opened from, as opposed to anything re-uploaded
+  // later during verification — what "the original" means on the OCR card.
+  const originalBillFiles = files.filter((f) => f.group === "Uploaded Bill");
+
+  const cards: DataCard[] = [
     {
-      title: "Customer Information",
+      key: "customer",
+      title: "Customer Data",
       rows: [
-        { label: "Name", value: customerName },
-        { label: "Email", value: dash(caseData.user?.email), raw: true },
-        { label: "Phone", value: dash(caseData.user?.phone), raw: true },
+        { label: "First Name", value: dash(caseData.user?.firstName) },
+        { label: "Last Name", value: dash(caseData.user?.lastName) },
         {
-          label: "Codice Fiscale",
-          value: dash(caseData.user?.codiceFiscale || bill?.codiceFiscale),
-          raw: true,
+          // On a business account this is the person signing for the company,
+          // not the company — whose number is the VAT row below.
+          label: isBusinessCase ? "Tax Code (signatory)" : "Tax Code",
+          value: dash(caseData.user?.codiceFiscale || bill.codiceFiscale),
         },
         // The account's own VAT number where there is one; the bill's OCR'd
         // value is the fallback, since a business account holds it on its
-        // profile rather than on the user row.
-        ...(caseData.user?.businessProfile?.partitaIva || bill?.partitaIva
+        // profile rather than on the user row. Absent entirely for a private
+        // customer, who has no VAT number to be missing.
+        ...(caseData.user?.businessProfile?.partitaIva || bill.partitaIva
           ? [
               {
-                label: "Partita IVA",
-                value: (caseData.user?.businessProfile?.partitaIva ||
-                  bill?.partitaIva) as string,
-                raw: true,
+                label: "VAT Number",
+                value: (caseData.user?.businessProfile?.partitaIva || bill.partitaIva) as string,
               },
             ]
           : []),
-        { label: "Case Type", value: dash(caseData.caseType?.replace("_", " ")) },
-        { label: "Priority", value: dash(caseData.priority) },
+        { label: "Email", value: dash(caseData.user?.email) },
+        // Where a company's invoices are actually delivered. Shown next to the
+        // VAT number because that is the pair a supplier asks for.
+        ...(caseData.user?.businessProfile?.pecEmail
+          ? [{ label: "PEC", value: caseData.user.businessProfile.pecEmail }]
+          : []),
+        ...(caseData.user?.businessProfile?.sdiCode
+          ? [
+              {
+                label: "SDI Code",
+                value: caseData.user.businessProfile.sdiCode,
+              },
+            ]
+          : []),
+        { label: "Phone", value: dash(caseData.user?.phone) },
       ],
     },
     {
+      key: "addresses",
       title: "Addresses",
+      content: (
+        <div className="space-y-4">
+          <AddressBlock
+            icon={<LuBuilding2 className="h-3.5 w-3.5" />}
+            label="Supply Address"
+            value={supplyDisplay}
+          />
+          <AddressBlock
+            icon={<LuHouse className="h-3.5 w-3.5" />}
+            label={isBusinessCase ? "Registered Office" : "Residential Address"}
+            value={residentialDisplay}
+            note={caseData.residentialSameAsSupply ? "Same as supply address" : undefined}
+          />
+          <AddressBlock
+            icon={<LuMail className="h-3.5 w-3.5" />}
+            label="Billing / Shipping Address"
+            // Only paper invoices are posted anywhere, so for a digital case
+            // there is no shipping address to be missing.
+            value={isPaper ? shippingDisplay : "Digital invoices — nothing is posted"}
+            note={isPaper && caseData.shippingSameAsSupply ? "Same as supply address" : undefined}
+          />
+        </div>
+      ),
+    },
+    {
+      key: "utility",
+      title: "Utility & Consumption",
       rows: [
-        { label: "Supply Address", value: supplyDisplay, wide: true, raw: true },
         {
-          label: "Residence same as supply",
-          value: caseData.residentialSameAsSupply ? "Yes" : "No",
+          label: "Utility Type",
+          value: (
+            <Tag
+              color={isElectricity ? "blue" : "orange"}
+              className="m-0! rounded-md! border-0! px-2! py-0! text-xs! font-semibold!"
+            >
+              <span className="flex items-center gap-1">
+                {isElectricity ? <LuZap className="h-2.5 w-2.5" /> : <LuFlame className="h-2.5 w-2.5" />}
+                {isElectricity ? "Electricity" : "Gas"}
+              </span>
+            </Tag>
+          ),
         },
+        { label: "POD / PDR", value: dash(bill.podNumber || bill.pdrNumber) },
+        { label: "Current Supplier", value: fromSupplier },
+        { label: "Meter Number", value: dash(bill.meterNumber) },
+        { label: "Contract Number", value: dash(bill.contractNumber) },
         {
-          label: "Ships to supply address",
-          // Only paper invoices are posted anywhere, so for a digital case the
-          // answer is not "No" — the question does not arise.
-          value: isPaper ? (caseData.shippingSameAsSupply ? "Yes" : "No") : "—",
-        },
-        { label: "Residential Address", value: residentialDisplay, wide: true, raw: true },
-        {
-          label: "Shipping Address",
-          value: isPaper ? shippingDisplay : "Digital invoices — no shipping address",
-          wide: true,
-          raw: true,
+          label: "Annual Consumption (est.)",
+          value: formatQuantity(annualConsumption(bill), unit),
         },
       ],
     },
     {
-      title: "Supply Point",
+      key: "payment",
+      title: "Payment & Billing",
       rows: [
         {
-          label: bill?.billType === "gas" ? "PDR" : "POD",
-          value: dash(bill?.podNumber || bill?.pdrNumber),
-          raw: true,
-        },
-        { label: "Meter Number", value: dash(bill?.meterNumber), raw: true },
-      ],
-    },
-    {
-      title: "Payment Method",
-      rows: [
-        {
-          label: "Method",
+          label: "Payment Method",
           value: caseData.paymentMethod
             ? paymentMethodLabel[caseData.paymentMethod] || caseData.paymentMethod
             : "—",
@@ -2115,10 +3109,12 @@ function CaseDataSection({
         // A postal order has no account behind it, so there is no holder to
         // describe. Under direct debit the whole block always shows, including
         // when the account is the customer's own — the mandate is filed against
-        // these three values whoever they belong to.
+        // these values whoever they belong to.
         ...(isDirectDebit
           ? [
-              { label: "IBAN", value: dash(caseData.iban), raw: true },
+              // 27 unbroken characters — the one value with no space in it
+              // long enough to need the width of the whole card.
+              { label: "IBAN", value: dash(caseData.iban), stacked: true },
               {
                 label: "Account Holder",
                 // Cases filed before the app sent the holder for its own
@@ -2129,23 +3125,31 @@ function CaseDataSection({
               {
                 label: "Holder Tax Code / VAT",
                 value: dash(caseData.ibanHolderTaxCode || legacyHolderTaxCode),
-                raw: true,
               },
               {
-                label: "Holder is the contract holder",
-                value: holderIsContractHolder,
-                // Reads as a sentence, so it must not be title-cased.
-                raw: true,
+                label: "IBAN Holder Matches Contract Holder",
+                // Whether the mandate needs a second signature turns on this,
+                // so an unasked question is reported as unasked rather than
+                // answered "No".
+                value:
+                  caseData.ibanSameAsContract == null ? (
+                    <Tag className="m-0! rounded-md! border-0! bg-slate-100! px-2! py-0! text-xs! font-semibold! text-slate-500!">
+                      Not recorded
+                    </Tag>
+                  ) : caseData.ibanSameAsContract ? (
+                    <Tag color="green" className="m-0! rounded-md! border-0! px-2! py-0! text-xs! font-semibold!">
+                      Yes
+                    </Tag>
+                  ) : (
+                    <Tag color="orange" className="m-0! rounded-md! border-0! px-2! py-0! text-xs! font-semibold!">
+                      No — third party
+                    </Tag>
+                  ),
               },
             ]
           : []),
-      ],
-    },
-    {
-      title: "Invoice Delivery",
-      rows: [
         {
-          label: "Method",
+          label: "Invoice Delivery Method",
           value: caseData.invoiceDelivery
             ? invoiceDeliveryLabel[caseData.invoiceDelivery] || caseData.invoiceDelivery
             : "—",
@@ -2155,122 +3159,230 @@ function CaseDataSection({
               {
                 label: "Invoice Email",
                 value: dash(caseData.invoiceEmail || caseData.user?.email),
-                raw: true,
               },
             ]
           : []),
       ],
     },
     {
-      title: "Identity Verification",
+      key: "bill_ocr",
+      title: "Bill Data / OCR",
+      rows: [
+        {
+          label: "Bill Period",
+          value:
+            bill.billingPeriodStart || bill.billingPeriodEnd
+              ? `${fmtDateIt(bill.billingPeriodStart)} — ${fmtDateIt(bill.billingPeriodEnd)}`
+              : "—",
+        },
+        { label: "Upload Date", value: fmtDateTime(bill.createdAt) },
+        { label: "Total Bill Amount", value: formatMoney(bill.totalAmount) },
+        {
+          label: "Period Consumption",
+          value: formatQuantity(isElectricity ? bill.consumptionKwh : bill.consumptionSmc, unit),
+        },
+        { label: "Cost per Unit", value: formatUnitPrice(bill.costPerUnit, unit) },
+        { label: "Fixed Charges", value: formatMoney(bill.fixedCharges) },
+        { label: "Taxes", value: formatMoney(bill.taxes) },
+        {
+          label: "Detected Supplier",
+          value: dash(
+            bill.supplierName ||
+              bill.supplier?.name ||
+              (bill.rawAnalysisData?.ocrSupplierName as string),
+          ),
+        },
+        { label: "Detected Supply Address", value: dash(bill.supplyAddress) },
+        {
+          label: originalBillFiles.length > 1 ? "Original Uploaded Files" : "Original Uploaded File",
+          stacked: true,
+          value:
+            originalBillFiles.length > 0 ? (
+              <div className="space-y-1">
+                {originalBillFiles.map((f) => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => handleDownload(f)}
+                    disabled={downloadingId === f.id}
+                    title={f.name}
+                    className="flex w-full items-center gap-1.5 text-sm font-medium text-indigo-600 transition-colors hover:text-indigo-800 disabled:opacity-50"
+                  >
+                    <FiFileText className="h-3.5 w-3.5 shrink-0" />
+                    <span className="min-w-0 flex-1 truncate text-left">{f.name}</span>
+                    <LuDownload className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                  </button>
+                ))}
+              </div>
+            ) : bill.fileUrl ? (
+              // Bills stored before the files table existed carry the upload
+              // on the bill row itself, where there is no endpoint to fetch it.
+              <span className="text-slate-400">1 file (legacy)</span>
+            ) : (
+              "—"
+            ),
+        },
+      ],
+    },
+    {
+      key: "offer",
+      title: "Offer / Contract",
+      rows: [
+        {
+          label: "Selected Supplier",
+          value: dash(caseData.toSupplier?.name || offer?.supplier?.name),
+        },
+        { label: "Offer Name", value: dash(offer?.name) },
+        // Supplier tariff codes run long and carry no spaces to break at.
+        { label: "Offer Code", value: dash(offer?.offerCode), stacked: true },
+        { label: "Price Type", value: dash(offer?.marketType), cap: true },
+        {
+          label: offer?.marketType === "fixed" ? "Energy Price" : "Spread",
+          value: formatUnitPrice(offerPrice, unit),
+        },
+        {
+          label: "Fixed Energy Costs",
+          value:
+            offer?.fixedMonthlyFee == null
+              ? "—"
+              : `${formatMoney(offer.fixedMonthlyFee)} / month`,
+        },
+        {
+          label: "Duration",
+          value:
+            offer?.contractDurationDays == null
+              ? "—"
+              : offer.contractDurationDays >= 30
+                ? `${Math.floor(offer.contractDurationDays / 30)} months`
+                : `${offer.contractDurationDays} days`,
+        },
+        { label: "Estimated Annual Value", value: formatMoney(caseData.estimatedAnnualValue) },
+        { label: "Predicted Activation Date", value: fmtDateIt(caseData.activationDate) },
+      ],
+    },
+    {
+      key: "documents",
+      title: "Documents",
       content:
-        documents.length === 0 ? (
-          <p className="text-sm text-slate-400">No identity documents uploaded yet.</p>
+        files.length === 0 ? (
+          <p className="text-xs text-slate-400">Nothing uploaded on this case yet.</p>
         ) : (
           <div className="space-y-3">
-            <p className="text-sm font-medium text-slate-700">
-              {documents.length} document{documents.length === 1 ? "" : "s"} uploaded ·{" "}
-              {verifiedCount} verified
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {documents.map((doc) => (
-                <span
-                  key={doc.id}
-                  className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${
-                    doc.verified
-                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                      : "border-amber-200 bg-amber-50 text-amber-700"
-                  }`}
-                  title={`${documentTypeLabel[doc.documentType] || doc.documentType} · uploaded ${fmtDate(doc.createdAt)}`}
-                >
-                  {doc.verified ? (
-                    <FiCheckCircle className="h-3.5 w-3.5" />
-                  ) : (
-                    <LuClock3 className="h-3.5 w-3.5" />
-                  )}
-                  <span className="max-w-[220px] truncate">{doc.fileName}</span>
-                </span>
-              ))}
-            </div>
+            {files.map((f) => (
+              <FileRow
+                key={f.id}
+                file={f}
+                onDownload={handleDownload}
+                busy={downloadingId === f.id}
+              />
+            ))}
           </div>
         ),
     },
     {
-      title: "Supplier & Offer",
+      key: "case",
+      title: "Case Handling",
       rows: [
-        { label: "From Supplier", value: fromSupplier },
-        { label: "To Supplier", value: dash(caseData.toSupplier?.name) },
-        { label: "Selected Offer", value: dash(caseData.selectedOffer?.name) },
+        { label: "Case Number", value: dash(caseData.caseNumber) },
+        { label: "Case Type", value: dash(caseData.caseType?.replace("_", " ")), cap: true },
+        { label: "Priority", value: dash(caseData.priority), cap: true },
         {
-          label: "Estimated Annual Value",
-          value: fmt(caseData.estimatedAnnualValue) || "—",
-          raw: true,
+          label: "Assigned Agent",
+          // Named rather than dashed when nobody holds it: an unassigned case
+          // is a state someone has to act on, not a value that is missing.
+          value: caseData.assignedAgent
+            ? `${caseData.assignedAgent.firstName} ${caseData.assignedAgent.lastName}`.trim() ||
+              caseData.assignedAgent.email
+            : "Unassigned",
         },
+        { label: "SLA Deadline", value: fmtDateIt(caseData.slaDeadline) },
         {
-          label: "SLA Deadline",
-          value: caseData.slaDeadline ? fmtDate(caseData.slaDeadline) : "—",
+          label: "SLA Days",
+          value: caseData.slaDaysTotal == null ? "—" : `${caseData.slaDaysTotal} days`,
         },
-      ],
-    },
-    {
-      title: "Dates",
-      rows: [
-        { label: "Case Number", value: dash(caseData.caseNumber), raw: true },
-        { label: "Created", value: fmtDate(caseData.createdAt) },
-        { label: "Last Updated", value: fmtDate(caseData.updatedAt) },
+        { label: "Contract Sent On", value: fmtDateIt(caseData.contractSentAt) },
+        { label: "Expiry Date", value: fmtDateIt(caseData.expiryDate) },
+        { label: "Created", value: fmtDateIt(caseData.createdAt) },
+        { label: "Last Updated", value: fmtDateIt(caseData.updatedAt) },
       ],
     },
   ];
 
+  // The cards as this admin arranged them. `cardOrder` is reconciled against
+  // the cards that exist, so every key in it resolves to one.
+  const byKey = new Map(cards.map((card) => [card.key, card]));
+  const orderedCards = cardOrder.flatMap((key) => {
+    const card = byKey.get(key);
+    return card ? [card] : [];
+  });
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-5">
       {/* One button for the whole tab: every field below is corrected in the
-          same modal, so the admin never has to guess which section owns one. */}
-      <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+          same modal, so the admin never has to guess which card owns one. */}
+      <div className="flex items-center justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
-          <h3 className="text-sm font-bold text-slate-800">Case Data</h3>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Everything the switch is filed against. The supply point comes from the bill and is
-            corrected on the Bill Data tab.
+          <h3 className="text-sm font-bold text-slate-800">Case Overview</h3>
+          <p className="mt-0.5 text-xs text-slate-400">
+            Everything the switch is filed against, and every field of it is corrected in one
+            modal — the supply point read off the bill and the customer's own record included,
+            saved back to the bill and the account behind the scenes. Only the offer's tariff
+            terms are read-only: they belong to the offer, and editing a copy of them here would
+            let the two drift apart. Drag a card by its handle to put it where you want it — the
+            arrangement is remembered on this browser.
           </p>
         </div>
-        <Button
-          type="primary"
-          size="small"
-          icon={<FiEdit2 className="h-3 w-3" />}
-          onClick={() => setEditing(true)}
-        >
-          Edit Case Data
-        </Button>
+        <div className="flex shrink-0 items-center gap-2">
+          {isCustomOrder && (
+            <Button size="small" icon={<LuRotateCcw className="h-3 w-3" />} onClick={resetCardOrder}>
+              Reset layout
+            </Button>
+          )}
+          <Button
+            type="primary"
+            size="small"
+            icon={<FiEdit2 className="h-3 w-3" />}
+            onClick={() => setEditing(true)}
+          >
+            Edit Case Data
+          </Button>
+        </div>
       </div>
 
-      {groups.map((g) => (
-        <div key={g.title}>
-          <div className="flex items-center justify-between mb-4">
-            <h4 className="text-sm font-semibold text-slate-800">{g.title}</h4>
-            {g.action}
-          </div>
-          {g.content ?? (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {g.rows?.map((r) => (
-                <div key={r.label} className={r.wide ? "sm:col-span-2" : undefined}>
-                  <span className="text-xs text-slate-400">{r.label}</span>
-                  <p
-                    className={`text-sm font-medium text-slate-700 ${
-                      r.raw ? "break-words" : "capitalize"
-                    }`}
-                  >
-                    {r.value}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      ))}
+      {/* Cards keep their own height and line up at the top, so a short card
+          next to the OCR one does not stretch to match it. */}
+      <div
+        // Three across rather than four: at the 14px the rest of the dashboard
+        // sets its values in, a quarter-width card is too narrow for a label
+        // and a value on one line, and every identifier breaks mid-token.
+        className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 xl:grid-cols-3"
+        // Dropping in the gaps between cards would otherwise leave the marked
+        // card highlighted with nothing having moved.
+        onDragOver={(event) => {
+          if (!draggingKey) return;
+          event.preventDefault();
+          // Only when the cursor is in the gaps: an event bubbling up from a
+          // card has already marked that card as the target.
+          if (event.target === event.currentTarget) setOverKey(null);
+        }}
+        onDrop={() => {
+          setDraggingKey(null);
+          setOverKey(null);
+        }}
+      >
+        {orderedCards.map((card) => (
+          <OverviewCard key={card.key} cardKey={card.key} title={card.title} drag={cardDrag}>
+            {card.content ?? <CardRows rows={card.rows ?? []} />}
+          </OverviewCard>
+        ))}
+      </div>
 
+      {/* The bill goes in too: the supply point the switch is filed against is
+          bill data, and an admin correcting a POD should not have to find out
+          which tab owns it. */}
       <EditCaseModal
         caseData={caseData}
+        bill={bill}
         open={editing}
         onClose={() => setEditing(false)}
       />
@@ -2314,15 +3426,11 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
 
   const handleDownload = async (doc: ICaseDocument) => {
     try {
-      const blob = await fetchDocBlob(doc);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = doc.fileName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      await downloadAuthedFile(
+        `${server_url}cases/${caseId}/documents/${doc.id}/file`,
+        token,
+        doc.fileName,
+      );
     } catch {
       message.error("Failed to download document");
     }

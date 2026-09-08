@@ -7,8 +7,17 @@ export interface ICaseUser {
   email: string;
   phone?: string | null;
   codiceFiscale?: string | null;
-  /** A company is identified by its VAT number, which lives on its profile. */
-  businessProfile?: { partitaIva?: string | null } | null;
+  /** Which of the two account kinds this is — a VAT number only applies to one. */
+  role?: "personal" | "business" | "admin";
+  /**
+   * A company is identified by its VAT number, which lives on its profile —
+   * alongside the two addresses its invoices are delivered to.
+   */
+  businessProfile?: {
+    partitaIva?: string | null;
+    pecEmail?: string | null;
+    sdiCode?: string | null;
+  } | null;
 }
 
 /** The bill the case was opened from, as returned by `GET /cases/:id`. */
@@ -26,6 +35,29 @@ export interface ICaseBill {
   partitaIva?: string | null;
   contractNumber?: string | null;
   meterNumber?: string | null;
+}
+
+/**
+ * The offer the customer accepted, as `GET /cases/:id` returns it — the whole
+ * offer row, not just its name. What the case detail view quotes the signed
+ * terms from: an offer's price, fee and duration belong to the offer, and
+ * copying them onto the case would only let the two drift apart.
+ */
+export interface ICaseOffer {
+  id: string;
+  name: string;
+  /** The supplier's own reference for this tariff, printed on the contract. */
+  offerCode?: string | null;
+  marketType?: "fixed" | "variable" | "indexed";
+  energyType?: "electricity" | "gas" | "dual";
+  pricePerKwh?: number | null;
+  pricePerSmc?: number | null;
+  /** What a variable or indexed offer quotes instead of a price of its own. */
+  spread?: number | null;
+  fixedMonthlyFee?: number | null;
+  contractDurationDays?: number | null;
+  isGreenEnergy?: boolean;
+  supplier?: { id: string; name: string };
 }
 
 export interface ICaseDocument {
@@ -135,7 +167,7 @@ export interface ICase {
   updatedAt: string;
   user?: ICaseUser;
   assignedAgent?: ICaseUser | null;
-  selectedOffer?: { id: string; name: string; supplier?: { id: string; name: string } };
+  selectedOffer?: ICaseOffer;
   bill?: ICaseBill;
   fromSupplier?: { id: string; name: string } | null;
   toSupplier?: { id: string; name: string } | null;
@@ -176,12 +208,23 @@ export interface IUpdateCase
   priority?: string;
   notes?: string | null;
   internalNotes?: string | null;
-  assignedAgentId?: string;
+  /** The admin handling the case. `null` puts it back in the unassigned queue. */
+  assignedAgentId?: string | null;
   /** Moves the destination supplier with it, server-side. */
   selectedOfferId?: string;
   /** `YYYY-MM-DD`. Correcting the dates an admin entered at activation. */
-  activationDate?: string;
-  expiryDate?: string;
+  activationDate?: string | null;
+  expiryDate?: string | null;
+  /** ISO instant. Stamped when the bill first reaches "contract sent". */
+  contractSentAt?: string | null;
+
+  // ── Commercial & SLA ──
+  /** What the switch is worth over a year, in euro. */
+  estimatedAnnualValue?: number | null;
+  /** Days the case is allowed to take end to end. */
+  slaDaysTotal?: number | null;
+  /** ISO instant the case falls out of SLA. */
+  slaDeadline?: string | null;
   /**
    * While true, the matching block is kept as a copy of the supply address by
    * the server — correcting the supply address moves it too.
