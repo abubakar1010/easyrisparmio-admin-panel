@@ -7,11 +7,8 @@ import { useCreateClientMutation, useUpdateClientMutation } from "../../../redux
 import { successAlert, errorAlert } from "../../../lib/helpers/alert";
 import { PhoneInput, phoneValidationRule } from "../../../components/ui/PhoneInput";
 import {
-  SDI_CODE_MESSAGE,
   isValidCodiceFiscale,
   isValidPartitaIva,
-  isValidSdiCode,
-  normalizeSdiCode,
   normalizeTaxId,
 } from "../../../utils/italianTaxId";
 import { passwordValidationRule } from "../../../utils/password";
@@ -55,13 +52,6 @@ export function ClientFormModal({ open, onClose, mode, client = null }: ClientFo
         : Promise.reject(new Error(t("client_management.partita_iva_invalid"))),
   };
 
-  const sdiCodeRule = {
-    validator: (_: unknown, value: string) =>
-      !value || isValidSdiCode(value)
-        ? Promise.resolve()
-        : Promise.reject(new Error(SDI_CODE_MESSAGE)),
-  };
-
   useEffect(() => {
     if (!open) {
       form.resetFields();
@@ -80,7 +70,6 @@ export function ClientFormModal({ open, onClose, mode, client = null }: ClientFo
         companyName: client.businessProfile?.companyName,
         partitaIva: client.businessProfile?.partitaIva,
         pecEmail: client.businessProfile?.pecEmail,
-        sdiCode: client.businessProfile?.sdiCode,
       });
       return;
     }
@@ -98,7 +87,6 @@ export function ClientFormModal({ open, onClose, mode, client = null }: ClientFo
     const partitaIva = values.partitaIva
       ? normalizeTaxId(values.partitaIva).replace(/^IT/, "")
       : undefined;
-    const sdiCode = values.sdiCode ? normalizeSdiCode(values.sdiCode) : undefined;
 
     try {
       if (isEdit && client) {
@@ -117,7 +105,6 @@ export function ClientFormModal({ open, onClose, mode, client = null }: ClientFo
           // an omitted key leaves the old value in place, which is not what
           // emptying a box means.
           updateData.pecEmail = values.pecEmail || null;
-          updateData.sdiCode = sdiCode ?? null;
         }
         await updateClient({ id: client.id, data: updateData }).unwrap();
         successAlert({ message: t("client_management.client_updated_successfully") });
@@ -135,7 +122,6 @@ export function ClientFormModal({ open, onClose, mode, client = null }: ClientFo
           createData.companyName = values.companyName;
           createData.partitaIva = partitaIva;
           createData.pecEmail = values.pecEmail || undefined;
-          createData.sdiCode = sdiCode;
         }
         await createClient(createData).unwrap();
         successAlert({ message: t("client_management.client_created_successfully") });
@@ -282,24 +268,14 @@ export function ClientFormModal({ open, onClose, mode, client = null }: ClientFo
                 no explicit invoice address falls back to the PEC, so leaving
                 this blank sends statutory invoices to whatever mailbox the
                 account was registered with. */}
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Form.Item
-                name="pecEmail"
-                label={t("client_management.pec_email")}
-                className="mb-3"
-                rules={[{ type: "email", message: t("client_management.pec_email_invalid") }]}
-              >
-                <Input maxLength={255} placeholder="rossi@pec.it" />
-              </Form.Item>
-              <Form.Item
-                name="sdiCode"
-                label={t("client_management.sdi_code")}
-                className="mb-3"
-                rules={[sdiCodeRule]}
-              >
-                <Input maxLength={7} placeholder="ABC1234" />
-              </Form.Item>
-            </div>
+            <Form.Item
+              name="pecEmail"
+              label={t("client_management.pec_email")}
+              className="mb-3"
+              rules={[{ type: "email", message: t("client_management.pec_email_invalid") }]}
+            >
+              <Input maxLength={255} placeholder="rossi@pec.it" />
+            </Form.Item>
           </>
         )}
 

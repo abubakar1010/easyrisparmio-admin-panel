@@ -311,7 +311,6 @@
     "fiscal_code_invalid": "Inserisci un Codice Fiscale valido (16 caratteri)",
     "pec_email": "PEC (posta certificata)",
     "pec_email_invalid": "Inserisci un indirizzo PEC valido",
-    "sdi_code": "Codice Destinatario (SDI)",
     "fiscal_code_required": "Il Codice Fiscale è obbligatorio per un account business",
     "fiscal_code_business_hint": "Il Codice Fiscale della persona che firma per l’azienda: il numero dell’azienda è la Partita IVA qui sopra.",
     "address_residential": "Residenza",

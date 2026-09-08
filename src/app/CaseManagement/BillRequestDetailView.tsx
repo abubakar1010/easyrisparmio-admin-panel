@@ -3030,14 +3030,6 @@ function CaseDataSection({
         ...(caseData.user?.businessProfile?.pecEmail
           ? [{ label: "PEC", value: caseData.user.businessProfile.pecEmail }]
           : []),
-        ...(caseData.user?.businessProfile?.sdiCode
-          ? [
-              {
-                label: "SDI Code",
-                value: caseData.user.businessProfile.sdiCode,
-              },
-            ]
-          : []),
         { label: "Phone", value: dash(caseData.user?.phone) },
       ],
     },

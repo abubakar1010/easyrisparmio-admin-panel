@@ -243,23 +243,3 @@ export const codiceFiscaleMessage = (value: string): string | null => {
       return "Enter a valid Codice Fiscale (16 characters)";
   }
 };
-
-/**
- * Codice Destinatario — the seven-character SDI address an electronic invoice
- * is routed to. Mirrors `is-sdi-code.validator.ts` on the server.
- *
- * `0000000` is the value the Agenzia delle Entrate defines for a recipient with
- * no SDI channel, who is invoiced by PEC instead, so it passes.
- */
-const SDI_CODE_PATTERN = /^[A-Z0-9]{7}$/;
-
-/** The value as it is stored and sent: no whitespace, upper case. */
-export const normalizeSdiCode = (value: string): string =>
-  value.replace(/\s/g, "").toUpperCase();
-
-export const isValidSdiCode = (value: string): boolean =>
-  SDI_CODE_PATTERN.test(normalizeSdiCode(value));
-
-/** What the form says about an SDI code it will not accept. */
-export const SDI_CODE_MESSAGE =
-  "Codice Destinatario must be exactly 7 letters or digits — use 0000000 for a company invoiced by PEC";

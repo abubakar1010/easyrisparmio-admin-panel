@@ -16,7 +16,6 @@ export interface ICaseUser {
   businessProfile?: {
     partitaIva?: string | null;
     pecEmail?: string | null;
-    sdiCode?: string | null;
   } | null;
 }
 

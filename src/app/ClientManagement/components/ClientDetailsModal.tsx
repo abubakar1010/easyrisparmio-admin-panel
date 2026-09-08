@@ -208,11 +208,10 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
       [t("client_management.legal_representative"), business.legalRepresentative],
       [t("client_management.company_type"), business.companyType],
       [t("client_management.ateco_code"), business.atecoCode],
-      // The two addresses an invoice is delivered to. Worth showing next to the
-      // VAT rather than only in the edit form: when a supplier asks where the
+      // The address an invoice is delivered to. Worth showing next to the VAT
+      // rather than only in the edit form: when a supplier asks where the
       // invoices went, this is the answer.
       [t("client_management.pec_email"), business.pecEmail],
-      [t("client_management.sdi_code"), business.sdiCode],
     ];
 
     return (

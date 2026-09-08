@@ -53,8 +53,6 @@ export interface IBusinessProfile {
    * a company account is very often somebody's personal mailbox.
    */
   pecEmail: string | null;
-  /** Codice Destinatario — the 7-character SDI address for e-invoices. */
-  sdiCode: string | null;
 }
 
 /**
@@ -137,7 +135,6 @@ export interface ICreateClient {
   companyType?: string;
   atecoCode?: string;
   pecEmail?: string;
-  sdiCode?: string;
   address?: {
     streetAddress: string;
     city: string;
@@ -165,9 +162,8 @@ export interface IUpdateClient {
   legalRepresentative?: string;
   companyType?: string;
   atecoCode?: string;
-  /** Null or an empty string clears either one. */
+  /** Null or an empty string clears it. */
   pecEmail?: string | null;
-  sdiCode?: string | null;
 }
 
 export interface IPaginatedResponse<T> {
