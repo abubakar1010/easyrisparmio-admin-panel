@@ -66,6 +66,8 @@ export function ClientFormModal({ open, onClose, mode, client = null }: ClientFo
         lastName: client.lastName,
         email: client.email,
         phone: client.phone,
+        // Empty on a company: one account carries one tax identifier, and a
+        // company's is the Partita IVA below.
         fiscalCode: client.codiceFiscale,
         companyName: client.businessProfile?.companyName,
         partitaIva: client.businessProfile?.partitaIva,
@@ -95,7 +97,10 @@ export function ClientFormModal({ open, onClose, mode, client = null }: ClientFo
           lastName: values.lastName,
           email: values.email,
           phone: values.phone || undefined,
-          codiceFiscale: fiscalCode,
+          // A company is identified by its Partita IVA and a private customer
+          // by their Codice Fiscale — one each, never both. The API refuses the
+          // other one outright, so the form does not offer it either.
+          codiceFiscale: customerType === "Business" ? undefined : fiscalCode,
           role: typeToRole[customerType],
         };
         if (customerType === "Business") {
@@ -116,7 +121,7 @@ export function ClientFormModal({ open, onClose, mode, client = null }: ClientFo
           lastName: values.lastName,
           phone: values.phone || undefined,
           role: typeToRole[customerType],
-          codiceFiscale: fiscalCode,
+          codiceFiscale: customerType === "Business" ? undefined : fiscalCode,
         };
         if (customerType === "Business") {
           createData.companyName = values.companyName;
@@ -279,33 +284,24 @@ export function ClientFormModal({ open, onClose, mode, client = null }: ClientFo
           </>
         )}
 
-        <p className="mb-2 text-base font-semibold text-brand">{t("client_management.tax_information")}</p>
-        {/* The account holder's own code, not the company's — for a business
-            account that is the person signing for it. The API stores it on the
-            user row; the company's VAT lives in Partita IVA above.
-
-            Required on a business account, because that is the one that cannot
-            do without it: the switch request files a direct debit mandate
-            against a person, and an account created without a code leaves the
-            customer at a mandatory field nothing ever asked them to fill. */}
-        <Form.Item
-          name="fiscalCode"
-          label={
-            customerType === "Business"
-              ? `${t("client_management.fiscal_code")} *`
-              : t("client_management.fiscal_code")
-          }
-          className="mb-3"
-          extra={customerType === "Business" ? t("client_management.fiscal_code_business_hint") : undefined}
-          rules={[
-            ...(customerType === "Business"
-              ? [{ required: true, message: t("client_management.fiscal_code_required") }]
-              : []),
-            codiceFiscaleRule,
-          ]}
-        >
-          <Input maxLength={16} placeholder="RSSMRA85T10A562S" />
-        </Form.Item>
+        {/* One account, one tax identifier: a private customer is identified by
+            their Codice Fiscale, a company by the Partita IVA collected above.
+            Asking a company for both is what left the switch request having to
+            decide which of the two the mandate was filed against — so the field
+            is not on a business form at all, and the API refuses one there. */}
+        {customerType !== "Business" && (
+          <>
+            <p className="mb-2 text-base font-semibold text-brand">{t("client_management.tax_information")}</p>
+            <Form.Item
+              name="fiscalCode"
+              label={t("client_management.fiscal_code")}
+              className="mb-3"
+              rules={[codiceFiscaleRule]}
+            >
+              <Input maxLength={16} placeholder="RSSMRA85T10A562S" />
+            </Form.Item>
+          </>
+        )}
 
         <div className="flex justify-end gap-2">
           <Button onClick={onClose}>{t("common.cancel")}</Button>

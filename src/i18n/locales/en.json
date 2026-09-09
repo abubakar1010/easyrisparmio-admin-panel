@@ -311,8 +311,6 @@
     "fiscal_code_invalid": "Enter a valid Codice Fiscale (16 characters)",
     "pec_email": "PEC (certified email)",
     "pec_email_invalid": "Enter a valid PEC address",
-    "fiscal_code_required": "Codice Fiscale is required for a business account",
-    "fiscal_code_business_hint": "The Codice Fiscale of the person signing for the company — the company's own number is the Partita IVA above.",
     "address_residential": "Residence",
     "address_legal": "Registered office",
     "address_supply": "Supply address",

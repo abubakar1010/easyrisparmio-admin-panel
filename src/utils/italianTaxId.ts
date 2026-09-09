@@ -243,3 +243,45 @@ export const codiceFiscaleMessage = (value: string): string | null => {
       return "Enter a valid Codice Fiscale (16 characters)";
   }
 };
+
+/**
+ * The mirror of {@link CodiceFiscaleProblem}, for a field that asks for a
+ * Partita IVA and only a Partita IVA.
+ *
+ * One account, one tax identifier: a private customer is identified by their
+ * Codice Fiscale and a company by its VAT number. So a business form asks for
+ * the VAT number alone, and an admin who reaches for the other code is told
+ * which one is wanted rather than that what they typed is invalid — it is a
+ * real code, simply the other account kind's.
+ */
+export type PartitaIvaProblem = "shape" | "checkDigit" | "codiceFiscale";
+
+/**
+ * What is wrong with `value` read as a Partita IVA, or null when nothing is.
+ * As with the others, an empty value is nobody's error.
+ */
+export const partitaIvaProblem = (value: string): PartitaIvaProblem | null => {
+  const cleaned = normalizeTaxId(value);
+  if (!cleaned) return null;
+  if (isValidPartitaIva(cleaned)) return null;
+
+  // Shaped like a personal code, whatever its check character says: a mistyped
+  // Codice Fiscale is still the admin reaching for the wrong one of the two.
+  if (CODICE_FISCALE_PATTERN.test(cleaned)) return "codiceFiscale";
+  if (PARTITA_IVA_PATTERN.test(cleaned)) return "checkDigit";
+  return "shape";
+};
+
+/** What the form says about a Partita IVA it will not accept. */
+export const partitaIvaMessage = (value: string): string | null => {
+  switch (partitaIvaProblem(value)) {
+    case null:
+      return null;
+    case "codiceFiscale":
+      return "A Codice Fiscale cannot be used here — a company is identified by its Partita IVA (11 digits)";
+    case "checkDigit":
+      return "Partita IVA check digit does not match the first ten digits";
+    default:
+      return "Enter a valid Partita IVA (11 digits)";
+  }
+};

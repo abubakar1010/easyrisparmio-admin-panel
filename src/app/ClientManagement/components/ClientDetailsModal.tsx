@@ -559,9 +559,18 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
             <p className="flex items-center gap-2">
               <FiMail className="h-3.5 w-3.5 text-owngray" /> {detail.email}
             </p>
+            {/* Whichever identifier this account carries — a private customer
+                their Codice Fiscale, a company its Partita IVA. One each, so
+                the header row shows the one that exists rather than leaving a
+                business client with no tax ID on it at all. */}
             {detail.codiceFiscale && (
               <p className="flex items-center gap-2">
                 <FiFileText className="h-3.5 w-3.5 text-owngray" /> {t("client_management.codice_fiscale_label")}: {detail.codiceFiscale}
+              </p>
+            )}
+            {detail.businessProfile?.partitaIva && (
+              <p className="flex items-center gap-2">
+                <FiFileText className="h-3.5 w-3.5 text-owngray" /> {t("client_management.partita_iva")}: {detail.businessProfile.partitaIva}
               </p>
             )}
             {/* Named by type, because a company's address is its registered
