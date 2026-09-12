@@ -1,74 +1,102 @@
 import { useTranslation } from "react-i18next";
-import { DashboardCard } from "./DashboardCard";
+import { useNavigate } from "react-router";
 import { FiChevronRight } from "react-icons/fi";
-import { LuFileWarning, LuCalendarClock, LuClipboardCheck, LuPhone } from "react-icons/lu";
+import { LuCircleCheckBig } from "react-icons/lu";
+import { DashboardCard } from "./DashboardCard";
+import { getPriorityTaskUi } from "../../constants/priorityTasks";
 import type { AdminDashboardData } from "../../redux/features/Dashboard/dashboardApi";
 
 type Props = { data?: AdminDashboardData["priorityTasks"] };
 
+/**
+ * The buckets of outstanding work, straight from the server.
+ *
+ * Rendered from `data.categories` rather than from a fixed list of four rows:
+ * what is actually pending is the server's call, and hard-coding the rows here
+ * is what let "Missing Documents" sit at zero forever while nine bills waited
+ * on validation with nowhere on this card to show it.
+ *
+ * Every row opens the customers and cases it counts, so a number on this card
+ * is always something the admin can act on.
+ */
 export function PriorityTasksCard({ data }: Props) {
   const { t } = useTranslation();
-  const d = data;
+  const navigate = useNavigate();
 
-  const rows = [
-    {
-      title: t("dashboard.missing_documents"),
-      desc: `${d?.missingDocuments ?? 0} ${t("dashboard.contracts_waiting")}`,
-      count: String(d?.missingDocuments ?? 0),
-      bg: "bg-red-50",
-      border: "border-red-100",
-      icon: <LuFileWarning className="h-5 w-5 text-red-600" />,
-    },
-    {
-      title: t("dashboard.expiring_contracts"),
-      desc: t("dashboard.within_30_days"),
-      count: String(d?.expiringContracts ?? 0),
-      bg: "bg-orange-50",
-      border: "border-orange-100",
-      icon: <LuCalendarClock className="h-5 w-5 text-orange-600" />,
-    },
-    {
-      title: t("dashboard.pending_validation"),
-      desc: t("dashboard.awaiting_approval"),
-      count: String(d?.pendingValidation ?? 0),
-      bg: "bg-amber-50",
-      border: "border-amber-100",
-      icon: <LuClipboardCheck className="h-5 w-5 text-amber-700" />,
-    },
-    {
-      title: t("dashboard.follow_up_required"),
-      desc: t("dashboard.customer_contact_needed"),
-      count: String(d?.followUpRequired ?? 0),
-      bg: "bg-sky-50",
-      border: "border-sky-100",
-      icon: <LuPhone className="h-5 w-5 text-sky-600" />,
-    },
-  ];
+  // Empty buckets are noise on a to-do list — the total below still reports the
+  // whole picture, and an all-clear card says so outright.
+  const categories = (data?.categories ?? []).filter((c) => c.count > 0);
+  const total = data?.total ?? 0;
 
   return (
-    <DashboardCard title={t("dashboard.priority_tasks")}>
-      <ul className="space-y-2">
-        {rows.map((row) => (
-          <li
-            key={row.title}
-            className={`flex items-center gap-3 rounded-lg border px-3 py-3 ${row.bg} ${row.border}`}
-          >
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/80">
-              {row.icon}
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-brand">{row.title}</p>
-              <p className="text-xs text-gray-600">{row.desc}</p>
-            </div>
-            <span className="text-lg font-bold text-brand">{row.count}</span>
-          </li>
-        ))}
-      </ul>
+    <DashboardCard
+      title={t("dashboard.priority_tasks")}
+      headerExtra={
+        total > 0 ? (
+          <span className="rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-bold text-red-600">
+            {t("priority_tasks.open_count", { count: total })}
+          </span>
+        ) : undefined
+      }
+    >
+      {categories.length === 0 ? (
+        <div className="flex flex-col items-center gap-2 py-10 text-center">
+          <LuCircleCheckBig className="h-8 w-8 text-emerald-500" />
+          <p className="text-sm font-semibold text-brand">
+            {t("priority_tasks.all_clear")}
+          </p>
+          <p className="text-xs text-gray-500">
+            {t("priority_tasks.all_clear_desc")}
+          </p>
+        </div>
+      ) : (
+        <ul className="space-y-2">
+          {categories.map((category) => {
+            const ui = getPriorityTaskUi(category.key);
+            const Icon = ui.icon;
+            return (
+              <li key={category.key}>
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate(`/priority-tasks?category=${category.key}`)
+                  }
+                  aria-label={t("priority_tasks.open_category", {
+                    category: t(ui.labelKey),
+                    count: category.count,
+                  })}
+                  className={`flex w-full cursor-pointer items-center gap-3 rounded-lg border px-3 py-3 text-left transition hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#3B82F6] ${ui.bg} ${ui.border}`}
+                >
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/80">
+                    <Icon className={`h-5 w-5 ${ui.iconColor}`} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-brand">
+                      {t(ui.labelKey)}
+                    </p>
+                    <p className="truncate text-xs text-gray-600">
+                      {t(ui.descKey)}
+                    </p>
+                  </div>
+                  <span className="text-lg font-bold text-brand">
+                    {category.count}
+                  </span>
+                  <FiChevronRight className="h-4 w-4 shrink-0 text-gray-400" />
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
       <button
         type="button"
-        className="mt-4 flex w-full items-center justify-start gap-1 text-sm font-semibold text-[#3B82F6] hover:text-[#2563EB]"
+        onClick={() => navigate("/priority-tasks")}
+        className="mt-4 flex w-full cursor-pointer items-center justify-start gap-1 text-sm font-semibold text-[#3B82F6] hover:text-[#2563EB]"
       >
-        View all tasks <FiChevronRight className="h-4 w-4" />
+        {t("priority_tasks.view_all")}
+        {total > 0 ? ` (${total})` : ""}
+        <FiChevronRight className="h-4 w-4" />
       </button>
     </DashboardCard>
   );

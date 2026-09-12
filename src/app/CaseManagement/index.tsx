@@ -11,23 +11,7 @@ import {
 } from "../../redux/features/Bills/billApi";
 import { debounce } from "../../utils/debounce";
 import { formatMoney } from "../../utils/format";
-
-const billStatusConfig: Record<string, { color: string; label: string }> = {
-  pending_email: { color: "purple", label: "Pending (Email)" },
-  uploaded: { color: "blue", label: "Uploaded" },
-  analyzing: { color: "orange", label: "Analyzing" },
-  analyzed: { color: "green", label: "Analyzed" },
-  error: { color: "red", label: "Error" },
-  verification_review: { color: "gold", label: "Verification Review" },
-  verification_required: { color: "volcano", label: "Verification Required" },
-  verified: { color: "green", label: "Verified" },
-  offer_sent: { color: "cyan", label: "Offer Sent" },
-  offer_accepted: { color: "purple", label: "Offer Accepted" },
-  contract_sent: { color: "gold", label: "Contract Sent" },
-  awaiting_activation: { color: "processing", label: "In Activation" },
-  activated: { color: "green", label: "Activated" },
-  cancelled: { color: "default", label: "Cancelled" },
-};
+import { getBillStatusConfig } from "../../constants/billStatus";
 
 /** Uniform placeholder for a field OCR could not read off the bill. */
 const Missing = ({ label = "Not detected" }: { label?: string }) => (
@@ -188,7 +172,7 @@ const CaseManagement = () => {
       width: 130,
       render: (_: unknown, record: IBill) => {
         if (!record.status) return <Missing label="Unknown" />;
-        const cfg = billStatusConfig[record.status] || { color: "default", label: record.status };
+        const cfg = getBillStatusConfig(record.status);
         return (
           <Tag
             color={cfg.color}

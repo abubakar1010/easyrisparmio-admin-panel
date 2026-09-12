@@ -2,6 +2,7 @@
 import Home from "../app/Home";
 import Notification from "../app/Notification";
 import ActivityHistory from "../app/ActivityHistory";
+import PriorityTasks from "../app/PriorityTasks";
 import type { DashboardItem } from "../types/sidebar.type";
 import { ROLE } from "../types/common.type";
 import {
@@ -55,6 +56,13 @@ export const dashboardItems: DashboardItem[] = [
   {
     path: "activity-history",
     element: <ActivityHistory />,
+  },
+  {
+    // Opened from the Priority Tasks card, never from the sidebar — it is a
+    // drill-down into the dashboard rather than a section of its own, so it
+    // deliberately carries no `name`.
+    path: "priority-tasks",
+    element: <PriorityTasks />,
   },
   // {
   //   name: "Verify Request",
