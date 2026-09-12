@@ -42,14 +42,20 @@ const BASE_STATUS_TRANSITIONS: Record<string, { value: string; label: string }[]
     { value: "archived", label: "Archive" },
   ],
   expired: [{ value: "archived", label: "Archive" }],
-  archived: [],
+  // Archiving retires an offer from the catalogue, it does not destroy it.
+  archived: [{ value: "active", label: "Restore" }],
 };
 
 /** Returns available status transitions for an offer, considering acceptance state. */
 const getStatusTransitions = (offer: IOffer) => {
   const transitions = [...(BASE_STATUS_TRANSITIONS[offer.offerStatus] || [])];
-  // Allow reverting to DRAFT only for active offers that have not been accepted
-  if (offer.offerStatus === "active" && !offer.hasAcceptedCases) {
+  // DRAFT is the only editable state, so it stays out of reach while a live
+  // case depends on the offer's terms. A cancelled or rejected case does not
+  // count — `hasAcceptedCases` already excludes those.
+  const canReturnToDraft =
+    (offer.offerStatus === "active" || offer.offerStatus === "archived") &&
+    !offer.hasAcceptedCases;
+  if (canReturnToDraft) {
     transitions.unshift({ value: "draft", label: "Back to Draft" });
   }
   return transitions;
