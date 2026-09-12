@@ -120,10 +120,22 @@ const CUSTOMER_KEYS = [
   "phone",
   "codiceFiscale",
   "partitaIva",
+  "companyName",
+  "pecEmail",
 ] as const;
 
-/** The three the account cannot exist without — the server refuses them blank. */
-const CUSTOMER_REQUIRED = new Set<string>(["firstName", "lastName", "email"]);
+/**
+ * The ones the account cannot exist without — the server refuses them blank.
+ * `companyName` is among them because `business_profiles.company_name` is NOT
+ * NULL: cleared, it would reach the API as null and fail the save halfway
+ * through, after the case and bill requests have already gone through.
+ */
+const CUSTOMER_REQUIRED = new Set<string>([
+  "firstName",
+  "lastName",
+  "email",
+  "companyName",
+]);
 
 const CASE_TYPE_OPTIONS = [
   { value: "switch", label: "Switch" },
@@ -288,9 +300,10 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
   }, [agents, caseData]);
 
   /**
-   * The customer's account, as the form holds it. The VAT number lives on the
-   * business profile rather than the user row, so it is lifted up beside the
-   * rest — the form has no reason to expose where each column sits.
+   * The customer's account, as the form holds it. The company's own details
+   * live on the business profile rather than the user row, so they are lifted
+   * up beside the rest — the form has no reason to expose where each column
+   * sits.
    */
   const customerInitialValues = useMemo(() => {
     const user = caseData?.user;
@@ -302,6 +315,8 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
       phone: user.phone ?? null,
       codiceFiscale: user.codiceFiscale ?? null,
       partitaIva: user.businessProfile?.partitaIva ?? null,
+      companyName: user.businessProfile?.companyName ?? null,
+      pecEmail: user.businessProfile?.pecEmail ?? null,
     } as Record<string, string | null>;
   }, [caseData]);
 
@@ -398,9 +413,14 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
   const diffCustomer = (values: Record<string, unknown>) => {
     const changed: Record<string, unknown> = {};
     for (const key of CUSTOMER_KEYS) {
-      // The VAT number belongs to a company; a private account has no profile
-      // row to write it to, so the field is not shown and not sent.
-      if (key === "partitaIva" && !isBusiness) continue;
+      // The company's own details; a private account has no profile row to
+      // write them to, so the fields are not shown and not sent.
+      if (
+        (key === "partitaIva" || key === "companyName" || key === "pecEmail") &&
+        !isBusiness
+      ) {
+        continue;
+      }
       let next = ((values[key] as string) ?? null) || null;
       if ((key === "codiceFiscale" || key === "partitaIva") && next) {
         next = normalizeTaxId(next);
@@ -599,6 +619,10 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
                 >
                   <Input maxLength={100} placeholder="Rossi" />
                 </Form.Item>
+                {/* The address the account signs in with. A company's PEC is a
+                    different address and has its own field below — the mailbox
+                    that registered a company account is very often somebody's
+                    personal one. */}
                 <Form.Item
                   name={["customer", "email"]}
                   label="Email"
@@ -616,7 +640,10 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
               <div className="grid grid-cols-2 gap-x-4">
                 <Form.Item
                   name={["customer", "codiceFiscale"]}
-                  label="Codice Fiscale"
+                  // On a business account this is the owner's code, not the
+                  // company's — the company is identified by the Partita IVA
+                  // beside it, and the supplier asks for both.
+                  label={isBusiness ? "Codice Fiscale (owner)" : "Codice Fiscale"}
                   // Checked against its own check character, not just its
                   // shape — the account is allowed to hold only a code the
                   // direct debit step will also accept.
@@ -648,6 +675,29 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
                   </Form.Item>
                 )}
               </div>
+              {isBusiness && (
+                <div className="grid grid-cols-2 gap-x-4">
+                  {/* The name the contract and the SDD mandate are in. The
+                      column is NOT NULL, so the field is required here too. */}
+                  <Form.Item
+                    name={["customer", "companyName"]}
+                    label="Ragione Sociale"
+                    rules={[{ required: true, message: "A company name is required" }]}
+                  >
+                    <Input maxLength={255} placeholder="Rossi S.r.l." />
+                  </Form.Item>
+                  {/* Where the company is reached legally, and where its
+                      invoices go when the case carries no explicit address.
+                      Optional: cleared, it falls back to the sign-in email. */}
+                  <Form.Item
+                    name={["customer", "pecEmail"]}
+                    label="PEC (certified email)"
+                    rules={[{ type: "email", message: "Enter a valid PEC address" }]}
+                  >
+                    <Input maxLength={255} placeholder="rossi@pec.it" />
+                  </Form.Item>
+                </div>
+              )}
             </>,
           )}
 

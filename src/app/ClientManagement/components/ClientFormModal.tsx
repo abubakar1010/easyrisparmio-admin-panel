@@ -66,8 +66,8 @@ export function ClientFormModal({ open, onClose, mode, client = null }: ClientFo
         lastName: client.lastName,
         email: client.email,
         phone: client.phone,
-        // Empty on a company: one account carries one tax identifier, and a
-        // company's is the Partita IVA below.
+        // On a company this is the owner's code, not the company's — the
+        // company is identified by the Partita IVA below.
         fiscalCode: client.codiceFiscale,
         companyName: client.businessProfile?.companyName,
         partitaIva: client.businessProfile?.partitaIva,
@@ -97,19 +97,21 @@ export function ClientFormModal({ open, onClose, mode, client = null }: ClientFo
           lastName: values.lastName,
           email: values.email,
           phone: values.phone || undefined,
-          // A company is identified by its Partita IVA and a private customer
-          // by their Codice Fiscale — one each, never both. The API refuses the
-          // other one outright, so the form does not offer it either.
-          codiceFiscale: customerType === "Business" ? undefined : fiscalCode,
-          role: typeToRole[customerType],
+          // The code of the person behind the account — the customer, or on a
+          // company the owner who signs. Sent for either type; what stays
+          // company-only is the Partita IVA below.
+          codiceFiscale: fiscalCode,
+          // No `role`. The account type is settled at registration and never
+          // changes, so the API does not accept one here — sent, it fails the
+          // whole save with a 400 rather than being ignored.
         };
         if (customerType === "Business") {
           updateData.companyName = values.companyName;
           updateData.partitaIva = partitaIva;
-          // Sent as null rather than dropped when the admin clears the field:
-          // an omitted key leaves the old value in place, which is not what
-          // emptying a box means.
-          updateData.pecEmail = values.pecEmail || null;
+          // Sent even when blank, so clearing a PEC sticks — the API turns the
+          // empty string back into null. It is the company's own address, not
+          // the mailbox the account signs in with.
+          updateData.pecEmail = values.pecEmail?.trim() ?? "";
         }
         await updateClient({ id: client.id, data: updateData }).unwrap();
         successAlert({ message: t("client_management.client_updated_successfully") });
@@ -121,12 +123,13 @@ export function ClientFormModal({ open, onClose, mode, client = null }: ClientFo
           lastName: values.lastName,
           phone: values.phone || undefined,
           role: typeToRole[customerType],
-          codiceFiscale: customerType === "Business" ? undefined : fiscalCode,
+          codiceFiscale: fiscalCode,
         };
         if (customerType === "Business") {
           createData.companyName = values.companyName;
           createData.partitaIva = partitaIva;
-          createData.pecEmail = values.pecEmail || undefined;
+          const pec = values.pecEmail?.trim();
+          if (pec) createData.pecEmail = pec;
         }
         await createClient(createData).unwrap();
         successAlert({ message: t("client_management.client_created_successfully") });
@@ -166,34 +169,65 @@ export function ClientFormModal({ open, onClose, mode, client = null }: ClientFo
         onFinish={handleSubmit}
         className="pt-2"
       >
+        {/* The type is chosen once, when the account is opened, and is fixed
+            from then on: it decides which tax identifier the account carries,
+            whether its own address is a residence or a sede legale, and which
+            tariffs may be sent to it. On an edit the two cards stay, so the
+            admin can still see which type they are looking at, but only the
+            one the account actually is — an unpickable second option reads as
+            a choice the form is refusing to honour. */}
         <div className="mb-4">
           <p className="mb-2 text-sm font-semibold text-brand">{t("client_management.customer_type")} *</p>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <button
-              type="button"
-              onClick={() => setCustomerType("Private")}
-              className={`rounded-xl border px-4 py-3 text-left transition ${
-                customerType === "Private"
-                  ? "border-primary bg-primary/5 shadow-[0_0_0_1px_rgba(102,89,239,0.25)]"
-                  : "border-cborder/60 bg-gray-50/60"
-              }`}
-            >
-              <p className="font-semibold text-brand">{t("client_management.private")}</p>
-              <p className="text-sm text-owngray">{t("client_management.individual_customer")}</p>
-            </button>
-            <button
-              type="button"
-              onClick={() => setCustomerType("Business")}
-              className={`rounded-xl border px-4 py-3 text-left transition ${
-                customerType === "Business"
-                  ? "border-primary bg-primary/5 shadow-[0_0_0_1px_rgba(102,89,239,0.25)]"
-                  : "border-cborder/60 bg-gray-50/60"
-              }`}
-            >
-              <p className="font-semibold text-brand">{t("client_management.business")}</p>
-              <p className="text-sm text-owngray">{t("client_management.company_organization")}</p>
-            </button>
-          </div>
+          {isEdit ? (
+            <>
+              <div className="rounded-xl border border-cborder/60 bg-gray-50/60 px-4 py-3">
+                <p className="font-semibold text-brand">
+                  {t(
+                    customerType === "Business"
+                      ? "client_management.business"
+                      : "client_management.private",
+                  )}
+                </p>
+                <p className="text-sm text-owngray">
+                  {t(
+                    customerType === "Business"
+                      ? "client_management.company_organization"
+                      : "client_management.individual_customer",
+                  )}
+                </p>
+              </div>
+              <p className="mt-2 text-sm text-owngray">
+                {t("client_management.customer_type_locked")}
+              </p>
+            </>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setCustomerType("Private")}
+                className={`rounded-xl border px-4 py-3 text-left transition ${
+                  customerType === "Private"
+                    ? "border-primary bg-primary/5 shadow-[0_0_0_1px_rgba(102,89,239,0.25)]"
+                    : "border-cborder/60 bg-gray-50/60"
+                }`}
+              >
+                <p className="font-semibold text-brand">{t("client_management.private")}</p>
+                <p className="text-sm text-owngray">{t("client_management.individual_customer")}</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setCustomerType("Business")}
+                className={`rounded-xl border px-4 py-3 text-left transition ${
+                  customerType === "Business"
+                    ? "border-primary bg-primary/5 shadow-[0_0_0_1px_rgba(102,89,239,0.25)]"
+                    : "border-cborder/60 bg-gray-50/60"
+                }`}
+              >
+                <p className="font-semibold text-brand">{t("client_management.business")}</p>
+                <p className="text-sm text-owngray">{t("client_management.company_organization")}</p>
+              </button>
+            </div>
+          )}
         </div>
 
         <p className="mb-2 text-base font-semibold text-brand">{t("client_management.basic_information")}</p>
@@ -208,7 +242,14 @@ export function ClientFormModal({ open, onClose, mode, client = null }: ClientFo
           </Form.Item>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
-          <Form.Item name="email" label={`${t("client_management.email_label")} *`} className="mb-3" rules={[{ required: true, type: "email", message: t("client_management.valid_email_required") }]}>
+          {/* The address the account signs in with. A company's PEC is its own
+              address and has its own field below. */}
+          <Form.Item
+            name="email"
+            label={`${t("client_management.email_label")} *`}
+            className="mb-3"
+            rules={[{ required: true, type: "email", message: t("client_management.valid_email_required") }]}
+          >
             <Input maxLength={255} autoComplete="off" />
           </Form.Item>
           <Form.Item name="phone" label={t("client_management.phone")} className="mb-3" rules={[phoneValidationRule(t("client_management.invalid_phone"))]}>
@@ -268,40 +309,44 @@ export function ClientFormModal({ open, onClose, mode, client = null }: ClientFo
               >
                 <Input maxLength={13} placeholder="12345678903" />
               </Form.Item>
+              {/* Where the company is reached legally, and where its invoices
+                  go. Its own address, not the mailbox above: a company account
+                  is very often registered with somebody's personal one.
+                  Optional — without it invoices fall back to the sign-in
+                  address. */}
+              <Form.Item
+                name="pecEmail"
+                label={t("client_management.pec")}
+                className="mb-3"
+                rules={[{ type: "email", message: t("client_management.valid_email_required") }]}
+              >
+                <Input maxLength={255} placeholder="rossi@pec.it" />
+              </Form.Item>
             </div>
-            {/* Where the company's invoices actually go. A business case with
-                no explicit invoice address falls back to the PEC, so leaving
-                this blank sends statutory invoices to whatever mailbox the
-                account was registered with. */}
-            <Form.Item
-              name="pecEmail"
-              label={t("client_management.pec_email")}
-              className="mb-3"
-              rules={[{ type: "email", message: t("client_management.pec_email_invalid") }]}
-            >
-              <Input maxLength={255} placeholder="rossi@pec.it" />
-            </Form.Item>
           </>
         )}
 
-        {/* One account, one tax identifier: a private customer is identified by
-            their Codice Fiscale, a company by the Partita IVA collected above.
-            Asking a company for both is what left the switch request having to
-            decide which of the two the mandate was filed against — so the field
-            is not on a business form at all, and the API refuses one there. */}
-        {customerType !== "Business" && (
-          <>
-            <p className="mb-2 text-base font-semibold text-brand">{t("client_management.tax_information")}</p>
-            <Form.Item
-              name="fiscalCode"
-              label={t("client_management.fiscal_code")}
-              className="mb-3"
-              rules={[codiceFiscaleRule]}
-            >
-              <Input maxLength={16} placeholder="RSSMRA85T10A562S" />
-            </Form.Item>
-          </>
-        )}
+        {/* The code of the person behind the account, on either type: the
+            customer themselves, or on a company the owner who signs for it.
+            The Partita IVA collected above identifies the company — two
+            parties, two identifiers, and a supplier asks a business customer
+            for both. Which of them the direct debit is filed against is settled
+            on the case, and for a company that is always the VAT number. */}
+        <>
+          <p className="mb-2 text-base font-semibold text-brand">{t("client_management.tax_information")}</p>
+          <Form.Item
+            name="fiscalCode"
+            label={t(
+              customerType === "Business"
+                ? "client_management.owner_fiscal_code"
+                : "client_management.fiscal_code",
+            )}
+            className="mb-3"
+            rules={[codiceFiscaleRule]}
+          >
+            <Input maxLength={16} placeholder="RSSMRA85T10A562S" />
+          </Form.Item>
+        </>
 
         <div className="flex justify-end gap-2">
           <Button onClick={onClose}>{t("common.cancel")}</Button>

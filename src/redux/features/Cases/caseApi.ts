@@ -10,10 +10,11 @@ export interface ICaseUser {
   /** Which of the two account kinds this is — a VAT number only applies to one. */
   role?: "personal" | "business" | "admin";
   /**
-   * A company is identified by its VAT number, which lives on its profile —
-   * alongside the two addresses its invoices are delivered to.
+   * A company is identified by its name and VAT number, which live on its
+   * profile — alongside the certified address its invoices are delivered to.
    */
   businessProfile?: {
+    companyName?: string | null;
     partitaIva?: string | null;
     pecEmail?: string | null;
   } | null;

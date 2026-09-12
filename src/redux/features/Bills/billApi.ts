@@ -116,7 +116,21 @@ export interface IBill {
   meterId: string | null;
   createdAt: string;
   updatedAt: string;
-  user?: { id: string; firstName: string; lastName: string; email: string };
+  // `role` distinguishes the two account kinds. The bill is loaded with its
+  // whole `user` relation, so the API already sends it — a company's certified
+  // address included, which is a separate row from the sign-in email.
+  user?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    role?: "personal" | "business" | "admin";
+    businessProfile?: {
+      companyName?: string | null;
+      partitaIva?: string | null;
+      pecEmail?: string | null;
+    } | null;
+  };
   supplier?: { id: string; name: string } | null;
   files?: IBillFile[] | null;
   verifications?: IBillVerification[] | null;

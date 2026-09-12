@@ -70,6 +70,29 @@ export const addressTypeLabelKey: Record<AddressType, string> = {
   billing: "client_management.address_billing",
 };
 
+/**
+ * The type an account's own address is stored under — `legal`, the registered
+ * office, on a business account and `residential` on a personal one. Mirrors
+ * the API's `accountAddressTypeFor`.
+ */
+export const accountAddressTypeFor = (role: UserRole): AddressType =>
+  role === "business" ? "legal" : "residential";
+
+/**
+ * What to call an address in the client drawer.
+ *
+ * The stored type decides it. The role is only the fallback for a row whose
+ * type the UI does not recognise — a value added to the API's enum before this
+ * build knew about it — and it exists because the previous fallback was a flat
+ * "Residence", which on a company is not a vaguer label but a wrong one.
+ */
+export const addressLabelKeyFor = (
+  type: AddressType | undefined,
+  role: UserRole,
+): string =>
+  (type && addressTypeLabelKey[type]) ??
+  addressTypeLabelKey[accountAddressTypeFor(role)];
+
 export interface IUserAddress {
   id: string;
   addressType: AddressType;
@@ -143,7 +166,9 @@ export interface ICreateClient {
     /**
      * Omitted, the API picks by role: `legal` for a business account, whose
      * address is its registered office, and `residential` for a personal one.
-     * Sent explicitly only to override that.
+     * Sent, it has to agree with the role — `residential` on a business account
+     * and `legal` on a personal one come back as a 400 rather than being
+     * stored, so there is no reason to send it at all.
      */
     addressType?: AddressType;
   };
@@ -154,7 +179,14 @@ export interface IUpdateClient {
   firstName?: string;
   lastName?: string;
   phone?: string;
-  role?: UserRole;
+  /**
+   * No `role`. The account type is settled when the account is created and
+   * never changes, so the API does not accept one on a PATCH at all: the field
+   * is off `UpdateUserDto`, and the server validates with
+   * `forbidNonWhitelisted`, which turns a stray `role` into a 400 that fails
+   * the whole save. A customer who needs the other type opens the other
+   * account.
+   */
   status?: UserStatus;
   codiceFiscale?: string;
   companyName?: string;

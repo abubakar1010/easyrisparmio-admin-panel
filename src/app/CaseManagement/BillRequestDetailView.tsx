@@ -2044,6 +2044,11 @@ function BillDataTab({
             : bill.customerName || null,
         },
         { label: "Email", value: bill.user?.email || null },
+        // A company's certified address, which is its own and not the mailbox
+        // the account signs in with. Absent for a private customer.
+        ...(bill.user?.businessProfile?.pecEmail
+          ? [{ label: "PEC", value: bill.user.businessProfile.pecEmail }]
+          : []),
         { label: "Supply Address", value: bill.supplyAddress || null },
         { label: "Codice Fiscale", value: bill.codiceFiscale || null },
         { label: "Partita IVA", value: bill.partitaIva || null },
@@ -3024,11 +3029,18 @@ function CaseDataSection({
               },
             ]
           : []),
+        // The address the account signs in with.
         { label: "Email", value: dash(caseData.user?.email) },
-        // Where a company's invoices are actually delivered. Shown next to the
-        // VAT number because that is the pair a supplier asks for.
-        ...(caseData.user?.businessProfile?.pecEmail
-          ? [{ label: "PEC", value: caseData.user.businessProfile.pecEmail }]
+        // And the one the company is reached at legally, which is a different
+        // address: the mailbox that registered a company account is very often
+        // somebody's personal one, and an invoice does not belong there.
+        ...(isBusinessCase
+          ? [
+              {
+                label: "PEC",
+                value: dash(caseData.user?.businessProfile?.pecEmail),
+              },
+            ]
           : []),
         { label: "Phone", value: dash(caseData.user?.phone) },
       ],

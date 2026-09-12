@@ -5,7 +5,7 @@ import { FiEdit3, FiFileText, FiLock, FiMail, FiMapPin, FiPhone, FiSend, FiUnloc
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 import type { CustomerStatus, IClient } from "../types";
-import { addressTypeLabelKey, statusClass, statusToDisplay } from "../types";
+import { addressLabelKeyFor, statusClass, statusToDisplay } from "../types";
 import { useLazyGetClientByIdQuery, useToggleClientStatusMutation, useResetClientPasswordMutation } from "../../../redux/features/Users/clientApi";
 import { useGetBillsAdminQuery, type IBill } from "../../../redux/features/Bills/billApi";
 import { useGetCasesQuery, type ICase } from "../../../redux/features/Cases/caseApi";
@@ -208,10 +208,10 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
       [t("client_management.legal_representative"), business.legalRepresentative],
       [t("client_management.company_type"), business.companyType],
       [t("client_management.ateco_code"), business.atecoCode],
-      // The address an invoice is delivered to. Worth showing next to the VAT
-      // rather than only in the edit form: when a supplier asks where the
-      // invoices went, this is the answer.
-      [t("client_management.pec_email"), business.pecEmail],
+      // The company's own certified address, which is a different one from the
+      // mailbox the account signs in with. Hidden by the filter below when the
+      // company has not given one.
+      [t("client_management.pec"), business.pecEmail],
     ];
 
     return (
@@ -236,6 +236,8 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
     <div className="grid gap-4 sm:grid-cols-2">
       <div>
         <p className="mb-2 text-base font-semibold text-brand">{t("client_management.personal_data")}</p>
+        {/* The address the account signs in with. A company's PEC is its own
+            address and is shown in the business block below. */}
         <p className="text-sm text-owngray">{t("client_management.email_label")}</p>
         <p className="mb-2 text-[15px] font-semibold text-brand">{detail!.email}</p>
         {detail!.phone && (
@@ -246,7 +248,13 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
         )}
         {detail!.codiceFiscale && (
           <>
-            <p className="text-sm text-owngray">{t("client_management.codice_fiscale_label")}</p>
+            <p className="text-sm text-owngray">
+              {t(
+                detail!.role === "business"
+                  ? "client_management.owner_fiscal_code"
+                  : "client_management.codice_fiscale_label",
+              )}
+            </p>
             <p className="mb-2 text-[15px] font-semibold text-brand">{detail!.codiceFiscale}</p>
           </>
         )}
@@ -574,11 +582,12 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
               </p>
             )}
             {/* Named by type, because a company's address is its registered
-                office and calling it a residence is simply wrong. */}
+                office and calling it a residence is simply wrong — and the
+                fallback follows the role for the same reason. */}
             {primaryAddress && (
               <p className="flex items-center gap-2">
                 <FiMapPin className="h-3.5 w-3.5 text-owngray" />
-                {t(addressTypeLabelKey[primaryAddress.addressType] ?? "client_management.address_residential")}:{" "}
+                {t(addressLabelKeyFor(primaryAddress.addressType, detail.role))}:{" "}
                 {primaryAddress.streetAddress}, {primaryAddress.city}
                 {primaryAddress.province ? ` (${primaryAddress.province})` : ""}
                 {primaryAddress.postalCode ? ` ${primaryAddress.postalCode}` : ""}
