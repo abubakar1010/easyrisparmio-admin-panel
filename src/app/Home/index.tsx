@@ -5,7 +5,6 @@ import { PriorityTasksCard } from "../../components/home/PriorityTasksCard";
 import { ConversionFunnelCard } from "../../components/home/ConversionFunnelCard";
 import { ActiveAlertsCard } from "../../components/home/ActiveAlertsCard";
 import { RecentActivityCard } from "../../components/home/RecentActivityCard";
-import { HomeTopBar } from "../../components/home/HomeTopBar";
 
 const Home = () => {
   const { data, isLoading } = useGetAdminDashboardQuery();
@@ -20,8 +19,6 @@ const Home = () => {
 
   return (
     <div className="space-y-6 sm:space-y-8">
-      <HomeTopBar />
-
       <section className="space-y-3 sm:space-y-4">
         <KpiStatCards data={data?.kpiStats} />
       </section>
