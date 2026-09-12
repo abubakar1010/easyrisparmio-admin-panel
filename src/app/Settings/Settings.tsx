@@ -12,15 +12,23 @@ import { PhoneInput, phoneValidationRule } from "../../components/ui/PhoneInput"
 import { supportedLanguages } from "../../constants/language.contants";
 import { errorAlert } from "../../lib/helpers/alert";
 
+import { PASSWORD_MIN_LENGTH, PASSWORD_PATTERNS } from "../../utils/password";
+
 const { Title, Text } = Typography;
 
+/**
+ * Spelled out one requirement at a time, because a password the admin is
+ * choosing for themselves deserves to be told which part is missing rather than
+ * the whole rule again. The patterns are the shared ones — see utils/password —
+ * so this and the customer forms cannot drift apart.
+ */
 const passwordRules = (t: (key: string) => string) => [
   { required: true, message: t("auth.please_input_new_password") },
-  { min: 8, message: t("auth.password_min_8_chars") },
-  { pattern: /(?=.*[a-z])/, message: t("auth.password_needs_lowercase") },
-  { pattern: /(?=.*[A-Z])/, message: t("auth.password_needs_uppercase") },
-  { pattern: /(?=.*\d)/, message: t("auth.password_needs_number") },
-  { pattern: /(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?])/, message: t("auth.password_needs_special") },
+  { min: PASSWORD_MIN_LENGTH, message: t("auth.password_min_8_chars") },
+  { pattern: PASSWORD_PATTERNS.lowercase, message: t("auth.password_needs_lowercase") },
+  { pattern: PASSWORD_PATTERNS.uppercase, message: t("auth.password_needs_uppercase") },
+  { pattern: PASSWORD_PATTERNS.number, message: t("auth.password_needs_number") },
+  { pattern: PASSWORD_PATTERNS.special, message: t("auth.password_needs_special") },
 ];
 
 const Settings = () => {
@@ -158,7 +166,7 @@ const Settings = () => {
                   { type: "email", message: t("auth.please_enter_valid_email") }
                 ]}
               >
-                <Input placeholder="admin@example.com" className="h-11 rounded-lg border-slate-200" disabled />
+                <Input autoComplete="email" placeholder="admin@example.com" className="h-11 rounded-lg border-slate-200" disabled />
               </Form.Item>
 
               <Form.Item
@@ -261,7 +269,7 @@ const Settings = () => {
               label={<span className="text-[14px] font-medium text-slate-600">{t("auth.current_password")}</span>}
               rules={[{ required: true, message: t("auth.please_input_current_password") }]}
             >
-              <Input.Password placeholder={t("auth.current_password")} className="h-11 rounded-lg border-slate-200" />
+              <Input.Password autoComplete="current-password" placeholder={t("auth.current_password")} className="h-11 rounded-lg border-slate-200" />
             </Form.Item>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
@@ -270,7 +278,7 @@ const Settings = () => {
                 label={<span className="text-[14px] font-medium text-slate-600">{t("auth.new_password")}</span>}
                 rules={passwordRules(t)}
               >
-                <Input.Password placeholder={t("auth.new_password")} className="h-11 rounded-lg border-slate-200" />
+                <Input.Password autoComplete="new-password" placeholder={t("auth.new_password")} className="h-11 rounded-lg border-slate-200" />
               </Form.Item>
 
               <Form.Item
@@ -289,7 +297,7 @@ const Settings = () => {
                   }),
                 ]}
               >
-                <Input.Password placeholder={t("auth.confirm_password")} className="h-11 rounded-lg border-slate-200" />
+                <Input.Password autoComplete="new-password" placeholder={t("auth.confirm_password")} className="h-11 rounded-lg border-slate-200" />
               </Form.Item>
             </div>
 

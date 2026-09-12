@@ -48,6 +48,7 @@ const ForgotPassword = () => {
           className="mb-10"
         >
           <Input
+            autoComplete="email"
             prefix={<FiMail />}
             placeholder={t("auth.email")}
             className="auth-pill-input"

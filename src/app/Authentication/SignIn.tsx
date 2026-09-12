@@ -89,7 +89,11 @@ const SignIn = () => {
           ]}
           className="mb-5"
         >
+          {/* The only form in the portal that should be offered a saved
+              credential, and the only one that says so out loud. Everywhere
+              else the browser was guessing from the shape of the fields. */}
           <Input
+            autoComplete="email"
             prefix={<FiMail />}
             placeholder={t("auth.email")}
             className="auth-pill-input"
@@ -102,6 +106,7 @@ const SignIn = () => {
           className="mb-3"
         >
           <Input.Password
+            autoComplete="current-password"
             prefix={<FiLock />}
             placeholder={t("auth.password")}
             className="auth-pill-input"

@@ -58,7 +58,7 @@ const ChangePassword = ({
             ]}
             hasFeedback
           >
-            <Input.Password size="large" placeholder="**********" />
+            <Input.Password autoComplete="current-password" size="large" placeholder="**********" />
           </Form.Item>
           <Form.Item
             label={<span className="font-medium text-base">New Password</span>}
@@ -71,7 +71,7 @@ const ChangePassword = ({
             ]}
             hasFeedback
           >
-            <Input.Password size="large" placeholder="**********" />
+            <Input.Password autoComplete="new-password" size="large" placeholder="**********" />
           </Form.Item>
           <Form.Item
             label={
@@ -98,7 +98,7 @@ const ChangePassword = ({
             ]}
             hasFeedback
           >
-            <Input.Password size="large" placeholder="**********" />
+            <Input.Password autoComplete="new-password" size="large" placeholder="**********" />
           </Form.Item>
           <div className="text-end">
             <Button

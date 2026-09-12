@@ -72,6 +72,7 @@ const ResetPassword = () => {
             className="mb-5"
           >
             <Input.Password
+              autoComplete="new-password"
               prefix={<FiLock />}
               placeholder={t("auth.set_your_password")}
               className="auth-pill-input"
@@ -97,6 +98,7 @@ const ResetPassword = () => {
             className="mb-10"
           >
             <Input.Password
+              autoComplete="new-password"
               prefix={<FiLock />}
               placeholder={t("auth.confirm_new_password")}
               className="auth-pill-input"
