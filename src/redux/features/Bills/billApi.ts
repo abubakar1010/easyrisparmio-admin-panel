@@ -167,6 +167,31 @@ export interface IOfferWithSavings {
   estimatedSavings: number;
   isSent?: boolean;
   sentAt?: string | null;
+  /**
+   * Where this offer sits in the list the customer sees, 0 first. Null until
+   * the offer has been sent — an offer nobody has been shown has no place in
+   * their list yet. Sent offers come back ahead of the rest of the catalogue,
+   * already in this order.
+   */
+  displayOrder?: number | null;
+}
+
+/**
+ * The order the Offers tab lists offers in, mirroring what the API already
+ * sorted: the offers the customer has, in the order the admin arranged, then
+ * the rest of the catalogue in the price order it arrived in. Applied again on
+ * the client so an optimistic reorder lands without waiting for a refetch.
+ */
+export function compareByDisplayOrder(
+  a: IOfferWithSavings,
+  b: IOfferWithSavings,
+): number {
+  const left = a.displayOrder ?? null;
+  const right = b.displayOrder ?? null;
+  if (left === null && right === null) return 0;
+  if (left === null) return 1;
+  if (right === null) return -1;
+  return left - right;
 }
 
 interface IPaginatedResponse<T> {
@@ -244,6 +269,30 @@ const billApi = baseApi.injectEndpoints({
               { type: "dashboard", id: "ADMIN" },
               { type: "activityLog", id: "LIST" },
             ],
+    }),
+
+    /**
+     * Saves the order the customer will see the sent offers in, first shown
+     * first. The dashboard has already moved the row on screen through
+     * `applyOfferOrderLocally` by the time this is called.
+     *
+     * Only a refusal re-reads the list: on success what is on screen already is
+     * the order that was saved, and re-fetching it would make the rows jump for
+     * nothing.
+     */
+    reorderBillOffers: builder.mutation<
+      { message: string },
+      { billId: string; offerIds: string[] }
+    >({
+      query: ({ billId, offerIds }) => ({
+        url: `bills/admin/${billId}/offers-order`,
+        method: "PATCH",
+        body: { offerIds },
+      }),
+      invalidatesTags: (_result, error, { billId }) =>
+        error
+          ? [{ type: "offer" as const, id: `bill-offers-${billId}` }]
+          : [{ type: "activityLog" as const, id: "LIST" }],
     }),
 
     extractBillData: builder.mutation<IBillExtractionResult, FormData>({
@@ -393,6 +442,25 @@ const billApi = baseApi.injectEndpoints({
   }),
 });
 
+/**
+ * Rewrites the cached offer list into `offerIds` order, top first, without
+ * going near the server.
+ *
+ * The dashboard dispatches this the instant a row is dropped so it lands where
+ * it was let go, and only then sends the order on with
+ * `useReorderBillOffersMutation`. Waiting for the round trip would have the row
+ * spring back to its old place for as long as it took.
+ */
+export const applyOfferOrderLocally = (billId: string, offerIds: string[]) =>
+  billApi.util.updateQueryData("getAllOffersForBill", billId, (draft) => {
+    const positions = new Map(offerIds.map((id, index) => [id, index]));
+    for (const offer of draft) {
+      const position = positions.get(offer.id);
+      if (position !== undefined) offer.displayOrder = position;
+    }
+    draft.sort(compareByDisplayOrder);
+  });
+
 export interface IBillNote {
   id: string;
   billId: string;
@@ -409,6 +477,7 @@ export const {
   useUploadBillMutation,
   useGetAllOffersForBillQuery,
   useSendSelectedOffersMutation,
+  useReorderBillOffersMutation,
   useExtractBillDataMutation,
   useAdminUploadEmailBillMutation,
   useAssociateBillWithUserMutation,
