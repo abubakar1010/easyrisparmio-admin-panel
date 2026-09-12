@@ -1,5 +1,7 @@
+import { useMemo } from "react";
 import { useParams } from "react-router";
 import { Spin, Result } from "antd";
+import DOMPurify from "dompurify";
 import { useGetPublicStaticPageQuery } from "../../redux/features/StaticPages/staticPagesApi";
 import { useTranslation } from "react-i18next";
 
@@ -17,6 +19,22 @@ const PublicPage = () => {
   const { data, isLoading, isError } = useGetPublicStaticPageQuery(
     { slug: slug!, locale },
     { skip: !slug }
+  );
+
+  /**
+   * The page body, stripped of anything that can execute.
+   *
+   * `USE_PROFILES: { html: true }` keeps the formatting a legal page is
+   * written in — headings, lists, links, tables — and drops script and event
+   * handlers along with SVG and MathML, which have script vectors of their own
+   * and no business in a privacy policy.
+   */
+  const safeContent = useMemo(
+    () =>
+      data?.content
+        ? DOMPurify.sanitize(data.content, { USE_PROFILES: { html: true } })
+        : "",
+    [data?.content],
   );
 
   if (isLoading) {
@@ -92,10 +110,18 @@ const PublicPage = () => {
         </p>
       </div>
 
-      {/* Page content */}
+      {/* Page content.
+
+          Sanitised rather than trusted. This page is public and
+          unauthenticated, the HTML reaches it from whatever an admin saved in
+          the rich text editor, and the editor behind that (Quill 2.0.3) has a
+          standing XSS advisory on its own HTML export with no fixed release to
+          upgrade to. Sanitising at the point of render closes it wherever the
+          markup came from — a compromised admin session, a paste out of
+          another document, a page written before this check existed. */}
       <div
         className="public-page-content"
-        dangerouslySetInnerHTML={{ __html: data.content }}
+        dangerouslySetInnerHTML={{ __html: safeContent }}
       />
     </article>
   );
