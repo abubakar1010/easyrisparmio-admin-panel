@@ -19,6 +19,7 @@ import {
   LuBuilding2,
   LuCircleHelp,
   LuBookOpen,
+  LuLayoutTemplate,
 } from "react-icons/lu";
 import Settings from "../app/Settings/Settings";
 import ClientManagement from "../app/ClientManagement";
@@ -40,6 +41,7 @@ import TicketDetailsView from "../app/SupportTicket/TicketDetailsView";
 import SupportTopics from "../app/SupportTopics";
 import FAQManagement from "../app/FAQManagement";
 import StaticPages from "../app/StaticPages";
+import NotificationTemplates from "../app/NotificationTemplates";
 
 export const dashboardItems: DashboardItem[] = [
   {
@@ -213,6 +215,13 @@ export const dashboardItems: DashboardItem[] = [
     icon: LuBookOpen,
     role: [ROLE.ADMIN],
     element: <StaticPages />,
+  },
+  {
+    name: "Notification Templates",
+    path: "notification-templates",
+    icon: LuLayoutTemplate,
+    role: [ROLE.ADMIN],
+    element: <NotificationTemplates />,
   },
   // {
   //   name: "Requests",

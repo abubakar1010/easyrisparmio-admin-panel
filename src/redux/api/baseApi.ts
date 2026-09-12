@@ -123,7 +123,8 @@ export const baseApi = createApi({
   tagTypes: [
     "auth", "user", "setting", "meter", "dashboard", "supplier",
     "case", "offer", "bill", "referral",
-    "notification", "agreement", "support", "faq", "support-topic", "static-page",
+    "notification", "notification-template",
+    "agreement", "support", "faq", "support-topic", "static-page",
     "legal-acceptance",
     "activityLog",
   ],
