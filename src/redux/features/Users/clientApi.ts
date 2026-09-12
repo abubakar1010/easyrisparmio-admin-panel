@@ -99,6 +99,25 @@ const clientApi = baseApi.injectEndpoints({
       transformResponse: (response: { success: boolean; data: IUserPreference }) => response.data,
     }),
 
+    /**
+     * The admins a case or a ticket can be handed to.
+     *
+     * Its own endpoint rather than `getClients` with a role filter, because
+     * that list excludes admins outright — an assignee picker needs exactly the
+     * rows it drops, and all of them rather than a page.
+     */
+    getAgents: builder.query<
+      { id: string; firstName: string; lastName: string; email: string }[],
+      void
+    >({
+      query: () => ({ url: "users/agents", method: "GET" }),
+      transformResponse: (response: {
+        success: boolean;
+        data: { id: string; firstName: string; lastName: string; email: string }[];
+      }) => response.data,
+      providesTags: [{ type: "user" as const, id: "AGENTS" }],
+    }),
+
     // Search users by name/email (lightweight, for dropdowns)
     searchUsers: builder.query<
       { id: string; firstName: string; lastName: string; email: string }[],
@@ -135,4 +154,5 @@ export const {
   useGetClientPreferencesQuery,
   useUpdateClientPreferencesMutation,
   useSearchUsersQuery,
+  useGetAgentsQuery,
 } = clientApi;
