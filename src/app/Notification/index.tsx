@@ -1,4 +1,4 @@
-import { Button, Empty, List, Modal, Select, Spin, Tag, message } from "antd";
+import { Button, Modal, Pagination, Select, Spin, Tag, message } from "antd";
 import { FiCheck, FiCheckCircle, FiBell, FiSend, FiInbox, FiEye, FiExternalLink } from "react-icons/fi";
 import {
   useGetAdminNotificationsQuery,
@@ -11,6 +11,7 @@ import {
 } from "../../redux/features/Notifications/notificationApi";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { useNavigate } from "react-router";
 import SendNotificationModal from "./SendNotificationModal";
 import { getNotificationRoute } from "../../lib/helpers/notificationRoute";
@@ -41,6 +42,19 @@ const typeColor: Record<string, string> = {
   general: "default",
 };
 
+/**
+ * The tag on each row reads in the admin's language. A type the translations
+ * don't know yet falls back to its humanised key rather than to a blank chip.
+ */
+const typeLabel = (t: TFunction, type: string) =>
+  t(`notifications.type_${type}`, { defaultValue: type.replace(/_/g, " ") });
+
+/**
+ * Ant Design styles `.ant-tag` with its own trailing margin, which lands on top
+ * of the flex gap and makes the chips sit unevenly. Neutralising it here keeps
+ * the spacing owned by the row's `gap`.
+ */
+const tagClass = "m-0 rounded-full border-0 px-2 py-0 text-[11px] leading-5";
 
 type Direction = "all" | "sent" | "received";
 
@@ -49,6 +63,8 @@ const tabs: { key: Direction; label: string; icon: React.ReactNode }[] = [
   { key: "sent", label: "notifications.tab_sent", icon: <FiSend className="h-4 w-4" /> },
   { key: "received", label: "notifications.tab_received", icon: <FiInbox className="h-4 w-4" /> },
 ];
+
+const PAGE_SIZE = 20;
 
 const Notification = () => {
   const { t } = useTranslation();
@@ -62,7 +78,7 @@ const Notification = () => {
 
   const { data, isLoading } = useGetAdminNotificationsQuery({
     page,
-    limit: 20,
+    limit: PAGE_SIZE,
     direction,
     type: typeFilter,
   });
@@ -71,6 +87,8 @@ const Notification = () => {
 
   const notifications = data?.data || [];
   const meta = data?.meta;
+  const total = meta?.total || 0;
+  const pageSize = meta?.limit || PAGE_SIZE;
 
   const handleMarkRead = async (id: string) => {
     try {
@@ -145,7 +163,11 @@ const Notification = () => {
             </button>
           ))}
         </div>
+        {/* `size="large"` is the only way to reach the 40px the tab group is —
+            Ant Design sets the height on the inner selector, out of reach of a
+            utility class on the root. */}
         <Select
+          size="large"
           placeholder={t("notifications.filter_by_type")}
           allowClear
           value={typeFilter}
@@ -153,7 +175,7 @@ const Notification = () => {
             setTypeFilter(value);
             setPage(1);
           }}
-          className="w-56"
+          className="w-full sm:w-64"
         >
           <Select.OptGroup label={t("notifications.group_admin")}>
             {ADMIN_NOTIFICATION_TYPES.map((type) => (
@@ -172,121 +194,143 @@ const Notification = () => {
         </Select>
       </div>
 
-      {/* Notification List */}
+      {/* Notification List
+          Rows are plain elements rather than an <List>: Ant Design styles its
+          items through `.ant-list .ant-list-item`, a two-class selector that
+          outranks any padding utility we put on them, so the avatar ended up
+          flush against the card edge. */}
       <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center py-24"><Spin size="large" /></div>
         ) : notifications.length === 0 ? (
-          <div className="py-24">
-            <Empty
-              image={<FiBell className="h-16 w-16 text-slate-300 mx-auto" />}
-              description={t("notifications.no_notifications")}
-            />
+          <div className="flex flex-col items-center justify-center gap-3 py-24">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-slate-100">
+              <FiBell className="h-7 w-7 text-slate-300" />
+            </div>
+            <p className="text-sm text-slate-400">{t("notifications.no_notifications")}</p>
           </div>
         ) : (
-          <List
-            dataSource={notifications}
-            pagination={{
-              current: page,
-              pageSize: meta?.limit || 20,
-              total: meta?.total || 0,
-              onChange: setPage,
-              className: "p-4",
-            }}
-            renderItem={(item) => {
-              const isSent = isSentNotification(item);
-              return (
-                <List.Item
-                  className={`px-6 py-4 transition-colors cursor-pointer hover:bg-slate-50 ${
-                    !isSent && !item.isRead ? "bg-indigo-50/30" : ""
-                  }`}
-                  onClick={() => setDetailId(item.id)}
-                  actions={[
-                    <Button
-                      key="view"
-                      type="text"
-                      size="small"
-                      icon={<FiEye />}
-                      onClick={(e) => {
-                        e.stopPropagation();
+          <>
+            <ul className="divide-y divide-slate-100">
+              {notifications.map((item) => {
+                const isSent = isSentNotification(item);
+                const isUnread = !isSent && !item.isRead;
+                return (
+                  <li
+                    key={item.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setDetailId(item.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
                         setDetailId(item.id);
-                      }}
-                      className="text-slate-500"
+                      }
+                    }}
+                    className={`relative flex cursor-pointer items-start gap-4 py-4 pl-6 pr-4 transition-colors focus:outline-none focus-visible:bg-slate-50 sm:pr-6 ${
+                      isUnread ? "bg-indigo-50/60 hover:bg-indigo-50" : "hover:bg-slate-50"
+                    }`}
+                  >
+                    {/* Accent rail: the unread tint alone is too faint to scan
+                        a long list by. */}
+                    {isUnread && (
+                      <span
+                        aria-hidden
+                        className="absolute inset-y-0 left-0 w-1 bg-indigo-500"
+                      />
+                    )}
+
+                    <div
+                      className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+                        isSent ? "bg-emerald-100" : isUnread ? "bg-indigo-100" : "bg-slate-100"
+                      }`}
                     >
-                      {t("notifications.view_details")}
-                    </Button>,
-                    ...(!isSent && !item.isRead
-                      ? [
-                          <Button
-                            key="read"
-                            type="text"
-                            size="small"
-                            icon={<FiCheck />}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleMarkRead(item.id);
-                            }}
-                            className="text-indigo-500"
-                          >
-                            {t("notifications.mark_read")}
-                          </Button>,
-                        ]
-                      : []),
-                  ]}
-                >
-                  <List.Item.Meta
-                    avatar={
-                      <div
-                        className={`flex h-10 w-10 items-center justify-center rounded-full ${
-                          isSent
-                            ? "bg-emerald-100"
-                            : !item.isRead
-                              ? "bg-indigo-100"
-                              : "bg-slate-100"
-                        }`}
-                      >
-                        {isSent ? (
-                          <FiSend className="h-5 w-5 text-emerald-500" />
-                        ) : (
-                          <FiBell className={`h-5 w-5 ${!item.isRead ? "text-indigo-500" : "text-slate-400"}`} />
-                        )}
-                      </div>
-                    }
-                    title={
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`text-sm ${!isSent && !item.isRead ? "font-bold text-slate-800" : "font-medium text-slate-600"}`}>
+                      {isSent ? (
+                        <FiSend className="h-5 w-5 text-emerald-500" />
+                      ) : (
+                        <FiBell className={`h-5 w-5 ${isUnread ? "text-indigo-500" : "text-slate-400"}`} />
+                      )}
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <span
+                          className={`text-sm ${
+                            isUnread ? "font-semibold text-slate-800" : "font-medium text-slate-600"
+                          }`}
+                        >
                           {item.title}
                         </span>
-                        <Tag color={typeColor[item.type] || "default"} className="text-[10px] rounded-full px-2 border-0 capitalize">
-                          {item.type.replace(/_/g, " ")}
+                        <Tag color={typeColor[item.type] || "default"} className={tagClass}>
+                          {typeLabel(t, item.type)}
                         </Tag>
                         {isSent && (
-                          <Tag color="green" className="text-[10px] rounded-full px-2 border-0">
+                          <Tag color="green" className={tagClass}>
                             {t("notifications.sent_label")}
                           </Tag>
                         )}
                       </div>
-                    }
-                    description={
-                      <div>
-                        <p className="text-sm text-slate-500 line-clamp-1">{item.body}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <p className="text-xs text-slate-400">
-                            {new Date(item.createdAt).toLocaleString("it-IT")}
-                          </p>
-                          {isSent && item.user && (
-                            <p className="text-xs text-slate-400">
+
+                      <p className="mt-1 line-clamp-2 text-sm text-slate-500">{item.body}</p>
+
+                      <div className="mt-1.5 flex flex-wrap items-center gap-x-2 text-xs text-slate-400">
+                        <span>{new Date(item.createdAt).toLocaleString("it-IT")}</span>
+                        {isSent && item.user && (
+                          <>
+                            <span aria-hidden>·</span>
+                            <span>
                               → {item.user.firstName} {item.user.lastName}
-                            </p>
-                          )}
-                        </div>
+                            </span>
+                          </>
+                        )}
                       </div>
-                    }
-                  />
-                </List.Item>
-              );
-            }}
-          />
+                    </div>
+
+                    <div className="flex shrink-0 items-center gap-1 self-center">
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<FiEye />}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDetailId(item.id);
+                        }}
+                        className="text-slate-500"
+                      >
+                        <span className="hidden sm:inline">{t("notifications.view_details")}</span>
+                      </Button>
+                      {isUnread && (
+                        <Button
+                          type="text"
+                          size="small"
+                          icon={<FiCheck />}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleMarkRead(item.id);
+                          }}
+                          className="text-indigo-500"
+                        >
+                          <span className="hidden sm:inline">{t("notifications.mark_read")}</span>
+                        </Button>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+
+            {total > pageSize && (
+              <div className="flex justify-end border-t border-slate-100 px-6 py-4">
+                <Pagination
+                  current={page}
+                  pageSize={pageSize}
+                  total={total}
+                  onChange={setPage}
+                  showSizeChanger={false}
+                />
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -344,9 +388,9 @@ function NotificationDetailModal({
             </div>
             <div className="min-w-0">
               <h3 className="text-lg font-bold text-slate-800">{notification.title}</h3>
-              <div className="flex flex-wrap items-center gap-2 mt-1">
-                <Tag color={typeColor[notification.type] || "default"} className="text-xs rounded-full px-2.5 border-0 capitalize">
-                  {notification.type.replace(/_/g, " ")}
+              <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                <Tag color={typeColor[notification.type] || "default"} className={tagClass}>
+                  {typeLabel(t, notification.type)}
                 </Tag>
                 {notification.isRead && (
                   <span className="text-xs text-emerald-500 font-medium flex items-center gap-1">
