@@ -81,7 +81,7 @@ const Header = ({ onMobileMenuClick }: HeaderProps) => {
   }, [location.pathname]);
 
   return (
-    <header className="sticky top-0 z-10 w-full border-b border-cborder/50 bg-white/75 backdrop-blur-xl backdrop-saturate-150 shadow-[0_4px_32px_-12px_rgba(15,23,42,0.08)] transition-[box-shadow,background-color] duration-300 ease-[cubic-bezier(0.3,0,0,1)]">
+    <header className="sticky top-0 z-[13] w-full border-b border-cborder/50 bg-white/75 backdrop-blur-xl backdrop-saturate-150 shadow-[0_4px_32px_-12px_rgba(15,23,42,0.08)] transition-[box-shadow,background-color] duration-300 ease-[cubic-bezier(0.3,0,0,1)]">
       <div className="w-full flex justify-between items-center gap-2 sm:gap-4 px-3 sm:px-6 md:px-8 py-3 sm:py-3.5 relative max-w-[1920px] mx-auto">
         <div className="min-w-0 flex items-start gap-2 sm:gap-3 flex-1">
           {onMobileMenuClick ? (
@@ -140,7 +140,7 @@ const Header = ({ onMobileMenuClick }: HeaderProps) => {
         {!!notificationPopup && (
           <div
             ref={notificationRef}
-            className="absolute top-[calc(100%+12px)] right-4 sm:right-8 max-w-[400px] w-[min(100vw-2rem,400px)] rounded-2xl border border-cborder/40 bg-white/95 backdrop-blur-md px-3 py-4 shadow-[0_24px_48px_-12px_rgba(15,23,42,0.15)] divide-y divide-cborder/30 motion-safe:animate-[header-pop_0.22s_cubic-bezier(0.3,0,0,1)]"
+            className="absolute z-20 top-[calc(100%+12px)] right-4 sm:right-8 max-w-[400px] w-[min(100vw-2rem,400px)] rounded-2xl border border-cborder/40 bg-white px-3 py-4 shadow-[0_24px_48px_-12px_rgba(15,23,42,0.15)] divide-y divide-cborder/30 motion-safe:animate-[header-pop_0.22s_cubic-bezier(0.3,0,0,1)]"
           >
             <div className="pb-3">
               <div className="flex items-center justify-between mb-3">
