@@ -22,6 +22,16 @@ const notificationTypes = [
   "support_reply",
 ] as const;
 
+/**
+ * Composes a one-off message to one customer, picked from the full client list.
+ *
+ * Single recipient by design: sending the same message to a group of customers
+ * is not a supported operation, and the send endpoint accepts one `userId`
+ * only. The richer composer on a customer's own profile
+ * (`SendCustomerNotificationModal`) adds templates, placeholders and a preview;
+ * this one exists so an admin already in the notification centre does not have
+ * to navigate to the profile first.
+ */
 const SendNotificationModal = ({ isOpen, onClose }: SendNotificationModalProps) => {
   const [form] = Form.useForm();
   const { t } = useTranslation();
@@ -31,7 +41,7 @@ const SendNotificationModal = ({ isOpen, onClose }: SendNotificationModalProps) 
   const clients = clientsData?.data || [];
 
   const handleFinish = async (values: {
-    userIds: string[];
+    userId: string;
     title: string;
     body: string;
     type: string;
@@ -40,7 +50,7 @@ const SendNotificationModal = ({ isOpen, onClose }: SendNotificationModalProps) 
       await sendNotification({
         title: values.title,
         body: values.body,
-        userIds: values.userIds,
+        userId: values.userId,
         type: values.type,
       }).unwrap();
       message.success(t("notifications.sent_success"));
@@ -76,13 +86,12 @@ const SendNotificationModal = ({ isOpen, onClose }: SendNotificationModalProps) 
       >
         <Form.Item
           label={<span className="text-xs font-bold uppercase tracking-wider text-slate-500">{t("notifications.recipient")}</span>}
-          name="userIds"
-          rules={[{ required: true, message: t("notifications.select_users") }]}
+          name="userId"
+          rules={[{ required: true, message: t("notifications.select_user") }]}
         >
           <Select
-            mode="multiple"
             showSearch
-            placeholder={t("notifications.select_users")}
+            placeholder={t("notifications.select_user")}
             loading={isLoadingClients}
             filterOption={(input, option) => {
               const label = (option?.label as string) || "";

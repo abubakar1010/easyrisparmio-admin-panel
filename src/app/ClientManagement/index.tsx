@@ -2,16 +2,18 @@ import { useCallback, useState } from "react";
 import { Avatar, Button, Form, Input, Modal, Pagination, Segmented, Select, Space, Table, Tag, Tooltip } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { HiOutlineUserPlus } from "react-icons/hi2";
-import { FiSearch, FiEye, FiEdit3, FiZap, FiLock, FiKey, FiUnlock } from "react-icons/fi";
+import { FiSearch, FiEye, FiEdit3, FiZap, FiLock, FiKey, FiUnlock, FiSend } from "react-icons/fi";
 import { useTranslation } from "react-i18next";
 import { ClientDetailsModal } from "./components/ClientDetailsModal";
 import { ClientFormModal } from "./components/ClientFormModal";
+import SendCustomerNotificationModal from "./components/SendCustomerNotificationModal";
 import type { CustomerStatus, CustomerType, IClient, IClientQuery } from "./types";
 import { roleToType, statusClass, statusToDisplay, displayToStatus, typeToRole } from "./types";
 import { useGetClientsQuery, useToggleClientStatusMutation, useResetClientPasswordMutation } from "../../redux/features/Users/clientApi";
 import { sweetAlertConfirmation } from "../../lib/helpers/sweetAlertConfirmation";
 import { successAlert, errorAlert } from "../../lib/helpers/alert";
 import { debounce } from "../../utils/debounce";
+import { passwordValidationRule } from "../../utils/password";
 
 const statusTranslationKeys: Record<string, string> = {
   Active: "client_management.status_active",
@@ -32,6 +34,7 @@ const ClientManagement = () => {
   const [resetClient, setResetClient] = useState<IClient | null>(null);
   const [resetForm] = Form.useForm();
   const [editOpen, setEditOpen] = useState(false);
+  const [notifyOpen, setNotifyOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<IClient | null>(null);
 
   const { data, isLoading, isFetching } = useGetClientsQuery(queryParams);
@@ -81,6 +84,11 @@ const ClientManagement = () => {
   const openEdit = (client: IClient) => {
     setSelectedClient(client);
     setEditOpen(true);
+  };
+
+  const openNotify = (client: IClient) => {
+    setSelectedClient(client);
+    setNotifyOpen(true);
   };
 
   const handleToggleStatus = (client: IClient) => {
@@ -184,7 +192,7 @@ const ClientManagement = () => {
     {
       title: t("common.actions"),
       key: "actions",
-      width: 120,
+      width: 150,
       render: (_, record) => (
         <Space size={2}>
           <Tooltip title={t("client_management.view_user")}>
@@ -192,6 +200,9 @@ const ClientManagement = () => {
           </Tooltip>
           <Tooltip title={t("client_management.quick_edit")}>
             <Button type="text" size="small" icon={<FiEdit3 className="h-4 w-4" />} onClick={() => openEdit(record)} />
+          </Tooltip>
+          <Tooltip title={t("notifications.send_notification")}>
+            <Button type="text" size="small" icon={<FiSend className="h-4 w-4" />} onClick={() => openNotify(record)} />
           </Tooltip>
           <Tooltip title={record.status === "suspended" ? t("client_management.unblock") : t("client_management.block")}>
             <Button
@@ -292,6 +303,7 @@ const ClientManagement = () => {
       <ClientFormModal open={addOpen} onClose={() => setAddOpen(false)} mode="add" />
       <ClientDetailsModal open={detailsOpen} onClose={() => setDetailsOpen(false)} client={selectedClient} />
       <ClientFormModal open={editOpen} onClose={() => setEditOpen(false)} mode="edit" client={selectedClient} />
+      <SendCustomerNotificationModal isOpen={notifyOpen} onClose={() => setNotifyOpen(false)} client={selectedClient} />
 
       {/* Reset Password Modal */}
       <Modal
@@ -308,16 +320,25 @@ const ClientManagement = () => {
             <p className="mb-4 text-sm text-owngray">
               {t("client_management.set_new_password_for")} <strong>{resetClient.email}</strong>
             </p>
-            <Form form={resetForm} layout="vertical" onFinish={handleResetPasswordSubmit}>
+            {/* `new-password` for the same reason as the customer form: without
+                it the browser drops the admin's own saved password into the box
+                and a distracted admin resets a customer's password to it. */}
+            <Form
+              form={resetForm}
+              name="reset_client_password_form"
+              autoComplete="off"
+              layout="vertical"
+              onFinish={handleResetPasswordSubmit}
+            >
               <Form.Item
                 name="newPassword"
                 label={t("client_management.new_password")}
                 rules={[
                   { required: true, message: t("client_management.password_required") },
-                  { min: 8, message: t("client_management.password_required") },
+                  passwordValidationRule(t("client_management.password_policy")),
                 ]}
               >
-                <Input.Password autoFocus />
+                <Input.Password autoFocus autoComplete="new-password" />
               </Form.Item>
               <Form.Item
                 name="confirmPassword"
@@ -335,7 +356,7 @@ const ClientManagement = () => {
                   }),
                 ]}
               >
-                <Input.Password />
+                <Input.Password autoComplete="new-password" />
               </Form.Item>
               <div className="flex justify-end gap-2">
                 <Button onClick={() => { setResetOpen(false); setResetClient(null); resetForm.resetFields(); }}>

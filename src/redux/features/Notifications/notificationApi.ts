@@ -53,9 +53,31 @@ export interface INotification {
   isRead: boolean;
   readAt: string | null;
   sentBy: string | null;
+  /** Which saved template this was composed from, or null for free text. */
+  templateId: string | null;
   user?: INotificationUser | null;
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * A row in a customer's notification history.
+ *
+ * `sender` is the operator who sent it, and is null for notifications the
+ * platform raised automatically — render those as "Sistema" rather than blank,
+ * or an audit list reads as if the data were missing.
+ */
+export interface INotificationHistoryItem extends INotification {
+  sender: INotificationUser | null;
+  templateName: string | null;
+}
+
+export interface ICustomerNotificationQuery {
+  userId: string;
+  page?: number;
+  limit?: number;
+  type?: string;
+  onlyManual?: boolean;
 }
 
 export interface INotificationQuery {
@@ -132,12 +154,51 @@ export const notificationApi = baseApi.injectEndpoints({
 
     sendNotification: builder.mutation<
       INotification,
-      { title: string; body: string; userId?: string; userIds?: string[]; type?: string }
+      {
+        title: string;
+        body: string;
+        /** One recipient per send — there is no group/bulk variant. */
+        userId: string;
+        type?: string;
+        /** Provenance only — the text above is what actually gets sent. */
+        templateId?: string;
+        /** Which case resolves {{provider}}, {{offer_name}}, {{utility_type}}. */
+        caseId?: string;
+      }
     >({
       query: (data) => ({ url: "notifications/send", method: "POST", body: data }),
-      invalidatesTags: [
-        { type: "notification", id: "LIST" },
-        { type: "notification", id: "ADMIN_LIST" },
+      // A function of the arg so the recipient's own history refreshes too.
+      // Without that last tag the profile's Notifiche tab keeps showing the list
+      // as it was before the message the admin just watched themselves send.
+      invalidatesTags: (_r, _e, arg) => [
+        { type: "notification" as const, id: "LIST" },
+        { type: "notification" as const, id: "ADMIN_LIST" },
+        { type: "notification" as const, id: `USER_${arg.userId}` },
+      ],
+    }),
+
+    getCustomerNotificationHistory: builder.query<
+      IPaginatedResponse<INotificationHistoryItem>,
+      ICustomerNotificationQuery
+    >({
+      query: ({ userId, ...params }) => {
+        const qp = new URLSearchParams();
+        if (params.page) qp.set("page", String(params.page));
+        if (params.limit) qp.set("limit", String(params.limit));
+        if (params.type) qp.set("type", params.type);
+        if (params.onlyManual !== undefined)
+          qp.set("onlyManual", String(params.onlyManual));
+        return {
+          url: `notifications/admin/user/${userId}?${qp.toString()}`,
+          method: "GET",
+        };
+      },
+      transformResponse: (response: {
+        success: boolean;
+        data: IPaginatedResponse<INotificationHistoryItem>;
+      }) => response.data,
+      providesTags: (_r, _e, { userId }) => [
+        { type: "notification" as const, id: `USER_${userId}` },
       ],
     }),
 
@@ -191,6 +252,7 @@ export const {
   useMarkAsReadMutation,
   useMarkAllAsReadMutation,
   useSendNotificationMutation,
+  useGetCustomerNotificationHistoryQuery,
   useGetAdminNotificationsQuery,
   useGetNotificationByIdQuery,
   useRegisterPushTokenMutation,
