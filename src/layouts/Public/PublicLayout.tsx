@@ -5,7 +5,6 @@ const navLinks = [
   { slug: "about-us", labelKey: "aboutUs" },
   { slug: "privacy-policy", labelKey: "privacyPolicy" },
   { slug: "terms-conditions", labelKey: "termsConditions" },
-  { slug: "business-terms-conditions", labelKey: "businessTerms" },
 ] as const;
 
 const navLabels: Record<string, Record<string, string>> = {
@@ -13,13 +12,11 @@ const navLabels: Record<string, Record<string, string>> = {
     aboutUs: "About Us",
     privacyPolicy: "Privacy Policy",
     termsConditions: "Terms & Conditions",
-    businessTerms: "Business Terms",
   },
   it: {
     aboutUs: "Chi Siamo",
     privacyPolicy: "Informativa Privacy",
     termsConditions: "Termini e Condizioni",
-    businessTerms: "Termini Business",
   },
 };
 

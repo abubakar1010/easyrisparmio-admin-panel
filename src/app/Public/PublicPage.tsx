@@ -6,7 +6,6 @@ import { useTranslation } from "react-i18next";
 const slugIcons: Record<string, string> = {
   "privacy-policy": "shield",
   "terms-conditions": "file-text",
-  "business-terms-conditions": "briefcase",
   "about-us": "info",
 };
 

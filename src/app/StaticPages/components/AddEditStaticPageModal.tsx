@@ -91,14 +91,15 @@ const AddEditStaticPageModal = ({
     }
   }, [visible, initialValues, form]);
 
-  /** Picking a legal page type pre-arms the acceptance settings that go with it. */
+  /**
+   * Picking a legal page type pre-arms the acceptance settings that go with it.
+   * Both legal documents bind every account, so the audience resets to "all" —
+   * an admin can still narrow it by hand on a page of their own.
+   */
   const handleSlugChange = (value: string) => {
     const isLegal = LEGAL_SLUGS.includes(value);
     setRequiresAcceptance(isLegal);
-    form.setFieldsValue({
-      requiresAcceptance: isLegal,
-      audience: value === "business-terms-conditions" ? "business" : "all",
-    });
+    form.setFieldsValue({ requiresAcceptance: isLegal, audience: "all" });
   };
 
   const handleTogglePublishNewVersion = (checked: boolean) => {

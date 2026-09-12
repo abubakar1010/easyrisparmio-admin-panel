@@ -258,7 +258,7 @@ const StaticPages = () => {
         <div>
           <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Static Pages</h2>
           <p className="text-sm text-slate-400 font-medium">
-            Manage Privacy Policy, Terms &amp; Conditions, Business Terms and About Us content
+            Manage Privacy Policy, Terms &amp; Conditions and About Us content
           </p>
         </div>
         <Button

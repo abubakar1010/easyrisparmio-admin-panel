@@ -1,21 +1,15 @@
 /** Slugs the backend treats as agreements requiring explicit user consent. */
-export const LEGAL_SLUGS = [
-  "privacy-policy",
-  "terms-conditions",
-  "business-terms-conditions",
-];
+export const LEGAL_SLUGS = ["privacy-policy", "terms-conditions"];
 
 export const slugLabel: Record<string, string> = {
   "privacy-policy": "Privacy Policy",
   "terms-conditions": "Terms & Conditions",
-  "business-terms-conditions": "Business Terms & Conditions",
   "about-us": "About Us",
 };
 
 export const slugColor: Record<string, string> = {
   "privacy-policy": "blue",
   "terms-conditions": "green",
-  "business-terms-conditions": "orange",
   "about-us": "purple",
 };
 
