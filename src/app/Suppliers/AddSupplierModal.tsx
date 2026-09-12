@@ -184,6 +184,7 @@ const AddSupplierModal = ({ isOpen, onClose, mode = "add", supplierId, initialVa
       notes: values.notes || undefined,
       logoUrl: logoUrl || undefined,
       // Sent as null (not undefined) so clearing them in edit mode actually wipes the stored value.
+      description: values.description?.trim() || null,
       contractSigningInstructions: values.contractSigningInstructions?.trim() || null,
       contractSigningDocumentUrl: signingDocUrl || null,
       contractSigningDocumentName: signingDocUrl ? signingDocName || null : null,
@@ -225,6 +226,8 @@ const AddSupplierModal = ({ isOpen, onClose, mode = "add", supplierId, initialVa
     >
       <Form
         form={form}
+        name="supplier_form"
+        autoComplete="off"
         layout="vertical"
         onFinish={handleFinish}
         className="mt-6 space-y-8"
@@ -314,7 +317,7 @@ const AddSupplierModal = ({ isOpen, onClose, mode = "add", supplierId, initialVa
               <Input placeholder="Enter contact name" className="rounded-lg h-10 border-slate-200" />
             </Form.Item>
             <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Email</span>} name="email" rules={[{ required: true, message: "Email is required" }, { type: "email", message: "Enter a valid email" }]}>
-              <Input placeholder="Enter email" className="rounded-lg h-10 border-slate-200" />
+              <Input placeholder="Enter email" autoComplete="off" className="rounded-lg h-10 border-slate-200" />
             </Form.Item>
             <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Phone Number</span>} name="phoneNumber" rules={[{ required: true, message: "Phone number is required" }, phoneValidationRule("Enter a valid phone number")]}>
               <PhoneInput />
@@ -350,6 +353,24 @@ const AddSupplierModal = ({ isOpen, onClose, mode = "add", supplierId, initialVa
             </Form.Item>
             <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Contract Start Date</span>} name="startDate">
               <DatePicker className="w-full rounded-lg h-10 border-slate-200" />
+            </Form.Item>
+          </div>
+        </section>
+
+        {/* About Supplier */}
+        <section>
+          <h3 className="text-[15px] font-bold text-slate-800 mb-1 px-1">About Supplier</h3>
+          <p className="text-[11px] text-slate-400 mb-4 px-1">
+            Shown to the user in the "About this supplier" section of the utility
+            details screen, above the FAQs. Leave empty to hide it.
+          </p>
+          <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+            <Form.Item name="description" className="mb-0">
+              <TextArea
+                placeholder="Describe this supplier for the user..."
+                rows={4}
+                className="rounded-lg border-slate-200 p-3"
+              />
             </Form.Item>
           </div>
         </section>

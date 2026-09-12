@@ -119,6 +119,7 @@ const SupplierDetails = () => {
     startDate: supplier.contractStartDate ? dayjs(supplier.contractStartDate) : undefined,
     notes: supplier.notes,
     logoUrl: supplier.logoUrl,
+    description: supplier.description,
     contractSigningInstructions: supplier.contractSigningInstructions,
     contractSigningDocumentUrl: supplier.contractSigningDocumentUrl,
     contractSigningDocumentName: supplier.contractSigningDocumentName,

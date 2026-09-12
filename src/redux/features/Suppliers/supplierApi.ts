@@ -79,7 +79,7 @@ export interface ICreateSupplier {
   zipCode: string;
   iban: string;
   logoUrl?: string;
-  description?: string;
+  description?: string | null;
   rating?: number;
   website?: string;
   contractStartDate?: string;
