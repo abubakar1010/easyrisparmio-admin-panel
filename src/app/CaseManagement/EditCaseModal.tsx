@@ -22,8 +22,6 @@ import { useGetAgentsQuery, useUpdateClientMutation } from "../../redux/features
 import type { IUpdateClient } from "../ClientManagement/types";
 import {
   normalizeTaxId,
-  codiceFiscaleMessage,
-  partitaIvaMessage,
   taxIdMessage,
   isValidCodiceFiscale,
   isValidPartitaIva,
@@ -226,18 +224,6 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
   const billType = Form.useWatch(["bill", "billType"], form) as string | undefined;
   const isDirectDebit = paymentMethod === "rid_bancario";
 
-  /**
-   * Whose account this case belongs to, and therefore which of the two tax IDs
-   * its direct debit mandate is filed under: a company's Partita IVA or a
-   * private customer's Codice Fiscale.
-   */
-  const isBusinessCase = caseData?.user?.role === "business";
-  const holderTaxLabel =
-    ibanSame === false
-      ? "Holder Tax Code / VAT"
-      : isBusinessCase
-        ? "Holder Partita IVA"
-        : "Holder Codice Fiscale";
   const isPaper = invoiceDelivery === "paper";
   // Read off the form rather than the record, so switching the utility swaps
   // the consumption field without waiting for a save.
@@ -772,29 +758,17 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
                 </Form.Item>
                 <Form.Item
                   name="ibanHolderTaxCode"
-                  label={holderTaxLabel}
-                  // The account's own identifier while the account is the
-                  // holder, matching the app and the API: one account carries
-                  // one tax ID — a private customer their Codice Fiscale, a
-                  // company its Partita IVA — and the mandate is filed under
-                  // that one. A code belonging to the other account kind is
-                  // what the supplier bounces weeks later.
-                  //
-                  // Untick the box above and the holder is somebody else, who
-                  // may be a person or a company: both forms are accepted
-                  // there, exactly as the app does it.
+                  label="Holder Tax Code / VAT"
+                  // Either form on either kind of account, whoever holds the
+                  // IBAN — matching the app and the API, which only check
+                  // formal validity.
                   rules={[
                     {
                       validator: (_, value: string) => {
-                        // Naming the wrong part beats "invalid": the other of
-                        // the two codes is the admin reaching for the wrong
-                        // identifier, and one that fails only on its check
-                        // character is nearly right — retyping is not the fix.
-                        const problem = ibanSame === false
-                          ? taxIdMessage(value)
-                          : isBusinessCase
-                            ? partitaIvaMessage(value)
-                            : codiceFiscaleMessage(value);
+                        // One that fails only on its check character is nearly
+                        // right, so the message names that rather than
+                        // "invalid" — retyping is not the fix.
+                        const problem = taxIdMessage(value);
                         return problem
                           ? Promise.reject(new Error(problem))
                           : Promise.resolve();
@@ -802,14 +776,7 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
                     },
                   ]}
                 >
-                  <Input
-                    maxLength={16}
-                    placeholder={
-                      ibanSame !== false && isBusinessCase
-                        ? "12345678903"
-                        : "RSSMRA85T10A562S"
-                    }
-                  />
+                  <Input maxLength={16} placeholder="RSSMRA85T10A562S" />
                 </Form.Item>
               </div>
               <p className="-mt-2 mb-2 text-xs text-slate-400">
