@@ -99,6 +99,8 @@ export interface AdminDashboardData {
     validation: number;
     activation: number;
     rejected: number;
+    /** Optional until the backend that reports it is deployed. */
+    cancelled?: number;
     conversionRate: number;
   };
   activeAlerts: Array<{

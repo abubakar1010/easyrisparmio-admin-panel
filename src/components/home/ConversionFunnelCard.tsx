@@ -19,7 +19,10 @@ export function ConversionFunnelCard({ data }: Props) {
     { label: t("dashboard.activation"), value: d?.activation ?? 0, barClass: "bg-[#22C55E]" },
   ];
 
-  const rejected = d?.rejected ?? 0;
+  const dropOffs = [
+    { label: t("dashboard.rejected_ko"), value: d?.rejected ?? 0, textClass: "text-red-600", barClass: "bg-red-500" },
+    { label: t("case_management.cancelled"), value: d?.cancelled ?? 0, textClass: "text-gray-600", barClass: "bg-gray-400" },
+  ];
 
   return (
     <DashboardCard title={t("dashboard.conversion_funnel")}>
@@ -44,19 +47,23 @@ export function ConversionFunnelCard({ data }: Props) {
           );
         })}
 
-        <div className="border-t border-gray-100 pt-4">
-          <div className="mb-1 flex justify-between text-xs sm:text-sm">
-            <span className="font-medium text-red-600">{t("dashboard.rejected_ko")}</span>
-            <span className="tabular-nums text-gray-600">
-              {formatCount(rejected)}{requestReceived > 0 ? ` (${formatPercent((rejected / base) * 100)})` : ""}
-            </span>
-          </div>
-          <div className="h-2.5 overflow-hidden rounded-full bg-gray-100">
-            <div
-              className="h-full rounded-full bg-red-500 transition-all"
-              style={{ width: `${(rejected / base) * 100}%` }}
-            />
-          </div>
+        <div className="space-y-4 border-t border-gray-100 pt-4">
+          {dropOffs.map((s) => (
+            <div key={s.label}>
+              <div className="mb-1 flex justify-between text-xs sm:text-sm">
+                <span className={`font-medium ${s.textClass}`}>{s.label}</span>
+                <span className="tabular-nums text-gray-600">
+                  {formatCount(s.value)}{requestReceived > 0 ? ` (${formatPercent((s.value / base) * 100)})` : ""}
+                </span>
+              </div>
+              <div className="h-2.5 overflow-hidden rounded-full bg-gray-100">
+                <div
+                  className={`h-full rounded-full transition-all ${s.barClass}`}
+                  style={{ width: `${(s.value / base) * 100}%` }}
+                />
+              </div>
+            </div>
+          ))}
         </div>
       </div>
       <p className="mt-5 border-t border-gray-100 pt-4 text-center text-xs text-gray-500">
