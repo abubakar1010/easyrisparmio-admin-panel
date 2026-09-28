@@ -1,5 +1,6 @@
 {
   "common": {
+    "details": "Details",
     "save": "Save",
     "cancel": "Cancel",
     "delete": "Delete",
@@ -34,9 +35,16 @@
     "pending": "Pending",
     "approved": "Approved",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "generic_error": "Something went wrong. Please try again later.",
+    "not_detected": "Not detected",
+    "not_linked": "Not linked",
+    "unknown": "Unknown"
+    ,"page": "Page"
+    ,"next": "Next"
   },
   "auth": {
+    "reset_code_sent": "We sent you a code to reset your password.",
     "login": "Log in",
     "email": "Email",
     "password": "Password",
@@ -106,7 +114,11 @@
     "static_pages": "Static Pages",
     "settings": "Settings",
     "admin_portal": "Admin Portal",
-    "notification_templates": "Notification Templates"
+    "notification_templates": "Notification Templates",
+    "support_topics": "Support Topics",
+    "faq_management": "FAQ Management",
+    "logout_confirmation": "Are you sure you want to log out?",
+    "close_navigation": "Close navigation menu"
   },
   "home": {
     "new_contract": "New Contract",
@@ -254,7 +266,7 @@
     "offers_to_send": "Offers to Send",
     "offers_to_send_desc": "Verified, no offer sent yet",
     "contracts_to_process": "Contracts to Process",
-    "contracts_to_process_desc": "Accepted offers through to activation",
+    "contracts_to_process_desc": "Accepted offers until the contract is sent",
     "other": "Other Tasks",
     "other_desc": "Outstanding work"
   },
@@ -334,6 +346,8 @@
     "codice_fiscale_label": "Codice Fiscale",
     "email_label": "Email",
     "pec": "PEC (certified email)",
+    "pec_invalid": "Enter a valid PEC email address (optional for private customers)",
+    "email_already_exists": "This email address is already registered.",
     "owner_fiscal_code": "Codice Fiscale (owner)",
     "telephone": "Telephone",
     "showing_of_customers": "Showing {{count}} of {{total}} customers",
@@ -392,6 +406,15 @@
     "sent_by": "Sent by",
     "sent_by_system": "System",
     "notification_unread": "Unread"
+    ,"priority_low": "Low"
+    ,"priority_medium": "Medium"
+    ,"priority_high": "High"
+    ,"priority_urgent": "Urgent"
+    ,"status_documents_pending": "Documents pending"
+    ,"status_new": "New"
+    ,"status_in_progress": "In progress"
+    ,"status_rejected": "Rejected"
+    ,"status_awaiting_activation": "Awaiting activation"
   },
   "case_management": {
     "title": "Case Management",
@@ -413,9 +436,83 @@
     "cancelled": "Cancelled",
     "overdue": "Overdue",
     "unassigned": "Unassigned",
-    "details": "Details"
+    "details": "Details",
+    "current": "Current",
+    "back": "Back",
+    "pod_pdr": "POD / PDR",
+    "no_changes": "No changes detected",
+    "bill_updated": "Bill data updated successfully",
+    "bill_update_failed": "Failed to update bill",
+    "edit_bill": "Edit Bill Data",
+    "load_document_failed": "Failed to load document",
+    "download_document_failed": "Failed to download document",
+    "view": "View",
+    "download": "Download",
+    "close": "Close",
+    "document_preview": "Document Preview",
+    "preview_unavailable": "Preview is not available for this file type. Download the file to view it.",
+    "ui": {"approve_verified":"Approve — Mark Verified","request_corrections":"Request Corrections","send_offers":"Send Offers","send_contract":"Send Contract to Customer","move_to_activation":"Move to In Activation","activate_utility":"Activate Utility","overview":"Overview","offers":"Offers","bill_data":"Bill Data","verification":"Verification","notes":"Notes","case_details":"Case Details","current_status":"Current Status","utility_activated":"Utility Activated","utility_activated_success":"This utility has been successfully activated.","description_verification_review":"Review the extracted bill data. Approve or request corrections from the user.","description_verified":"Bill data verified. You can now send offers to the user.","description_offer_sent":"Offers have been sent. Waiting for the user to select an offer.","description_offer_accepted":"User has accepted an offer. Send them the contract.","description_contract_sent":"The customer is signing with the supplier. Move to In Activation once the supplier confirms.","description_awaiting_activation":"Utility is in activation. Mark as activated when ready.","description_activated":"Utility is activated and live.","description_analyzing":"Bill is being analyzed by the system.","description_analyzed":"Analysis complete. Moving to verification review.","description_verification_required":"Waiting for user to provide requested information."},
+    "steps": {
+      "upload_analysis": "Upload & Analysis",
+      "verification": "Verification",
+      "offers": "Offers",
+      "contract": "contract",
+      "in_activation": "In Activation",
+      "activated": "Activated",
+      "activation": "Activation",
+      "other": "Other"
+    },
+    "status": {
+      "pending_email": "Pending (Email)",
+      "uploaded": "Uploaded",
+      "analyzing": "Analyzing",
+      "analyzed": "Analyzed",
+      "error": "Error",
+      "verification_review": "Verification Review",
+      "verification_required": "Verification Required",
+      "verified": "Verified",
+      "offer_sent": "Offer Sent",
+      "offer_accepted": "Offer Accepted",
+      "contract_sent": "Contract Sent",
+      "awaiting_activation": "In Activation",
+      "activated": "Activated",
+      "cancelled": "Cancelled"
+    },
+    "detail": {
+      "case_status": "CASE STATUS", "status": "Status", "status_help": "Pick any status — forward or backward. The customer is notified of every change.", "case_number": "Case {{number}}", "amount_label": "Amount: ", "uploaded_on": "Uploaded {{date}}", "uploaded_documents": "Uploaded documents",
+      "request_verification": "Request verification from user", "send_request": "Send request", "message_to_user": "Message to user", "verification_message_placeholder": "Explain what the user needs to send you...", "verification_message_help": "The user will receive this message and can respond by uploading a document or taking a photo from the app.",
+      "verification_history": "Verification history", "request_further_corrections": "Request further corrections", "round": "Round {{count}}", "signed_contract": "Signed contract", "awaiting_user": "Awaiting user", "user_responded": "User responded", "resolved": "Resolved", "admin_request": "Admin request", "user_response": "User response", "uploaded_documents_count": "Uploaded documents ({{count}})", "no_documents_submitted": "The user has not submitted any documents.", "resolved_on": "Resolved: {{date}}", "no_verification_history": "No verification history",
+      "order": "ORDER", "offer_order_unselected_tooltip": "Select this offer to add it to the customer's list, then drag it to set its position.", "queued_drag_tooltip": "Drag to set the order these offers will be sent in, or focus this handle and use ↑ ↓.", "sent_drag_tooltip": "Drag to set the order the customer sees, or focus this handle and use ↑ ↓.", "customer_chose_tooltip": "The customer has already chosen an offer, so its order can no longer be changed.", "clear_sort_tooltip": "Clear the column sort to rearrange the offer order.", "arrange_batch_tooltip": "Select another offer to arrange the batch before sending.", "nothing_to_reorder_tooltip": "There is nothing to reorder yet; only one offer has been sent.", "reorder_offer_aria": "Reorder {{name}}, position {{position}} of {{count}}", "waiting_to_send": "waiting to be sent", "queued_position_tooltip": "Position {{position}} of {{count}} after this batch is sent", "offer": "OFFER", "will_be_shown_first": "Will be shown first", "shown_first_in_app": "Shown first in app", "type": "TYPE", "market": "MARKET", "fixed_fee": "FIXED FEE", "duration": "DURATION", "duration_month": "{{count}} mo", "duration_months": "{{count}} mo", "duration_day": "{{count}} day", "duration_days": "{{count}} days", "compensation": "COMPENSATION", "estimated_savings": "EST. SAVINGS", "user_selected": "User selected", "already_sent": "Already sent",
+      "email_bill_pending": "This bill was submitted via email and is awaiting document upload.", "upload_bill_before_offers": "Upload the bill document through the OCR tab before sending offers.", "offer_accepted_case_created": "The user has accepted an offer and a case has been created.", "offers_locked_after_acceptance": "No more offers can be sent for this bill. The user's selected offer is highlighted below.", "offer_selected": "{{count}} offer selected", "offers_selected": "{{count}} offers selected", "offers_selected_order_help": "These offers will be sent in the order shown at the top of the table. Drag the handles to change the order before sending.", "send_selected_offers": "Send selected offers", "offer_already_sent_count": "{{count}} offer has already been sent to the user. You can still select and send more.", "offers_already_sent_count": "{{count}} offers have already been sent to the user. You can still select and send more.", "offers_already_sent": "Offers have already been sent for this bill. You can still select and send additional offers.", "sorted_offers_help": "The rows are sorted for browsing only; the customer still sees the order you set. Clear the sort to rearrange the offers.", "drag_offers_help": "Drag the handles to set the order the customer sees.", "top_offer_help": "The offer at the top is shown first in the app. Offers are not automatically reordered by price or savings.", "queued_offer_position_help": "The amber positions mark offers you have not sent yet. Arrange them now and they will join the end of the list in that order.", "clear_sort": "Clear sort", "no_active_offers": "No active offers are available for this bill type.", "available_offers_count": "Available offers ({{count}})", "offers_already_sent_short": "{{count}} already sent",
+      "bill_overview": "Bill overview", "bill_type": "Bill type", "upload_date": "Upload date", "last_updated": "Last updated", "original_upload": "Original upload", "reuploaded_documents": "Re-uploaded documents", "reupload": "Re-upload", "legacy_file": "1 file (legacy)", "financial_breakdown": "Financial breakdown", "total_amount": "Total amount", "cost_per_unit": "Cost per unit", "fixed_charges": "Fixed charges", "taxes": "Taxes", "consumption": "Consumption ({{unit}})", "billing_period": "Billing period", "customer_information": "Customer information", "name": "Name", "email": "Email", "supply_address": "Supply address", "codice_fiscale": "Codice Fiscale", "partita_iva": "Partita IVA", "supply_details": "Supply details", "supplier": "Supplier", "contract_number": "Contract number", "meter_number": "Meter number", "meter_id": "Meter ID", "not_found_in_document": "Not found in document", "bill_document": "Bill document",
+      "note_added": "Note added", "note_add_failed": "Failed to add note", "note_updated": "Note updated", "note_update_failed": "Failed to update note", "note_deleted": "Note deleted", "note_delete_failed": "Failed to delete note", "add_note": "Add note", "note_placeholder": "Write a note about this bill...", "no_notes_yet": "No notes yet"
+    }
   },
   "suppliers": {
+    "supplier_not_found": "Supplier not found",
+    "back_to_suppliers": "Back to Suppliers",
+    "status_update_failed": "Failed to update status",
+    "you_can_cancel_a_scheduled_deletion_at_any_time_before_it_executes": "You can cancel a scheduled deletion at any time before it executes.",
+    "yes_delete_supplier": "Yes, Delete Supplier",
+    "scheduled_deletion_date": "Scheduled deletion date:",
+    "no_new_offers_can_be_created_or_sent": "No new offers can be created or sent",
+    "you_can_cancel_this_deletion_at_any_time": "You can cancel this deletion at any time",
+    "understood": "Understood",
+    "supplier_deleted_successfully": "Supplier deleted successfully",
+    "failed_to_delete_supplier": "Failed to delete supplier",
+    "supplier_deletion_cancelled": "Supplier deletion cancelled",
+    "failed_to_cancel_deletion": "Failed to cancel deletion",
+    "supplier_scheduled_for_deletion": "Supplier Scheduled for Deletion",
+    "cancel_deletion": "Cancel Deletion",
+    "contract_since": "Contract Since",
+    "contract_signing_instructions": "Contract Signing Instructions",
+    "shown_to_users_as_contract_sign_guideline_on_contracts_from_this_supplier": "Shown to users as \"Contract Sign Guideline\" on contracts from this supplier.",
+    "no_signing_instructions": "No signing instructions.",
+    "no_offers_yet": "No offers yet",
+    "contract_start_date": "Contract Start Date",
+    "faqs_tab": "FAQ",
+    "faqs_title": "Supplier FAQs",
+    "faqs_hint": "Shown to this supplier's customers in the FAQ section of the utility details in the app, in sort order. Inactive FAQs are hidden.",
     "title": "Suppliers",
     "description": "Supplier and dynamic content management",
     "add_supplier": "Add Supplier",
@@ -436,11 +533,62 @@
     "zip_code": "ZIP Code",
     "country": "Country",
     "billing": "Billing",
-    "iban": "IBAN",
     "contact_start_date": "Contact Start Date",
-    "notes": "Notes"
+    "dual": "Dual",
+    "updated": "Supplier \"{{name}}\" updated",
+    "added": "Supplier \"{{name}}\" added",
+    "replace_icon": "Replace Icon",
+    "upload_icon": "Upload Icon",
+    "remove_icon": "Remove supplier icon",
+    "remove_document": "Remove guideline document",
+    "view_document": "View document",
+    "validation": {
+      "phone": "Enter a valid phone number",
+      "tax_id_shape": "Enter a valid Codice Fiscale (16 characters) or Partita IVA (11 digits)",
+      "tax_id_checkCharacter": "Check character does not match the rest of the code - it should end in \"{{character}}\"",
+      "tax_id_checkDigit": "Partita IVA check digit does not match the first ten digits",
+      "zip": "Enter a valid 5-digit Italian CAP code"
+    },
+    "notes": "Notes",
+    "manage": "Manage",
+    "deletion_scheduled": "Deletion scheduled: {{date}}",
+    "status_inactive": "Inactive",
+    "status_pending_deletion": "Pending deletion",
+    "status_active": "Active",
+    "status_updated": "Status set to {{status}}",
+    "overview": "Overview",
+    "offers_count": "Offers ({{count}})",
+    "active_offers_label": "Active Offers",
+    "offer": "OFFER",
+    "offer_published": "Published",
+    "tax_id": "Tax ID",
+    "address": "Address",
+    "email": "Email",
+    "italy": "Italy",
+    "no_notes": "No notes.",
+    "delete_title": "Delete \"{{name}}\"?",
+    "deletion_scheduled_explanation": "<strong>{{name}}</strong> has active contracts that must complete first. The supplier is now marked as <strong>Pending Deletion</strong>.",
+    "cancelled_cases_one": "<strong>{{count}}</strong> early-stage case has been cancelled",
+    "cancelled_cases_other": "<strong>{{count}}</strong> early-stage cases have been cancelled",
+    "deletion_banner": "This supplier will be automatically deleted on <strong>{{date}}</strong>. No new offers can be created or sent during this period.",
+    "commodities": {
+      "electricity": "Electricity",
+      "gas": "Gas",
+      "dual": "Dual"
+    },
+    "delete_consequences": {
+      "contracts": "If this supplier has <strong>active user contracts</strong>, deletion will be <strong>scheduled</strong> until the last contract expires. The supplier will not be removed immediately.",
+      "offers": "All <strong>offers</strong> from this supplier will be <strong>removed</strong> from public listings and can no longer be sent to users.",
+      "new_offers": "<strong>No new offers</strong> can be created for this supplier during the pending deletion period.",
+      "acceptance": "Users will <strong>no longer be able to accept</strong> any existing offers from this supplier.",
+      "early_cases": "Any <strong>early-stage cases</strong> (New, In Progress, Documents Pending) for this supplier will be <strong>automatically cancelled</strong>.",
+      "contract_cases": "Cases that are already in <strong>contract stage</strong> (Contract Sent, Contract Signed, Activated) will <strong>continue normally</strong> until completion.",
+      "data": "Once the supplier is fully deleted, all associated data (offers, price history) will be <strong>permanently removed</strong>."
+    }
   },
   "offers_market": {
+    "contract_duration_hint": "How long the offer conditions stay valid for the customer after activation. Separate from the validity period below.", "select_contract_duration": "Select contract duration", "duration_indefinite": "Indefinite", "duration_in_months_one": "{{count}} month", "duration_in_months_other": "{{count}} months", "duration_in_days_one": "{{count}} day", "duration_in_days_other": "{{count}} days",
+    "supplier_inactive": "Inactive", "supplier_pending_deletion": "Pending deletion", "supplier_needs_dual": "Dual offers need a dual supplier", "supplier_commodity_only": "Supplies {{commodity}} only",
     "title": "Offers & Market",
     "description": "Manage available offers and pricing",
     "create_offer": "Create Offer",
@@ -459,6 +607,8 @@
     "expiring": "Expiring",
     "expired": "Expired",
     "archived": "Archived"
+    ,"supplier": "SUPPLIER", "payment_method": "PAYMENT METHOD", "compensation": "COMPENSATION", "active": "Active", "electricity": "Electricity", "gas": "Gas", "dual": "Dual", "direct_debit": "Direct Debit", "postal_order": "Postal Order", "both": "Both", "view_details": "View details", "edit_locked": "Offer accepted by users — fields locked",
+    "activate": "Activate", "archive": "Archive", "mark_expiring": "Mark expiring", "mark_expired": "Mark expired", "restore": "Restore", "back_to_draft": "Back to draft", "status_changed": "Offer status changed to {{status}}", "status_update_failed": "Failed to update offer status", "delete_confirm_title": "Delete {{name}}?", "delete_confirm_intro": "Please review the following consequences before proceeding:", "delete_confirm_item_1": "This offer will be permanently removed from all listings and can no longer be sent to users.", "delete_confirm_item_2": "If this offer has active contracts, deletion will be blocked until those contracts expire or are cancelled.", "delete_confirm_item_3": "If this offer has cases in progress, deletion will be blocked.", "delete_confirm_item_4": "Users who previously received this offer will retain their historical records, but offer details will no longer be accessible.", "delete_offer_confirm": "Yes, delete offer", "delete_failed": "Failed to delete offer", "change_status_title": "{{action}} offer?", "change_status_content": "Change {{name}} from {{from}} to {{to}}.", "edit": "Edit", "price_fixed": "Fixed", "price_variable": "Variable", "price_indexed": "Indexed", "market_type": "Market type", "contract_duration": "Contract duration", "target": "Target", "personal": "Personal", "business": "Business", "pricing": "Pricing", "fixed_monthly_fee": "Fixed monthly fee", "spread": "Spread", "price_per_kwh": "Price / kWh", "price_per_smc": "Price / SMc", "contract_validity": "Contract & validity", "valid_from": "Valid from", "valid_until": "Valid until", "green_energy": "Green energy", "version": "Version", "documents_links": "Documents & links", "terms_conditions": "Terms & conditions", "economic_conditions": "Economic conditions", "view_download": "View & download", "supplier_details": "Supplier details", "view_full_profile": "View full profile", "supplier_name": "Supplier name", "legal_name": "Legal name", "contact_person": "Contact person", "offer_not_found": "Offer not found", "back_to_offers": "Back to offers", "created": "Created", "updated": "Updated", "general_information": "General information", "offer_name": "Offer name", "offer_code": "Offer code", "select_supplier": "Select supplier", "select_commodity": "Select commodity", "select_price_type": "Select price type", "select_target": "Select target", "select_payment_method": "Select payment method", "select_status": "Select status", "additional_details": "Additional details", "terms_document": "Terms & conditions document", "economic_conditions_document": "Economic conditions document", "upload_document": "Upload document", "replace_document": "Replace document", "upload_success": "Document uploaded successfully", "upload_failed": "Upload failed", "highlights": "Highlights", "add_highlight": "Type and press Enter to add", "description_label": "Description", "create_new_offer": "Create new offer", "edit_offer": "Edit offer", "offer_created": "Offer created successfully", "offer_updated": "Offer updated successfully", "save_failed": "Failed to {{action}} offer", "required_fields": "Please fill in all required fields correctly", "offer_locked_message": "This offer has been accepted by users and cannot be modified. Only status changes are available from the offers list.", "save_changes": "Save changes", "no_suppliers_for_commodity": "No suppliers are available for the selected commodity", "no_suppliers_found": "No suppliers found", "required": "Please enter {{field}}", "valid_number": "Please enter a valid {{field}}", "max_decimals": "{{field}} allows up to {{count}} decimal places"
   },
   "referrals": {
     "title": "Referrals and Rewards",
@@ -486,7 +636,7 @@
     "confirm_payment_btn": "Confirm Payment",
     "status_updated": "Status updated",
     "failed_to_update": "Failed to update",
-    "default_reward_updated": "Default reward updated"
+    "default_reward_updated": "Default reward updated", "code": "CODE", "date": "DATE", "pending": "Pending", "registered": "Registered", "expired": "Expired", "mark_registered": "Mark registered", "mark_qualified": "Mark qualified", "mark_paid": "Mark as paid", "expire": "Expire", "confirm": "Confirm", "statistics_load_failed": "Failed to load referral statistics. Please refresh the page.", "reward_prefill_hint": "Pre-fills the reward amount in the payment modal for this session.", "tracking_description": "Track referral invitations and rewards", "no_referrals": "No referrals yet", "csv_referrer": "Referrer", "csv_referrer_email": "Referrer email", "csv_invited": "Invited", "csv_invited_email": "Invited email", "csv_status": "Status", "csv_reward": "Reward (EUR)", "csv_date": "Date"
   },
   "support_ticket": {
     "title": "Support Ticket",
@@ -513,6 +663,7 @@
     "faq_categories": "FAQ Categories Overview",
     "category_name": "CATEGORY NAME",
     "faq_count": "FAQ COUNT"
+    ,"topic": "Topic", "priority": "Priority", "view": "View", "low": "Low", "medium": "Medium", "high": "High", "urgent": "Urgent", "search": "Search tickets by ID, customer, subject...", "select_topic": "Select topic", "subject_required": "Please enter a subject", "topic_required": "Please select a topic", "details_required": "Please enter message details", "details_placeholder": "Type ticket details...", "status_updated": "Ticket status updated", "status_update_failed": "Failed to update ticket status", "ticket_not_found": "Ticket not found", "back_to_tickets": "Back to tickets", "assigned_to": "Assigned to {{name}}", "status_changed": "Status updated to {{status}}", "priority_changed": "Priority updated to {{priority}}", "priority_update_failed": "Failed to update priority", "reply_sent": "Reply sent", "reply_failed": "Failed to send reply", "closed_on": "Closed {{date}}", "ticket_details": "Ticket details", "assigned_agent": "Assigned agent", "unassigned": "Unassigned", "resolved_at": "Resolved at", "closed_at": "Closed at", "original_message": "Original message", "conversation": "Conversation", "no_messages": "No messages yet", "reply_placeholder": "Type your reply...", "closed_reply_notice": "This ticket is closed. No further replies can be sent.", "subject_example": "E.g. Restaurant Da Mario"
   },
   "agreements": {
     "title": "Agreements",
@@ -530,7 +681,41 @@
     "discount": "DISCOUNT",
     "delete_agreement": "Delete agreement?",
     "agreement_deleted": "Agreement deleted",
-    "agreement_created": "Agreement created"
+    "agreement_created": "Agreement created",
+    "agreement_updated": "Agreement updated",
+    "edit_agreement": "Edit Agreement",
+    "form_description": "Partner agreement and discount management",
+    "form_information": "Agreement Information",
+    "agreement_title": "Agreement Title",
+    "partner_image_url": "Partner Image URL",
+    "terms_url": "Terms & Conditions URL",
+    "address": "Address",
+    "discount_description": "Discount & Description",
+    "discount_headline": "Discount Headline",
+    "discount_code": "Discount Code",
+    "discount_description_field": "Discount Description",
+    "description_field": "Description",
+    "validity_settings": "Validity & Settings",
+    "status_updated": "Status updated",
+    "update_failed": "Failed to update status",
+    "delete_failed": "Failed to delete",
+    "will_be_removed": "will be removed.",
+    "title_column": "TITLE",
+    "validity": "VALIDITY",
+    "audience": "AUDIENCE",
+    "both": "Both",
+    "search_placeholder": "Search by partner, title..."
+    ,"not_found": "Agreement not found",
+    "back_to_agreements": "Back to Agreements",
+    "partner_information": "Partner Information",
+    "discount_details": "Discount Details",
+    "view_terms": "View Terms & Conditions",
+    "location": "Location",
+    "open_maps": "Open in Google Maps",
+    "how_to_use": "How to Use",
+    "validity_period": "Validity Period",
+    "no_end_date": "No end date",
+    "title_required": "Title is required", "partner_name_required": "Partner name is required", "valid_url": "Enter a valid URL", "banner_hint": "Shown as the banner on the app detail screen — landscape images work best.", "address_hint": "Opened in Google Maps from the app — enter a complete, searchable address.", "max_characters": "Keep it under {{count}} characters", "discount_headline_hint": "The large figure in the app. Keep it short: \"20%\", \"5 cent/litro\".", "discount_code_hint": "Copied by the user with one tap. Leave empty if no code is needed.", "description_placeholder": "Describe the agreement details and conditions...", "step_placeholder": "E.g. Show the code to the staff before ordering", "start_date_required": "Start date is required", "select_audience": "Select audience", "sort_order": "Sort order", "no_discount_description": "No discount description provided.", "no_address": "No address provided — the location card is hidden in the app.", "no_steps": "No steps set — the app falls back to its generic instructions.", "created": "Created", "updated": "Updated", "how_to_use_hint": "Numbered steps shown to the customer. Leave empty to use the app's generic steps.", "max_steps": "Maximum {{count}} steps", "add_step": "Add step", "end_date_before_start": "End date cannot be before the start date"
   },
   "ocr": {
     "title": "OCR Bills",
@@ -553,6 +738,45 @@
     "send_offers_user": "Send offers to user",
     "bill_uploaded": "Bill uploaded successfully",
     "no_bills_found": "No bills found"
+    ,"pending_email": "Pending email"
+    ,"offer_sent": "Offer sent"
+    ,"upload_email_bill": "Upload Email Bill"
+    ,"email_bill_hint": "For bills received by email from users"
+    ,"bill_type": "Bill Type"
+    ,"associate_user": "Associate with user"
+    ,"search_user_email": "Search user by email..."
+    ,"type_two_characters": "Type at least 2 characters..."
+    ,"no_users_found": "No users found"
+    ,"select_user_first": "Select a user first"
+    ,"extracting": "Extracting OCR data..."
+    ,"extracting_hint": "Analyzing the bill with AI Vision. This may take a moment."
+    ,"drop_email_bill": "Drop email bill here"
+    ,"email_bill_file_hint": "PDF, JPG, PNG — bill received by email from a user"
+    ,"extraction_preview": "OCR Extraction Preview"
+    ,"confidence": "confidence"
+    ,"confirm_upload": "Confirm upload"
+    ,"select_user_warning": "Please select a user first"
+    ,"extraction_failed": "OCR extraction failed. Please try again."
+    ,"upload_success": "Bill uploaded with OCR data successfully"
+    ,"upload_failed": "Failed to upload bill"
+    ,"pod_number": "POD Number"
+    ,"pdr_number": "PDR Number"
+    ,"total_amount": "Total Amount"
+    ,"consumption_kwh": "Consumption (kWh)"
+    ,"consumption_smc": "Consumption (Smc)"
+    ,"cost_per_unit": "Cost per Unit"
+    ,"fixed_charges": "Fixed Charges"
+    ,"taxes": "Taxes"
+    ,"billing_period": "Billing Period"
+    ,"customer_name": "Customer Name"
+    ,"contract_number": "Contract No."
+    ,"meter_number": "Meter No."
+    ,"supply_address": "Supply Address"
+    ,"as_printed": "as printed:"
+    ,"street": "Street"
+    ,"number": "No."
+    ,"city": "City"
+    ,"province": "Province"
   },
   "meter_reading": {
     "title": "Service Types",
@@ -651,7 +875,7 @@
     "reset_password": "Reset Password",
     "language": "Language",
     "language_description": "Select the display language for the dashboard",
-    "select_language": "Select language"
+    "select_language": "Select language", "role_admin": "Admin", "role_personal": "Personal", "role_business": "Business", "role_user": "User"
   },
   "static_pages": {
     "title": "Static Pages",
@@ -666,6 +890,18 @@
     "deleted": "Page deleted",
     "created": "Page created successfully",
     "updated": "Page updated successfully"
+    ,"search": "Search pages by title..."
+    ,"version": "Version"
+    ,"applies_to": "Applies to"
+    ,"accepted": "Accepted"
+    ,"published": "published"
+    ,"not_published": "not published"
+    ,"informational": "Informational"
+    ,"save_failed": "Failed to save page"
+    ,"status_updated": "Page {{status}}"
+    ,"status_update_failed": "Failed to update page status"
+    ,"delete_failed": "Failed to delete page"
+    ,"delete_warning": "This action cannot be undone.", "published_again": "Published v{{version}} — users will be asked to accept again", "edit_static_page": "Edit static page", "add_static_page": "Add static page", "users_accepted": "{{count}} user accepted this version", "users_accepted_plural": "{{count}} users accepted this version", "page_type_required": "Please select a page type", "select_page_type": "Select page type", "title_label": "Title", "title_required": "Please enter a title", "title_placeholder": "Enter page title", "content_label": "Content", "content_required": "Please enter content", "content_placeholder": "Write page content here...", "consent_versioning": "Consent & versioning", "acceptance_hint": "Users must actively accept this document before they can use the app", "requires_acceptance": "Requires acceptance", "all_accounts": "All accounts", "personal_only": "Personal only", "business_only": "Business only", "all_accounts_hint": "Every user must accept this document", "personal_only_hint": "Only personal accounts are asked", "business_only_hint": "Only business accounts are asked", "publish_new_version": "Publish as a new version", "publish_new_version_hint": "Leave off for typo fixes and formatting. Turn on only when the agreement itself has materially changed.", "version_required": "Please enter a version", "version_format": "Use a dotted number such as 2.1", "currently_published": "Currently published: v{{version}}", "what_changed": "What changed", "change_summary_hint": "Shown at the top of the re-acceptance prompt in the app. A short, plain-language summary gets read; the full document usually does not.", "change_summary_placeholder": "e.g. Updated the withdrawal notice period from 30 to 14 days.", "republish_warning_title": "Every user will be asked to accept again", "republish_warning_description": "Publishing a new version applies it to all languages of this document and blocks the app until each user reviews and accepts it. Their previous acceptance stays on record.", "active_label": "Active", "publish_new_version_button": "Publish new version", "consent_log": "Consent log", "currently_published_version": "currently published v{{version}}", "user": "USER", "role": "ROLE", "version_column": "VERSION", "how": "HOW", "current_only": "v{{version}} only", "current": "Current", "all_versions": "All versions", "search_acceptances": "Search by name or email...", "nobody_accepted": "Nobody has accepted this version yet", "no_acceptances": "No acceptances recorded for this document", "acceptance_one": "{{count}} acceptance", "acceptance_other": "{{count}} acceptances", "sign_up": "Sign-up", "social_login": "Social login", "business_upgrade": "Business upgrade", "reaccepted": "Re-accepted in app"
   },
   "notification_templates": {
     "title": "Notification Templates",
@@ -693,7 +929,7 @@
     "category_promotional": "Promotional",
     "category_document_request": "Document request",
     "category_case_update": "Case update",
-    "category_custom": "Custom"
+    "category_custom": "Custom", "delete_error": "Could not delete the template", "name_required": "Please enter a template name", "title_required": "Please enter a title", "body_required": "Please enter a message"
   },
   "page_not_found": {
     "title": "404",
@@ -714,6 +950,143 @@
     "no_data": "No activity logs found",
     "detail_title": "Activity Details",
     "details": "Additional Details",
-    "view_entity": "View Entity"
+    "view_entity": "View Entity",
+    "action_labels": {
+      "bill_associated_with_user": "Bill Associated with User",
+      "bill_data_updated": "Bill Data Updated",
+      "bill_verification_requested": "Bill Verification Requested",
+      "case_updated": "Case Updated",
+      "contract_activated": "Contract Activated",
+      "document_verified": "Document Verified",
+      "email_bill_uploaded": "Email Bill Uploaded",
+      "offer_created": "Offer Created",
+      "offer_deleted": "Offer Deleted",
+      "offer_order_changed": "Offer Order Changed",
+      "offer_status_changed": "Offer Status Changed",
+      "offer_updated": "Offer Updated",
+      "offers_sent_to_user": "Offers Sent to User",
+      "supplier_created": "Supplier Created",
+      "supplier_deleted": "Supplier Deleted",
+      "supplier_deletion_cancelled": "Supplier Deletion Cancelled",
+      "supplier_deletion_scheduled": "Supplier Deletion Scheduled",
+      "supplier_faq_created": "Supplier FAQ Created",
+      "supplier_faq_deleted": "Supplier FAQ Deleted",
+      "supplier_faq_updated": "Supplier FAQ Updated",
+      "supplier_status_toggled": "Supplier Status Toggled",
+      "supplier_updated": "Supplier Updated",
+      "user_created": "User Created",
+      "user_deleted": "User Deleted",
+      "user_password_reset": "User Password Reset",
+      "user_status_toggled": "User Status Toggled",
+      "user_updated": "User Updated"
+    },
+    "entity_labels": {
+      "bill": "bill",
+      "case": "case",
+      "contract": "contract",
+      "document": "document",
+      "offer": "offer",
+      "supplier": "supplier",
+      "user": "user"
+    }
+  },
+  "support_topics": {
+    "title": "Support Topics",
+    "subtitle": "Manage topics users can select when creating support requests",
+    "add": "Add Topic",
+    "edit": "Edit Topic",
+    "search": "Search topics by name...",
+    "no_topics": "No topics found",
+    "name": "Name",
+    "description": "Description",
+    "tickets": "Tickets",
+    "sort_order": "Sort Order",
+    "icon": "Icon",
+    "topic_name_required": "Please enter a topic name",
+    "maximum_100": "Maximum 100 characters",
+    "name_example": "e.g. Billing & Payments",
+    "description_hint": "Brief description of this topic...",
+    "created": "Topic created successfully",
+    "updated": "Topic updated successfully",
+    "save_failed": "Failed to save topic",
+    "status_updated": "Topic {{status}}",
+    "status_update_failed": "Failed to update topic status",
+    "deleted": "Topic deleted successfully",
+    "delete_failed": "Failed to delete topic"
+  },
+  "faq_management": {
+    "title": "FAQ Management",
+    "subtitle": "Create, edit, and manage frequently asked questions",
+    "add": "Add FAQ",
+    "edit": "Edit FAQ",
+    "search": "Search FAQs...",
+    "no_faqs": "No FAQs found",
+    "question": "Question",
+    "answer": "Answer",
+    "category": "Category",
+    "audience": "Audience",
+    "sort_order": "Sort Order",
+    "locale": "Language",
+    "delete_confirm": "Delete this FAQ?",
+    "delete_warning": "This action cannot be undone.",
+    "created": "FAQ created successfully",
+    "updated": "FAQ updated successfully",
+    "save_failed": "Failed to save FAQ",
+    "deleted": "FAQ deleted",
+    "delete_failed": "Failed to delete FAQ",
+    "status_updated": "FAQ {{status}}",
+    "status_update_failed": "Failed to update FAQ status"
+    ,"search_by_question": "Search FAQs by question..."
+    ,"select_category": "Select a category"
+    ,"category_required": "Please select a category"
+    ,"question_required": "Please enter a question"
+    ,"answer_required": "Please enter an answer"
+    ,"question_hint": "Enter the question users will see..."
+    ,"answer_hint": "Enter the detailed answer..."
+    ,"select_audience": "Select audience"
+    ,"select_locale": "Select language"
+    ,"both": "Both"
+    ,"personal": "Personal"
+    ,"business": "Business"
+    ,"italian": "Italian (it)"
+    ,"category_switch_supplier": "Supplier switching"
+    ,"category_bills": "Bills"
+    ,"category_documents": "Documents"
+    ,"english": "English (en)"
+  },
+  "service_types": {
+    "title": "Service Types",
+    "subtitle": "Manage the types of services provided on the platform",
+    "add": "Add Service Type",
+    "edit": "Edit Service Type",
+    "search": "Search by name...",
+    "utility_type": "Utility Type",
+    "all_types": "All Types",
+    "no_types": "No service types found",
+    "no_description": "No description",
+    "no_description_provided": "No description provided",
+    "details": "Details",
+    "created": "Created",
+    "last_updated": "Last Updated",
+    "view_details": "View Details",
+    "back": "Back to Service Types",
+    "delete_title": "Delete Service Type",
+    "delete_object": "delete this service type",
+    "deleted": "Service type deleted successfully",
+    "delete_failed": "Failed to delete service type",
+    "created_successfully": "Service type created successfully",
+    "create_failed": "Failed to create service type",
+    "duplicate_utility": "A service type already exists for this utility type.",
+    "load_failed": "Failed to load service type details",
+    "not_found": "Service type not found or failed to load.",
+    "name_required": "Please enter a name",
+    "utility_required": "Please select a utility type",
+    "select_utility": "Select utility type",
+    "name_example": "e.g. Electricity",
+    "description_hint": "Brief description of this service type",
+    "electricity": "Electricity",
+    "gas": "Gas",
+    "water": "Water",
+    "internet": "Internet"
   }
 }

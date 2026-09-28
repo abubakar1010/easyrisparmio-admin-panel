@@ -1,5 +1,6 @@
 {
   "common": {
+    "details": "Dettagli",
     "save": "Salva",
     "cancel": "Annulla",
     "delete": "Elimina",
@@ -33,10 +34,17 @@
     "inactive": "Inattivo",
     "pending": "In attesa",
     "approved": "Approvato",
-    "yes": "Si",
-    "no": "No"
+    "yes": "Sì",
+    "no": "No",
+    "generic_error": "Si è verificato un errore. Riprova più tardi.",
+    "not_detected": "Non rilevato",
+    "not_linked": "Non collegato",
+    "unknown": "Sconosciuto"
+    ,"page": "Pagina"
+    ,"next": "Successivo"
   },
   "auth": {
+    "reset_code_sent": "Ti abbiamo inviato un codice per reimpostare la password.",
     "login": "Accedi",
     "email": "Email",
     "password": "Password",
@@ -106,7 +114,11 @@
     "static_pages": "Pagine Statiche",
     "settings": "Impostazioni",
     "admin_portal": "Portale admin",
-    "notification_templates": "Modelli di notifica"
+    "notification_templates": "Modelli di notifica",
+    "support_topics": "Argomenti di assistenza",
+    "faq_management": "Gestione FAQ",
+    "logout_confirmation": "Sei sicuro di voler uscire?",
+    "close_navigation": "Chiudi il menu di navigazione"
   },
   "home": {
     "new_contract": "Nuovo contratto",
@@ -121,9 +133,9 @@
     "pod_pdr_number": "Numero POD/PDR",
     "contract_type": "Tipo di contratto",
     "select_type": "Seleziona tipo",
-    "electricity": "Elettricita'",
+    "electricity": "Elettricità",
     "gas": "Gas",
-    "dual_fuel": "Dual Fuel",
+    "dual_fuel": "Luce e gas",
     "email": "Email",
     "phone": "Telefono",
     "address": "Indirizzo",
@@ -254,7 +266,7 @@
     "offers_to_send": "Offerte da inviare",
     "offers_to_send_desc": "Verificata, nessuna offerta inviata",
     "contracts_to_process": "Contratti da lavorare",
-    "contracts_to_process_desc": "Dall'offerta accettata all'attivazione",
+    "contracts_to_process_desc": "Dall'offerta accettata all'invio del contratto",
     "other": "Altre attivita'",
     "other_desc": "Lavoro in sospeso"
   },
@@ -334,6 +346,8 @@
     "codice_fiscale_label": "Codice Fiscale",
     "email_label": "Email",
     "pec": "PEC (posta certificata)",
+    "pec_invalid": "Inserisci una PEC valida (facoltativa per i clienti privati)",
+    "email_already_exists": "Questa email è già registrata.",
     "owner_fiscal_code": "Codice Fiscale del titolare",
     "telephone": "Telefono",
     "showing_of_customers": "Visualizzando {{count}} di {{total}} clienti",
@@ -392,6 +406,15 @@
     "sent_by": "Inviata da",
     "sent_by_system": "Sistema",
     "notification_unread": "Non letta"
+    ,"priority_low": "Bassa"
+    ,"priority_medium": "Media"
+    ,"priority_high": "Alta"
+    ,"priority_urgent": "Urgente"
+    ,"status_documents_pending": "Documenti in attesa"
+    ,"status_new": "Nuova"
+    ,"status_in_progress": "In lavorazione"
+    ,"status_rejected": "Rifiutata"
+    ,"status_awaiting_activation": "In attivazione"
   },
   "case_management": {
     "title": "Gestione pratiche",
@@ -413,9 +436,83 @@
     "cancelled": "Annullato",
     "overdue": "In ritardo",
     "unassigned": "Non assegnato",
-    "details": "Dettagli"
+    "details": "Dettagli",
+    "current": "Attuale",
+    "back": "Indietro",
+    "pod_pdr": "POD / PDR",
+    "no_changes": "Nessuna modifica rilevata",
+    "bill_updated": "Dati della bolletta aggiornati con successo",
+    "bill_update_failed": "Impossibile aggiornare la bolletta",
+    "edit_bill": "Modifica dati bolletta",
+    "load_document_failed": "Impossibile caricare il documento",
+    "download_document_failed": "Impossibile scaricare il documento",
+    "view": "Visualizza",
+    "download": "Scarica",
+    "close": "Chiudi",
+    "document_preview": "Anteprima documento",
+    "preview_unavailable": "L'anteprima non è disponibile per questo tipo di file. Scarica il file per visualizzarlo.",
+    "ui": {"approve_verified":"Approva e contrassegna come verificata","request_corrections":"Richiedi correzioni","send_offers":"Invia offerte","send_contract":"Invia il contratto al cliente","move_to_activation":"Passa a In attivazione","activate_utility":"Attiva utenza","overview":"Panoramica","offers":"Offerte","bill_data":"Dati bolletta","verification":"Verifica","notes":"Note","case_details":"Dettagli pratica","current_status":"Stato attuale","utility_activated":"Utenza attivata","utility_activated_success":"L'utenza è stata attivata correttamente.","description_verification_review":"Esamina i dati estratti dalla bolletta. Approva o richiedi correzioni all'utente.","description_verified":"Dati della bolletta verificati. Ora puoi inviare le offerte all'utente.","description_offer_sent":"Le offerte sono state inviate. In attesa che l'utente ne scelga una.","description_offer_accepted":"L'utente ha accettato un'offerta. Inviagli il contratto.","description_contract_sent":"Il cliente sta firmando con il fornitore. Passa a In attivazione quando il fornitore conferma.","description_awaiting_activation":"L'utenza è in fase di attivazione. Contrassegnala come attivata quando pronta.","description_activated":"L'utenza è attiva.","description_analyzing":"La bolletta è in fase di analisi.","description_analyzed":"Analisi completata. Passaggio alla verifica.","description_verification_required":"In attesa delle informazioni richieste all'utente."},
+    "steps": {
+      "upload_analysis": "Caricamento e analisi",
+      "verification": "Verifica",
+      "offers": "Offerte",
+      "contract": "Contratto",
+      "in_activation": "In attivazione",
+      "activated": "Attivata",
+      "activation": "Attivazione",
+      "other": "Altro"
+    },
+    "status": {
+      "pending_email": "In attesa (email)",
+      "uploaded": "Caricata",
+      "analyzing": "In analisi",
+      "analyzed": "Analizzata",
+      "error": "Errore",
+      "verification_review": "Verifica in corso",
+      "verification_required": "Verifica richiesta",
+      "verified": "Verificata",
+      "offer_sent": "Offerta inviata",
+      "offer_accepted": "Offerta accettata",
+      "contract_sent": "Contratto inviato",
+      "awaiting_activation": "In attivazione",
+      "activated": "Attivata",
+      "cancelled": "Annullata"
+    },
+    "detail": {
+      "case_status": "STATO PRATICA", "status": "Stato", "status_help": "Puoi impostare qualsiasi stato, anche precedente. Il cliente riceve una notifica a ogni modifica.", "case_number": "Pratica {{number}}", "amount_label": "Importo: ", "uploaded_on": "Caricata il {{date}}", "uploaded_documents": "Documenti caricati",
+      "request_verification": "Richiedi una verifica al cliente", "send_request": "Invia richiesta", "message_to_user": "Messaggio per il cliente", "verification_message_placeholder": "Spiega quali documenti o informazioni deve inviare il cliente...", "verification_message_help": "Il cliente riceverà questo messaggio e potrà rispondere caricando un documento o scattando una foto dall'app.",
+      "verification_history": "Cronologia delle verifiche", "request_further_corrections": "Richiedi ulteriori correzioni", "round": "Richiesta {{count}}", "signed_contract": "Contratto firmato", "awaiting_user": "In attesa del cliente", "user_responded": "Risposta ricevuta", "resolved": "Risolta", "admin_request": "Richiesta dell'amministratore", "user_response": "Risposta del cliente", "uploaded_documents_count": "Documenti caricati: {{count}}", "no_documents_submitted": "Il cliente non ha inviato documenti.", "resolved_on": "Risolta il {{date}}", "no_verification_history": "Nessuna verifica registrata",
+      "order": "ORDINE", "offer_order_unselected_tooltip": "Seleziona l'offerta per aggiungerla all'elenco del cliente, poi trascinala nella posizione desiderata.", "queued_drag_tooltip": "Trascina per ordinare le offerte da inviare oppure seleziona il comando e usa ↑ ↓.", "sent_drag_tooltip": "Trascina per impostare l'ordine visibile al cliente oppure seleziona il comando e usa ↑ ↓.", "customer_chose_tooltip": "Il cliente ha già scelto un'offerta: l'ordine non è più modificabile.", "clear_sort_tooltip": "Annulla l'ordinamento della colonna per riordinare le offerte.", "arrange_batch_tooltip": "Seleziona un'altra offerta per riordinare il gruppo prima dell'invio.", "nothing_to_reorder_tooltip": "Non c'è ancora nulla da riordinare: è stata inviata una sola offerta.", "reorder_offer_aria": "Riordina {{name}}, posizione {{position}} di {{count}}", "waiting_to_send": "in attesa di invio", "queued_position_tooltip": "Posizione {{position}} di {{count}} dopo l'invio del gruppo", "offer": "OFFERTA", "will_be_shown_first": "Verrà mostrata per prima", "shown_first_in_app": "Prima nell'app", "type": "TIPO", "market": "MERCATO", "fixed_fee": "QUOTA FISSA", "duration": "DURATA", "duration_month": "{{count}} mese", "duration_months": "{{count}} mesi", "duration_day": "{{count}} giorno", "duration_days": "{{count}} giorni", "compensation": "PROMOZIONE", "estimated_savings": "RISPARMIO STIMATO", "user_selected": "Scelta dal cliente", "already_sent": "Già inviata",
+      "email_bill_pending": "La bolletta è stata inviata via email ed è in attesa di caricamento.", "upload_bill_before_offers": "Carica la bolletta dalla scheda OCR prima di inviare le offerte.", "offer_accepted_case_created": "Il cliente ha accettato un'offerta ed è stata creata una pratica.", "offers_locked_after_acceptance": "Non è possibile inviare altre offerte per questa bolletta. L'offerta scelta dal cliente è evidenziata qui sotto.", "offer_selected": "{{count}} offerta selezionata", "offers_selected": "{{count}} offerte selezionate", "offers_selected_order_help": "Le offerte verranno inviate nell'ordine indicato in cima alla tabella. Trascina le maniglie per cambiarne l'ordine prima dell'invio.", "send_selected_offers": "Invia le offerte selezionate", "offer_already_sent_count": "È già stata inviata {{count}} offerta al cliente. Puoi selezionarne e inviarne altre.", "offers_already_sent_count": "Sono già state inviate {{count}} offerte al cliente. Puoi selezionarne e inviarne altre.", "offers_already_sent": "Le offerte per questa bolletta sono già state inviate. Puoi comunque selezionarne e inviarne altre.", "sorted_offers_help": "L'ordinamento serve solo per consultare la tabella: il cliente continua a vedere l'ordine impostato. Annulla l'ordinamento per riordinare le offerte.", "drag_offers_help": "Trascina le maniglie per impostare l'ordine visibile al cliente.", "top_offer_help": "Nell'app, l'offerta in cima all'elenco viene mostrata per prima. Le offerte non vengono riordinate automaticamente per prezzo o risparmio.", "queued_offer_position_help": "Le posizioni color ambra indicano le offerte non ancora inviate. Riordinalе: verranno aggiunte in fondo all'elenco nell'ordine scelto.", "clear_sort": "Annulla ordinamento", "no_active_offers": "Non ci sono offerte attive per questo tipo di bolletta.", "available_offers_count": "Offerte disponibili ({{count}})", "offers_already_sent_short": "{{count}} già inviate",
+      "bill_overview": "Riepilogo bolletta", "bill_type": "Tipo di bolletta", "upload_date": "Data di caricamento", "last_updated": "Ultimo aggiornamento", "original_upload": "Documento originale", "reuploaded_documents": "Documenti ricaricati", "reupload": "Ricaricato", "legacy_file": "1 file (formato precedente)", "financial_breakdown": "Dettaglio dei costi", "total_amount": "Importo totale", "cost_per_unit": "Costo unitario", "fixed_charges": "Costi fissi", "taxes": "Imposte", "consumption": "Consumo ({{unit}})", "billing_period": "Periodo di fatturazione", "customer_information": "Dati del cliente", "name": "Nome", "email": "Email", "supply_address": "Indirizzo di fornitura", "codice_fiscale": "Codice fiscale", "partita_iva": "Partita IVA", "supply_details": "Dati della fornitura", "supplier": "Fornitore", "contract_number": "Numero del contratto", "meter_number": "Numero del contatore", "meter_id": "ID del contatore", "not_found_in_document": "Dato non presente nel documento", "bill_document": "Documento della bolletta",
+      "note_added": "Nota aggiunta", "note_add_failed": "Impossibile aggiungere la nota", "note_updated": "Nota aggiornata", "note_update_failed": "Impossibile aggiornare la nota", "note_deleted": "Nota eliminata", "note_delete_failed": "Impossibile eliminare la nota", "add_note": "Aggiungi nota", "note_placeholder": "Scrivi una nota su questa bolletta...", "no_notes_yet": "Nessuna nota presente"
+    }
   },
   "suppliers": {
+    "supplier_not_found": "Fornitore non trovato",
+    "back_to_suppliers": "Torna ai fornitori",
+    "status_update_failed": "Impossibile aggiornare lo stato",
+    "you_can_cancel_a_scheduled_deletion_at_any_time_before_it_executes": "Puoi annullare un'eliminazione programmata in qualsiasi momento prima che venga eseguita.",
+    "yes_delete_supplier": "Sì, elimina il fornitore",
+    "scheduled_deletion_date": "Data di eliminazione programmata:",
+    "no_new_offers_can_be_created_or_sent": "Non è possibile creare o inviare nuove offerte",
+    "you_can_cancel_this_deletion_at_any_time": "Puoi annullare questa eliminazione in qualsiasi momento",
+    "understood": "Ho capito",
+    "supplier_deleted_successfully": "Fornitore eliminato",
+    "failed_to_delete_supplier": "Impossibile eliminare il fornitore",
+    "supplier_deletion_cancelled": "Eliminazione del fornitore annullata",
+    "failed_to_cancel_deletion": "Impossibile annullare l'eliminazione",
+    "supplier_scheduled_for_deletion": "Fornitore in fase di eliminazione",
+    "cancel_deletion": "Annulla eliminazione",
+    "contract_since": "Contratto dal",
+    "contract_signing_instructions": "Istruzioni per la firma del contratto",
+    "shown_to_users_as_contract_sign_guideline_on_contracts_from_this_supplier": "Mostrate ai clienti come «Guida alla firma del contratto» sui contratti di questo fornitore.",
+    "no_signing_instructions": "Nessuna istruzione per la firma.",
+    "no_offers_yet": "Ancora nessuna offerta",
+    "contract_start_date": "Data di inizio del contratto",
+    "faqs_tab": "FAQ",
+    "faqs_title": "FAQ del fornitore",
+    "faqs_hint": "Mostrate ai clienti di questo fornitore nella sezione FAQ dei dettagli dell'utenza nell'app, in ordine di visualizzazione. Le FAQ non attive sono nascoste.",
     "title": "Fornitori",
     "description": "Gestione fornitori e contenuti dinamici",
     "add_supplier": "Aggiungi fornitore",
@@ -425,22 +522,73 @@
     "general_information": "Informazioni generali",
     "brand_name": "Nome commerciale",
     "legal_name": "Ragione sociale",
-    "commodity": "Commodity",
+    "commodity": "Tipo di fornitura",
     "website_url": "Sito web",
     "primary_contact": "Contatto principale",
     "contact_name": "Nome contatto",
     "phone_number": "Numero di telefono",
     "street_address": "Indirizzo",
-    "city": "Citta'",
+    "city": "Citt\u00e0",
     "province": "Provincia",
     "zip_code": "CAP",
     "country": "Paese",
     "billing": "Fatturazione",
-    "iban": "IBAN",
     "contact_start_date": "Data inizio contatto",
-    "notes": "Note"
+    "dual": "Duale",
+    "updated": "Fornitore \"{{name}}\" aggiornato",
+    "added": "Fornitore \"{{name}}\" aggiunto",
+    "replace_icon": "Sostituisci icona",
+    "upload_icon": "Carica icona",
+    "remove_icon": "Rimuovi icona del fornitore",
+    "remove_document": "Rimuovi documento con le istruzioni",
+    "view_document": "Visualizza documento",
+    "validation": {
+      "phone": "Inserisci un numero di telefono valido",
+      "tax_id_shape": "Inserisci un codice fiscale valido (16 caratteri) o una partita IVA (11 cifre)",
+      "tax_id_checkCharacter": "Il carattere di controllo non corrisponde al codice; dovrebbe terminare con \"{{character}}\"",
+      "tax_id_checkDigit": "La cifra di controllo della partita IVA non corrisponde alle prime dieci cifre",
+      "zip": "Inserisci un CAP italiano valido di 5 cifre"
+    },
+    "notes": "Note",
+    "manage": "Gestisci",
+    "deletion_scheduled": "Eliminazione pianificata: {{date}}",
+    "status_inactive": "Inattivo",
+    "status_pending_deletion": "In attesa di eliminazione",
+    "status_active": "Attivo",
+    "status_updated": "Stato impostato su {{status}}",
+    "overview": "Panoramica",
+    "offers_count": "Offerte ({{count}})",
+    "active_offers_label": "Offerte attive",
+    "offer": "OFFERTA",
+    "offer_published": "Pubblicata",
+    "tax_id": "Codice fiscale / Partita IVA",
+    "address": "Indirizzo",
+    "email": "Email",
+    "italy": "Italia",
+    "no_notes": "Nessuna nota.",
+    "delete_title": "Eliminare \"{{name}}\"?",
+    "deletion_scheduled_explanation": "<strong>{{name}}</strong> ha contratti attivi che devono prima concludersi. Il fornitore \u00e8 ora contrassegnato come <strong>In attesa di eliminazione</strong>.",
+    "cancelled_cases_one": "<strong>{{count}}</strong> pratica in fase iniziale \u00e8 stata annullata",
+    "cancelled_cases_other": "<strong>{{count}}</strong> pratiche in fase iniziale sono state annullate",
+    "deletion_banner": "Questo fornitore verr\u00e0 eliminato automaticamente il <strong>{{date}}</strong>. Durante questo periodo non \u00e8 possibile creare o inviare nuove offerte.",
+    "commodities": {
+      "electricity": "Luce",
+      "gas": "Gas",
+      "dual": "Luce e gas"
+    },
+    "delete_consequences": {
+      "contracts": "Se questo fornitore ha <strong>contratti attivi con gli utenti</strong>, l\u2019eliminazione verr\u00e0 <strong>programmata</strong> alla scadenza dell\u2019ultimo contratto. Il fornitore non verr\u00e0 rimosso immediatamente.",
+      "offers": "Tutte le <strong>offerte</strong> di questo fornitore verranno <strong>rimosse</strong> dagli elenchi pubblici e non potranno pi\u00f9 essere inviate agli utenti.",
+      "new_offers": "Durante il periodo di attesa dell\u2019eliminazione <strong>non sar\u00e0 possibile creare nuove offerte</strong> per questo fornitore.",
+      "acceptance": "Gli utenti <strong>non potranno pi\u00f9 accettare</strong> le offerte esistenti di questo fornitore.",
+      "early_cases": "Le <strong>pratiche in fase iniziale</strong> (Nuova, In corso, Documenti in attesa) di questo fornitore verranno <strong>annullate automaticamente</strong>.",
+      "contract_cases": "Le pratiche gi\u00e0 in <strong>fase contrattuale</strong> (Contratto inviato, Contratto firmato, Attivata) <strong>proseguiranno normalmente</strong> fino al completamento.",
+      "data": "Una volta completata l\u2019eliminazione del fornitore, tutti i dati associati (offerte e storico dei prezzi) verranno <strong>rimossi definitivamente</strong>."
+    }
   },
   "offers_market": {
+    "contract_duration_hint": "Per quanto tempo le condizioni dell'offerta restano valide per il cliente dopo l'attivazione. Distinta dal periodo di validità qui sotto.", "select_contract_duration": "Seleziona la durata del contratto", "duration_indefinite": "Indeterminata", "duration_in_months_one": "{{count}} mese", "duration_in_months_other": "{{count}} mesi", "duration_in_days_one": "{{count}} giorno", "duration_in_days_other": "{{count}} giorni",
+    "supplier_inactive": "Inattivo", "supplier_pending_deletion": "In attesa di eliminazione", "supplier_needs_dual": "Le offerte dual richiedono un fornitore dual", "supplier_commodity_only": "Fornisce solo {{commodity}}",
     "title": "Offerte e Mercato",
     "description": "Gestisci offerte e prezzi disponibili",
     "create_offer": "Crea offerta",
@@ -451,7 +599,7 @@
     "offer_deleted": "Offerta eliminata",
     "offer_archived": "Offerta archiviata",
     "search_offers": "Cerca offerte per nome o codice...",
-    "commodity": "Commodity",
+    "commodity": "Fornitura",
     "price_type": "TIPO PREZZO",
     "activation_cost": "COSTO ATTIVAZIONE",
     "validity": "VALIDITA'",
@@ -459,6 +607,8 @@
     "expiring": "In scadenza",
     "expired": "Scaduta",
     "archived": "Archiviata"
+    ,"supplier": "FORNITORE", "payment_method": "METODO DI PAGAMENTO", "compensation": "COMPENSO", "active": "Attiva", "electricity": "Elettricità", "gas": "Gas", "dual": "Duale", "direct_debit": "Addebito diretto", "postal_order": "Bollettino postale", "both": "Entrambi", "view_details": "Visualizza dettagli", "edit_locked": "Offerta accettata dagli utenti — campi bloccati",
+    "activate": "Attiva", "archive": "Archivia", "mark_expiring": "Segna come in scadenza", "mark_expired": "Segna come scaduta", "restore": "Ripristina", "back_to_draft": "Torna alla bozza", "status_changed": "Stato dell'offerta aggiornato a {{status}}", "status_update_failed": "Impossibile aggiornare lo stato dell'offerta", "delete_confirm_title": "Eliminare {{name}}?", "delete_confirm_intro": "Controlla le seguenti conseguenze prima di procedere:", "delete_confirm_item_1": "L'offerta verrà rimossa definitivamente da tutti gli elenchi e non potrà più essere inviata agli utenti.", "delete_confirm_item_2": "Se l'offerta ha contratti attivi, l'eliminazione sarà bloccata finché non scadranno o saranno annullati.", "delete_confirm_item_3": "Se l'offerta ha pratiche in corso, l'eliminazione sarà bloccata.", "delete_confirm_item_4": "Gli utenti che hanno ricevuto l'offerta manterranno lo storico, ma i dettagli dell'offerta non saranno più accessibili.", "delete_offer_confirm": "Sì, elimina offerta", "delete_failed": "Impossibile eliminare l'offerta", "change_status_title": "{{action}} l'offerta?", "change_status_content": "Cambia {{name}} da {{from}} a {{to}}.", "edit": "Modifica", "price_fixed": "Fisso", "price_variable": "Variabile", "price_indexed": "Indicizzato", "market_type": "Tipo di mercato", "contract_duration": "Durata del contratto", "target": "Destinatari", "personal": "Privati", "business": "Aziende", "pricing": "Prezzi", "fixed_monthly_fee": "Canone mensile fisso", "spread": "Spread", "price_per_kwh": "Prezzo / kWh", "price_per_smc": "Prezzo / SMc", "contract_validity": "Contratto e validità", "valid_from": "Valido dal", "valid_until": "Valido fino al", "green_energy": "Energia verde", "version": "Versione", "documents_links": "Documenti e collegamenti", "terms_conditions": "Termini e condizioni", "economic_conditions": "Condizioni economiche", "view_download": "Visualizza e scarica", "supplier_details": "Dettagli fornitore", "view_full_profile": "Visualizza profilo completo", "supplier_name": "Nome fornitore", "legal_name": "Ragione sociale", "contact_person": "Referente", "offer_not_found": "Offerta non trovata", "back_to_offers": "Torna alle offerte", "created": "Creata", "updated": "Aggiornata", "general_information": "Informazioni generali", "offer_name": "Nome offerta", "offer_code": "Codice offerta", "select_supplier": "Seleziona fornitore", "select_commodity": "Seleziona commodity", "select_price_type": "Seleziona tipo di prezzo", "select_target": "Seleziona destinatari", "select_payment_method": "Seleziona metodo di pagamento", "select_status": "Seleziona stato", "additional_details": "Dettagli aggiuntivi", "terms_document": "Documento termini e condizioni", "economic_conditions_document": "Documento condizioni economiche", "upload_document": "Carica documento", "replace_document": "Sostituisci documento", "upload_success": "Documento caricato con successo", "upload_failed": "Caricamento non riuscito", "highlights": "Punti di forza", "add_highlight": "Scrivi e premi Invio per aggiungere", "description_label": "Descrizione", "create_new_offer": "Crea nuova offerta", "edit_offer": "Modifica offerta", "offer_created": "Offerta creata con successo", "offer_updated": "Offerta aggiornata con successo", "save_failed": "Impossibile {{action}} l'offerta", "required_fields": "Compila correttamente tutti i campi obbligatori", "offer_locked_message": "Questa offerta è stata accettata dagli utenti e non può essere modificata. Puoi cambiare solo lo stato dall'elenco delle offerte.", "save_changes": "Salva modifiche", "no_suppliers_for_commodity": "Non sono disponibili fornitori per la commodity selezionata", "no_suppliers_found": "Nessun fornitore trovato", "required": "Inserisci {{field}}", "valid_number": "Inserisci un valore valido per {{field}}", "max_decimals": "{{field}} consente fino a {{count}} cifre decimali"
   },
   "referrals": {
     "title": "Referral e Premi",
@@ -486,7 +636,7 @@
     "confirm_payment_btn": "Conferma pagamento",
     "status_updated": "Stato aggiornato",
     "failed_to_update": "Aggiornamento fallito",
-    "default_reward_updated": "Premio predefinito aggiornato"
+    "default_reward_updated": "Premio predefinito aggiornato", "code": "CODICE", "date": "DATA", "pending": "In attesa", "registered": "Registrato", "expired": "Scaduto", "mark_registered": "Segna come registrato", "mark_qualified": "Segna come qualificato", "mark_paid": "Segna come pagato", "expire": "Fai scadere", "confirm": "Conferma", "statistics_load_failed": "Impossibile caricare le statistiche dei referral. Aggiorna la pagina e riprova.", "reward_prefill_hint": "Precompila l'importo del premio nella finestra di pagamento per questa sessione.", "tracking_description": "Monitora inviti referral e premi", "no_referrals": "Nessun referral ancora", "csv_referrer": "Referente", "csv_referrer_email": "Email referente", "csv_invited": "Invitato", "csv_invited_email": "Email invitato", "csv_status": "Stato", "csv_reward": "Premio (EUR)", "csv_date": "Data"
   },
   "support_ticket": {
     "title": "Ticket di supporto",
@@ -498,7 +648,7 @@
     "closed": "Chiuso",
     "technical_support": "Supporto tecnico",
     "billing_payments": "Fatturazione e pagamenti",
-    "switching": "Switching",
+    "switching": "Cambio fornitore",
     "general": "Generale",
     "ticket_id": "ID",
     "customer": "CLIENTE",
@@ -513,6 +663,7 @@
     "faq_categories": "Panoramica categorie FAQ",
     "category_name": "NOME CATEGORIA",
     "faq_count": "N. FAQ"
+    ,"topic": "Argomento", "priority": "Priorità", "view": "Visualizza", "low": "Bassa", "medium": "Media", "high": "Alta", "urgent": "Urgente", "search": "Cerca ticket per ID, cliente o oggetto...", "select_topic": "Seleziona argomento", "subject_required": "Inserisci un oggetto", "topic_required": "Seleziona un argomento", "details_required": "Inserisci i dettagli del messaggio", "details_placeholder": "Inserisci i dettagli del ticket...", "status_updated": "Stato del ticket aggiornato", "status_update_failed": "Impossibile aggiornare lo stato del ticket", "ticket_not_found": "Ticket non trovato", "back_to_tickets": "Torna ai ticket", "assigned_to": "Assegnato a {{name}}", "status_changed": "Stato aggiornato a {{status}}", "priority_changed": "Priorità aggiornata a {{priority}}", "priority_update_failed": "Impossibile aggiornare la priorità", "reply_sent": "Risposta inviata", "reply_failed": "Impossibile inviare la risposta", "closed_on": "Chiuso il {{date}}", "ticket_details": "Dettagli ticket", "assigned_agent": "Agente assegnato", "unassigned": "Non assegnato", "resolved_at": "Risolto il", "closed_at": "Chiuso il", "original_message": "Messaggio originale", "conversation": "Conversazione", "no_messages": "Nessun messaggio", "reply_placeholder": "Scrivi la tua risposta...", "closed_reply_notice": "Questo ticket è chiuso. Non è possibile inviare altre risposte.", "subject_example": "Es. Ristorante Da Mario"
   },
   "agreements": {
     "title": "Accordi",
@@ -530,7 +681,41 @@
     "discount": "SCONTO",
     "delete_agreement": "Eliminare l'accordo?",
     "agreement_deleted": "Accordo eliminato",
-    "agreement_created": "Accordo creato"
+    "agreement_created": "Accordo creato",
+    "agreement_updated": "Accordo aggiornato",
+    "edit_agreement": "Modifica accordo",
+    "form_description": "Gestione di accordi partner e sconti",
+    "form_information": "Informazioni accordo",
+    "agreement_title": "Titolo accordo",
+    "partner_image_url": "URL immagine partner",
+    "terms_url": "URL termini e condizioni",
+    "address": "Indirizzo",
+    "discount_description": "Sconto e descrizione",
+    "discount_headline": "Sconto principale",
+    "discount_code": "Codice sconto",
+    "discount_description_field": "Descrizione sconto",
+    "description_field": "Descrizione partner",
+    "validity_settings": "Validità e impostazioni",
+    "status_updated": "Stato aggiornato",
+    "update_failed": "Aggiornamento stato fallito",
+    "delete_failed": "Eliminazione fallita",
+    "will_be_removed": "verrà rimosso.",
+    "title_column": "TITOLO",
+    "validity": "VALIDITÀ",
+    "audience": "DESTINATARI",
+    "both": "Entrambi",
+    "search_placeholder": "Cerca per partner o titolo..."
+    ,"not_found": "Accordo non trovato",
+    "back_to_agreements": "Torna agli accordi",
+    "partner_information": "Informazioni partner",
+    "discount_details": "Dettagli sconto",
+    "view_terms": "Visualizza termini e condizioni",
+    "location": "Indirizzo",
+    "open_maps": "Apri in Google Maps",
+    "how_to_use": "Come utilizzare l'accordo",
+    "validity_period": "Periodo di validità",
+    "no_end_date": "Nessuna data di fine",
+    "title_required": "Il titolo è obbligatorio", "partner_name_required": "Il nome del partner è obbligatorio", "valid_url": "Inserisci un URL valido", "banner_hint": "Visualizzata come banner nella schermata di dettaglio dell'app — le immagini orizzontali sono ideali.", "address_hint": "Aperto in Google Maps dall'app — inserisci un indirizzo completo e ricercabile.", "max_characters": "Mantieni il testo entro {{count}} caratteri", "discount_headline_hint": "Il dato principale nell'app. Mantienilo breve: \"20%\", \"5 cent/litro\".", "discount_code_hint": "Copiato dall'utente con un tocco. Lascia vuoto se non serve un codice.", "description_placeholder": "Descrivi i dettagli e le condizioni dell'accordo...", "step_placeholder": "Es. Mostra il codice al personale prima di ordinare", "start_date_required": "La data di inizio è obbligatoria", "select_audience": "Seleziona destinatari", "sort_order": "Ordine", "no_discount_description": "Nessuna descrizione dello sconto disponibile.", "no_address": "Nessun indirizzo disponibile — la scheda della posizione è nascosta nell'app.", "no_steps": "Nessun passaggio impostato — l'app usa le istruzioni generiche.", "created": "Creato", "updated": "Aggiornato", "how_to_use_hint": "Passaggi numerati mostrati al cliente. Lascia vuoto per usare le istruzioni generiche dell'app.", "max_steps": "Massimo {{count}} passaggi", "add_step": "Aggiungi passaggio", "end_date_before_start": "La data di fine non può precedere la data di inizio"
   },
   "ocr": {
     "title": "Bollette OCR",
@@ -553,6 +738,45 @@
     "send_offers_user": "Invia offerte all'utente",
     "bill_uploaded": "Bolletta caricata con successo",
     "no_bills_found": "Nessuna bolletta trovata"
+    ,"pending_email": "Email in attesa"
+    ,"offer_sent": "Offerta inviata"
+    ,"upload_email_bill": "Carica bolletta ricevuta via email"
+    ,"email_bill_hint": "Per le bollette ricevute via email dagli utenti"
+    ,"bill_type": "Tipo di bolletta"
+    ,"associate_user": "Associa a un utente"
+    ,"search_user_email": "Cerca utente per email..."
+    ,"type_two_characters": "Digita almeno 2 caratteri..."
+    ,"no_users_found": "Nessun utente trovato"
+    ,"select_user_first": "Seleziona prima un utente"
+    ,"extracting": "Estrazione dei dati OCR in corso..."
+    ,"extracting_hint": "Analisi della bolletta con AI Vision. Potrebbe richiedere alcuni istanti."
+    ,"drop_email_bill": "Trascina qui la bolletta ricevuta via email"
+    ,"email_bill_file_hint": "PDF, JPG, PNG — bolletta ricevuta via email da un utente"
+    ,"extraction_preview": "Anteprima estrazione OCR"
+    ,"confidence": "attendibilità"
+    ,"confirm_upload": "Conferma caricamento"
+    ,"select_user_warning": "Seleziona prima un utente"
+    ,"extraction_failed": "Estrazione OCR non riuscita. Riprova."
+    ,"upload_success": "Bolletta caricata con i dati OCR correttamente"
+    ,"upload_failed": "Impossibile caricare la bolletta"
+    ,"pod_number": "Numero POD"
+    ,"pdr_number": "Numero PDR"
+    ,"total_amount": "Importo totale"
+    ,"consumption_kwh": "Consumo (kWh)"
+    ,"consumption_smc": "Consumo (Smc)"
+    ,"cost_per_unit": "Costo per unità"
+    ,"fixed_charges": "Costi fissi"
+    ,"taxes": "Imposte"
+    ,"billing_period": "Periodo di fatturazione"
+    ,"customer_name": "Nome cliente"
+    ,"contract_number": "N. contratto"
+    ,"meter_number": "N. contatore"
+    ,"supply_address": "Indirizzo di fornitura"
+    ,"as_printed": "come riportato:"
+    ,"street": "Via"
+    ,"number": "N."
+    ,"city": "Città"
+    ,"province": "Provincia"
   },
   "meter_reading": {
     "title": "Tipi di servizio",
@@ -651,7 +875,7 @@
     "reset_password": "Reimposta password",
     "language": "Lingua",
     "language_description": "Seleziona la lingua di visualizzazione della dashboard",
-    "select_language": "Seleziona lingua"
+    "select_language": "Seleziona lingua", "role_admin": "Amministratore", "role_personal": "Privato", "role_business": "Azienda", "role_user": "Utente"
   },
   "static_pages": {
     "title": "Pagine Statiche",
@@ -666,6 +890,18 @@
     "deleted": "Pagina eliminata",
     "created": "Pagina creata con successo",
     "updated": "Pagina aggiornata con successo"
+    ,"search": "Cerca pagine per titolo..."
+    ,"version": "Versione"
+    ,"applies_to": "Si applica a"
+    ,"accepted": "Accettata"
+    ,"published": "pubblicata"
+    ,"not_published": "non pubblicata"
+    ,"informational": "Informativa"
+    ,"save_failed": "Impossibile salvare la pagina"
+    ,"status_updated": "Pagina {{status}}"
+    ,"status_update_failed": "Impossibile aggiornare lo stato della pagina"
+    ,"delete_failed": "Impossibile eliminare la pagina"
+    ,"delete_warning": "Questa azione non può essere annullata.", "published_again": "Pubblicata v{{version}} — agli utenti verrà chiesto di accettarla di nuovo", "edit_static_page": "Modifica pagina statica", "add_static_page": "Aggiungi pagina statica", "users_accepted": "{{count}} utente ha accettato questa versione", "users_accepted_plural": "{{count}} utenti hanno accettato questa versione", "page_type_required": "Seleziona un tipo di pagina", "select_page_type": "Seleziona tipo di pagina", "title_label": "Titolo", "title_required": "Inserisci un titolo", "title_placeholder": "Inserisci il titolo della pagina", "content_label": "Contenuto", "content_required": "Inserisci il contenuto", "content_placeholder": "Scrivi qui il contenuto della pagina...", "consent_versioning": "Consenso e versioning", "acceptance_hint": "Gli utenti devono accettare attivamente questo documento prima di usare l'app", "requires_acceptance": "Richiede accettazione", "all_accounts": "Tutti gli account", "personal_only": "Solo privati", "business_only": "Solo aziende", "all_accounts_hint": "Ogni utente deve accettare questo documento", "personal_only_hint": "Solo gli account privati ricevono la richiesta", "business_only_hint": "Solo gli account aziendali ricevono la richiesta", "publish_new_version": "Pubblica una nuova versione", "publish_new_version_hint": "Lascia disattivato per correzioni e formattazione. Attivalo solo se l'accordo è cambiato sostanzialmente.", "version_required": "Inserisci una versione", "version_format": "Usa un numero con punti, ad esempio 2.1", "currently_published": "Versione attualmente pubblicata: v{{version}}", "what_changed": "Cosa è cambiato", "change_summary_hint": "Mostrato in cima alla richiesta di nuova accettazione nell'app. Verrà letto un breve riepilogo in linguaggio semplice; il documento completo di solito no.", "change_summary_placeholder": "es. Periodo di recesso modificato da 30 a 14 giorni.", "republish_warning_title": "A tutti gli utenti verrà chiesto di accettare di nuovo", "republish_warning_description": "La pubblicazione di una nuova versione si applica a tutte le lingue del documento e blocca l'app finché ogni utente non la esamina e accetta. L'accettazione precedente resta nello storico.", "active_label": "Attiva", "publish_new_version_button": "Pubblica nuova versione", "consent_log": "Registro consensi", "currently_published_version": "attualmente pubblicata v{{version}}", "user": "UTENTE", "role": "RUOLO", "version_column": "VERSIONE", "how": "COME", "current_only": "Solo v{{version}}", "current": "Corrente", "all_versions": "Tutte le versioni", "search_acceptances": "Cerca per nome o email...", "nobody_accepted": "Nessuno ha ancora accettato questa versione", "no_acceptances": "Nessuna accettazione registrata per questo documento", "acceptance_one": "{{count}} accettazione", "acceptance_other": "{{count}} accettazioni", "sign_up": "Registrazione", "social_login": "Accesso social", "business_upgrade": "Passaggio ad aziendale", "reaccepted": "Nuova accettazione nell'app"
   },
   "notification_templates": {
     "title": "Modelli di notifica",
@@ -693,7 +929,7 @@
     "category_promotional": "Promozionale",
     "category_document_request": "Richiesta documenti",
     "category_case_update": "Aggiornamento pratica",
-    "category_custom": "Personalizzato"
+    "category_custom": "Personalizzato", "delete_error": "Impossibile eliminare il modello", "name_required": "Inserisci il nome del modello", "title_required": "Inserisci un titolo", "body_required": "Inserisci un messaggio"
   },
   "page_not_found": {
     "title": "404",
@@ -714,6 +950,143 @@
     "no_data": "Nessun log di attivita' trovato",
     "detail_title": "Dettagli attivita'",
     "details": "Dettagli aggiuntivi",
-    "view_entity": "Visualizza entita'"
+    "view_entity": "Visualizza entita'",
+    "action_labels": {
+      "bill_associated_with_user": "Bolletta associata all'utente",
+      "bill_data_updated": "Dati della bolletta aggiornati",
+      "bill_verification_requested": "Verifica della bolletta richiesta",
+      "case_updated": "Pratica aggiornata",
+      "contract_activated": "Contratto attivato",
+      "document_verified": "Documento verificato",
+      "email_bill_uploaded": "Bolletta via email caricata",
+      "offer_created": "Offerta creata",
+      "offer_deleted": "Offerta eliminata",
+      "offer_order_changed": "Ordine delle offerte modificato",
+      "offer_status_changed": "Stato dell'offerta modificato",
+      "offer_updated": "Offerta aggiornata",
+      "offers_sent_to_user": "Offerte inviate all'utente",
+      "supplier_created": "Fornitore creato",
+      "supplier_deleted": "Fornitore eliminato",
+      "supplier_deletion_cancelled": "Eliminazione del fornitore annullata",
+      "supplier_deletion_scheduled": "Eliminazione del fornitore programmata",
+      "supplier_faq_created": "FAQ del fornitore creata",
+      "supplier_faq_deleted": "FAQ del fornitore eliminata",
+      "supplier_faq_updated": "FAQ del fornitore aggiornata",
+      "supplier_status_toggled": "Stato del fornitore modificato",
+      "supplier_updated": "Fornitore aggiornato",
+      "user_created": "Utente creato",
+      "user_deleted": "Utente eliminato",
+      "user_password_reset": "Password dell'utente reimpostata",
+      "user_status_toggled": "Stato dell'utente modificato",
+      "user_updated": "Utente aggiornato"
+    },
+    "entity_labels": {
+      "bill": "bolletta",
+      "case": "pratica",
+      "contract": "contratto",
+      "document": "documento",
+      "offer": "offerta",
+      "supplier": "fornitore",
+      "user": "utente"
+    }
+  },
+  "support_topics": {
+    "title": "Argomenti di assistenza",
+    "subtitle": "Gestisci gli argomenti che gli utenti possono selezionare quando creano richieste di assistenza",
+    "add": "Aggiungi argomento",
+    "edit": "Modifica argomento",
+    "search": "Cerca argomenti per nome...",
+    "no_topics": "Nessun argomento trovato",
+    "name": "Nome",
+    "description": "Descrizione",
+    "tickets": "Ticket",
+    "sort_order": "Ordine",
+    "icon": "Icona",
+    "topic_name_required": "Inserisci un nome per l'argomento",
+    "maximum_100": "Massimo 100 caratteri",
+    "name_example": "es. Fatturazione e pagamenti",
+    "description_hint": "Breve descrizione di questo argomento...",
+    "created": "Argomento creato con successo",
+    "updated": "Argomento aggiornato con successo",
+    "save_failed": "Impossibile salvare l'argomento",
+    "status_updated": "Argomento {{status}}",
+    "status_update_failed": "Impossibile aggiornare lo stato dell'argomento",
+    "deleted": "Argomento eliminato con successo",
+    "delete_failed": "Impossibile eliminare l'argomento"
+  },
+  "faq_management": {
+    "title": "Gestione FAQ",
+    "subtitle": "Crea, modifica e gestisci le domande frequenti",
+    "add": "Aggiungi FAQ",
+    "edit": "Modifica FAQ",
+    "search": "Cerca FAQ...",
+    "no_faqs": "Nessuna FAQ trovata",
+    "question": "Domanda",
+    "answer": "Risposta",
+    "category": "Categoria",
+    "audience": "Destinatari",
+    "sort_order": "Ordine",
+    "locale": "Lingua",
+    "delete_confirm": "Eliminare questa FAQ?",
+    "delete_warning": "Questa azione non può essere annullata.",
+    "created": "FAQ creata con successo",
+    "updated": "FAQ aggiornata con successo",
+    "save_failed": "Impossibile salvare la FAQ",
+    "deleted": "FAQ eliminata",
+    "delete_failed": "Impossibile eliminare la FAQ",
+    "status_updated": "FAQ {{status}}",
+    "status_update_failed": "Impossibile aggiornare lo stato della FAQ"
+    ,"search_by_question": "Cerca FAQ per domanda..."
+    ,"select_category": "Seleziona una categoria"
+    ,"category_required": "Seleziona una categoria"
+    ,"question_required": "Inserisci una domanda"
+    ,"answer_required": "Inserisci una risposta"
+    ,"question_hint": "Inserisci la domanda che vedranno gli utenti..."
+    ,"answer_hint": "Inserisci la risposta dettagliata..."
+    ,"select_audience": "Seleziona i destinatari"
+    ,"select_locale": "Seleziona la lingua"
+    ,"both": "Entrambi"
+    ,"personal": "Privato"
+    ,"business": "Azienda"
+    ,"italian": "Italiano (it)"
+    ,"category_switch_supplier": "Cambio fornitore"
+    ,"category_bills": "Bollette"
+    ,"category_documents": "Documenti"
+    ,"english": "Inglese (en)"
+  },
+  "service_types": {
+    "title": "Tipi di servizio",
+    "subtitle": "Gestisci i tipi di servizi offerti sulla piattaforma",
+    "add": "Aggiungi tipo di servizio",
+    "edit": "Modifica tipo di servizio",
+    "search": "Cerca per nome...",
+    "utility_type": "Tipo di utenza",
+    "all_types": "Tutti i tipi",
+    "no_types": "Nessun tipo di servizio trovato",
+    "no_description": "Nessuna descrizione",
+    "no_description_provided": "Nessuna descrizione disponibile",
+    "details": "Dettagli",
+    "created": "Creato",
+    "last_updated": "Ultimo aggiornamento",
+    "view_details": "Vedi dettagli",
+    "back": "Torna ai tipi di servizio",
+    "delete_title": "Elimina tipo di servizio",
+    "delete_object": "eliminare questo tipo di servizio",
+    "deleted": "Tipo di servizio eliminato con successo",
+    "delete_failed": "Impossibile eliminare il tipo di servizio",
+    "created_successfully": "Tipo di servizio creato con successo",
+    "create_failed": "Impossibile creare il tipo di servizio",
+    "duplicate_utility": "Esiste già un tipo di servizio per questa utenza.",
+    "load_failed": "Impossibile caricare i dettagli del tipo di servizio",
+    "not_found": "Tipo di servizio non trovato o impossibile da caricare.",
+    "name_required": "Inserisci un nome",
+    "utility_required": "Seleziona un tipo di utenza",
+    "select_utility": "Seleziona tipo di utenza",
+    "name_example": "es. Elettricità",
+    "description_hint": "Breve descrizione di questo tipo di servizio",
+    "electricity": "Elettricità",
+    "gas": "Gas",
+    "water": "Acqua",
+    "internet": "Internet"
   }
 }

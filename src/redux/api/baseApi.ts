@@ -7,6 +7,7 @@ import {
   type FetchBaseQueryError,
 } from "@reduxjs/toolkit/query/react";
 import { setTokens, logout } from "../features/Auth/authSlice";
+import { currentLanguage } from "../../i18n";
 
 const rawBaseQuery = fetchBaseQuery({
   baseUrl: `${server_url}`,
@@ -15,8 +16,7 @@ const rawBaseQuery = fetchBaseQuery({
     if (token) {
       headers.set("Authorization", `Bearer ${token}`);
     }
-    const lang = localStorage.getItem("dashboard_language") || "en";
-    headers.set("Accept-Language", lang);
+    headers.set("Accept-Language", currentLanguage());
     return headers;
   },
 });

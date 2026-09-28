@@ -1,3 +1,4 @@
+import i18n from "../../i18n";
 import Swal from "sweetalert2";
 
 type SweetAlertConfirmationProps = {
@@ -17,10 +18,10 @@ export const sweetAlertConfirmation = ({
 }: SweetAlertConfirmationProps) => {
   Swal.fire({
     title: title,
-    text: `Are you sure you want to ${object || "logout"}?`,
+    text: i18n.t("audit.confirm_action", { action: object || i18n.t("audit.logout_action") }),
     showCancelButton: true,
-    confirmButtonText: okay || "Confirm",
-    cancelButtonText: "Cancel",
+    confirmButtonText: okay || i18n.t("common.confirm"),
+    cancelButtonText: i18n.t("common.cancel"),
     showConfirmButton: true,
     confirmButtonColor: conBtnColor || "red",
     reverseButtons: true,

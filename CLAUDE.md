@@ -64,6 +64,18 @@ Two layout groups configured in `src/routes/index.tsx`:
 - **Icons**: `lucide-react` for sidebar icons, `react-icons` for UI elements
 - **Alerts**: `sweetalert2` for confirmation dialogs (`src/lib/helpers/sweetAlertConfirmation.ts`)
 
+## Internationalisation (Italian first)
+
+Italian is the default and fallback language; English is shown only when the admin switches to it.
+
+- **Catalogues** in `src/i18n/locales/`: `it.json`/`en.json` (main), `audit.*.json` (under `audit.`), `api-errors.*.json` (under `api_errors.`). Every key needs an Italian and an English value.
+- **Never hard-code UI text** — use `t("…")` in components, `i18n.t("…")` outside them. Module-level label tables must be getters or functions so they follow a language switch.
+- **Active language**: `currentLanguage()` from `src/i18n` (`"it"` unless English was chosen). Do not compare `i18n.language` yourself.
+- **Dates/numbers**: always pass `getLocale()` from `src/utils/format` to `toLocale*String` / `Intl`.
+- **Backend errors**: show them with `getApiErrorMessage(err, fallback)` from `src/utils/apiError` (or `errorAlert({ error, fallback })`). Never display `err.data.message` directly — it is English. A new backend message needs a rule there and a key in `api-errors.*.json`.
+- **Activity log** actions arrive as English phrases; `src/utils/activityLabels.ts` maps them to `activity_history.action_labels.*`.
+- **Guard**: `npm run i18n:check` (also part of `npm run build`) fails on hard-coded UI strings, missing translations, interpolation mismatches, and unknown keys. `--inventory` lists candidates. Brand names, acronyms and sample placeholders are allow-listed in `scripts/i18n-audit.mjs`.
+
 ## Environment
 
 - `.env.development` and `.env.production` define `VITE_SERVER_URL`

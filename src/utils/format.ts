@@ -1,3 +1,8 @@
+import { currentLanguage } from "../i18n";
+
+/** Intl locale for the active language; Italian unless the admin explicitly chose English. */
+export const getLocale = () => (currentLanguage() === "en" ? "en-GB" : "it-IT");
+
 /**
  * Decimal precision for every price and figure the dashboard renders.
  *
@@ -91,7 +96,7 @@ export function formatQuantity<F extends string | null = string>(
 ): string | F {
   const n = toNumber(val);
   if (n === null) return fallbackOf(opts);
-  const grouped = n.toLocaleString("it-IT", {
+  const grouped = n.toLocaleString(getLocale(), {
     minimumFractionDigits: DECIMALS.quantity,
     maximumFractionDigits: DECIMALS.quantity,
   });
@@ -108,7 +113,7 @@ export function formatCount<F extends string | null = string>(
 ): string | F {
   const n = toNumber(val);
   if (n === null) return fallbackOf(opts);
-  return Math.round(n).toLocaleString();
+  return Math.round(n).toLocaleString(getLocale());
 }
 
 /**

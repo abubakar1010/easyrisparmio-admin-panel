@@ -6,15 +6,16 @@ import { App, ConfigProvider } from "antd";
 import { useTranslation } from "react-i18next";
 import itIT from "antd/locale/it_IT";
 import enUS from "antd/locale/en_US";
+import { normalizeLanguage } from "../../i18n";
 
-const antLocales: Record<string, typeof enUS> = {
-  en: enUS,
+const antLocales: Record<"it" | "en", typeof itIT> = {
   it: itIT,
+  en: enUS,
 };
 
 const MainProvider = ({ children }: TCommonProps) => {
   const { i18n } = useTranslation();
-  const antLocale = antLocales[i18n.language] || enUS;
+  const antLocale = antLocales[normalizeLanguage(i18n.resolvedLanguage ?? i18n.language)];
 
   return (
     <Provider store={store}>
