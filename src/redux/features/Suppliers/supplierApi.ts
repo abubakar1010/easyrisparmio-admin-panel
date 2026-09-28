@@ -30,8 +30,8 @@ export interface ISupplier {
   logoUrl: string | null;
   description: string | null;
   rating: number;
-  isActive: boolean;
-  status: "active" | "warning" | "inactive" | "pending_deletion";
+  /** Only an active supplier can carry offers. */
+  status: "active" | "inactive" | "pending_deletion";
   commodity: "electricity" | "gas" | "dual" | null;
   scheduledDeletionDate: string | null;
   contactName: string | null;
@@ -43,7 +43,6 @@ export interface ISupplier {
   province: string | null;
   zipCode: string | null;
   country: string | null;
-  iban: string | null;
   contractStartDate: string | null;
   notes: string | null;
   supplierCode: string | null;
@@ -59,7 +58,6 @@ export interface ISupplierQuery {
   page?: number;
   limit?: number;
   search?: string;
-  isActive?: boolean;
   status?: string;
   commodity?: string;
 }
@@ -77,7 +75,6 @@ export interface ICreateSupplier {
   city: string;
   province: string;
   zipCode: string;
-  iban: string;
   logoUrl?: string;
   description?: string | null;
   rating?: number;
@@ -109,7 +106,6 @@ const supplierApi = baseApi.injectEndpoints({
           if (params.page) qp.set("page", String(params.page));
           if (params.limit) qp.set("limit", String(params.limit));
           if (params.search) qp.set("search", params.search);
-          if (params.isActive !== undefined) qp.set("isActive", String(params.isActive));
           if (params.status) qp.set("status", params.status);
           if (params.commodity) qp.set("commodity", params.commodity);
         }
@@ -176,11 +172,11 @@ const supplierApi = baseApi.injectEndpoints({
       ],
     }),
 
-    toggleSupplierStatus: builder.mutation<ISupplier, { id: string; isActive: boolean }>({
-      query: ({ id, isActive }) => ({
+    toggleSupplierStatus: builder.mutation<ISupplier, { id: string; status: "active" | "inactive" }>({
+      query: ({ id, status }) => ({
         url: `suppliers/${id}/toggle-status`,
         method: "PATCH",
-        body: { isActive },
+        body: { status },
       }),
       transformResponse: (response: { success: boolean; data: ISupplier }) => response.data,
       invalidatesTags: (_r, _e, { id }) => [

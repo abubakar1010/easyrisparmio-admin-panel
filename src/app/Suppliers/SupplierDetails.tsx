@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { App, Button, Empty, Select, Table, Tag, Tooltip, Spin } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import {
@@ -16,6 +17,7 @@ import { LuDatabase, LuFlame, LuGlobe, LuZap } from "react-icons/lu";
 import { useNavigate, useParams } from "react-router";
 import dayjs from "dayjs";
 import AddSupplierModal from "./AddSupplierModal";
+import SupplierFaqs from "./SupplierFaqs";
 import {
   useGetSupplierByIdQuery,
   useUpdateSupplierMutation,
@@ -24,14 +26,11 @@ import {
   type ISupplier,
   type SupplierOffer,
 } from "../../redux/features/Suppliers/supplierApi";
-import {
-  PAYMENT_METHOD_LABELS,
-  type OfferPaymentMethod,
-} from "../../redux/features/Offers/offerApi";
-import { statusDisplayMap, statusTagClass, commodityIconMap, commodityColorMap } from "./types";
+import type { OfferPaymentMethod } from "../../redux/features/Offers/offerApi";
+import { statusTagClass, commodityIconMap, commodityColorMap } from "./types";
 import { server_origin } from "../../config";
 
-type TabKey = "overview" | "offers" | "billing";
+type TabKey = "overview" | "offers" | "faqs" | "billing";
 
 const iconMap: Record<string, React.ReactNode> = {
   database: <LuDatabase className="h-7 w-7" />,
@@ -44,8 +43,7 @@ function getVisuals(supplier: ISupplier) {
   const commodity = supplier.commodity || "dual";
   const iconKey = commodityIconMap[commodity] || "globe";
   const colors = commodityColorMap[commodity] || { color: "text-blue-500", bg: "bg-blue-50" };
-  const displayStatus = statusDisplayMap[supplier.status] || "Good";
-  return { iconKey, ...colors, displayStatus };
+  return { iconKey, ...colors };
 }
 
 const offerStatusColor: Record<string, string> = {
@@ -67,6 +65,7 @@ const InfoRow = ({ icon, label, value }: { icon?: React.ReactNode; label: string
 );
 
 const SupplierDetails = () => {
+  const { t } = useTranslation();
   const { modal, message } = App.useApp();
   const navigate = useNavigate();
   const { supplierId } = useParams();
@@ -89,16 +88,16 @@ const SupplierDetails = () => {
   if (!supplier) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-24">
-        <Empty description="Supplier not found" />
+        <Empty description={t("suppliers.supplier_not_found")} />
         <Button onClick={() => navigate("/suppliers")} icon={<FiArrowLeft />} className="rounded-lg">
-          Back to Suppliers
+          {t("suppliers.back_to_suppliers")}
         </Button>
       </div>
     );
   }
 
   const isPendingDeletion = supplier.status === "pending_deletion";
-  const { iconKey, color, bg, displayStatus } = getVisuals(supplier);
+  const { iconKey, color, bg } = getVisuals(supplier);
   const offers = supplier.offers || [];
   const activeOffers = offers.filter((o) => o.isActive);
   const editInitialValues: Record<string, unknown> = {
@@ -115,7 +114,6 @@ const SupplierDetails = () => {
     city: supplier.city,
     province: supplier.province,
     zipCode: supplier.zipCode,
-    iban: supplier.iban,
     startDate: supplier.contractStartDate ? dayjs(supplier.contractStartDate) : undefined,
     notes: supplier.notes,
     logoUrl: supplier.logoUrl,
@@ -128,64 +126,37 @@ const SupplierDetails = () => {
   const handleStatusChange = async (status: string) => {
     try {
       await updateSupplier({ id: supplier.id, data: { status } }).unwrap();
-      message.success(`Status set to ${statusDisplayMap[status as keyof typeof statusDisplayMap] || status}`);
+      message.success(t("suppliers.status_updated", { status: t(`suppliers.status_${status}`) }));
     } catch {
-      message.error("Failed to update status");
+      message.error(t("suppliers.status_update_failed"));
     }
   };
 
   const handleDeleteSupplier = () => {
     modal.confirm({
-      title: `Delete "${supplier.name}"?`,
+      title: t("suppliers.delete_title", { name: supplier.name }),
       icon: null,
       width: 520,
       centered: true,
       content: (
         <div className="mt-2 space-y-3">
           <p className="text-sm text-slate-600">
-            Please review the following consequences before proceeding:
+            {t("offers_market.delete_confirm_intro")}
           </p>
           <ul className="list-disc space-y-1.5 pl-5 text-sm text-slate-600">
-            <li>
-              If this supplier has <strong>active user contracts</strong>, the
-              deletion will be <strong>scheduled</strong> until the last contract
-              expires. The supplier will not be removed immediately.
-            </li>
-            <li>
-              All <strong>offers</strong> from this supplier will be{" "}
-              <strong>removed</strong> from public listings and can no longer be
-              sent to users.
-            </li>
-            <li>
-              <strong>No new offers</strong> can be created for this supplier
-              during the pending deletion period.
-            </li>
-            <li>
-              Users will <strong>no longer be able to accept</strong> any
-              existing offers from this supplier.
-            </li>
-            <li>
-              Any <strong>early-stage cases</strong> (New, In Progress,
-              Documents Pending) for this supplier will be{" "}
-              <strong>automatically cancelled</strong>.
-            </li>
-            <li>
-              Cases that are already in <strong>contract stage</strong>{" "}
-              (Contract Sent, Contract Signed, Activated) will{" "}
-              <strong>continue normally</strong> until completion.
-            </li>
-            <li>
-              Once the supplier is fully deleted, all associated data
-              (offers, price history) will be <strong>permanently removed</strong>.
-            </li>
+            {(["contracts", "offers", "new_offers", "acceptance", "early_cases", "contract_cases", "data"] as const).map((consequence) => (
+              <li key={consequence}>
+                <Trans t={t} i18nKey={`suppliers.delete_consequences.${consequence}`} components={{ strong: <strong /> }} />
+              </li>
+            ))}
           </ul>
           <p className="text-xs text-slate-400">
-            You can cancel a scheduled deletion at any time before it executes.
+            {t("suppliers.you_can_cancel_a_scheduled_deletion_at_any_time_before_it_executes")}
           </p>
         </div>
       ),
-      okText: "Yes, Delete Supplier",
-      cancelText: "Cancel",
+      okText: t("suppliers.yes_delete_supplier"),
+      cancelText: t("common.cancel"),
       okButtonProps: { danger: true },
       onOk: async () => {
         try {
@@ -193,39 +164,36 @@ const SupplierDetails = () => {
           if (result.scheduledDeletionDate) {
             const dateStr = dayjs(result.scheduledDeletionDate).format("DD/MM/YYYY");
             modal.info({
-              title: "Deletion Scheduled",
+              title: t("suppliers.deletion_scheduled"),
               centered: true,
               content: (
                 <div className="mt-2 space-y-2">
                   <p className="text-sm text-slate-600">
-                    <strong>{supplier.name}</strong> has active contracts that
-                    must complete first. The supplier is now marked as{" "}
-                    <strong>Pending Deletion</strong>.
+                    <Trans t={t} i18nKey="suppliers.deletion_scheduled_explanation" values={{ name: supplier.name }} components={{ strong: <strong /> }} />
                   </p>
                   <ul className="list-disc space-y-1 pl-5 text-sm text-slate-600">
                     <li>
-                      Scheduled deletion date:{" "}
+                      {t("suppliers.scheduled_deletion_date")}{" "}
                       <strong>{dateStr}</strong>
                     </li>
                     {result.cancelledCases && result.cancelledCases > 0 ? (
                       <li>
-                        <strong>{result.cancelledCases}</strong> early-stage
-                        case(s) have been cancelled
+                        <Trans t={t} i18nKey="suppliers.cancelled_cases" count={result.cancelledCases} components={{ strong: <strong /> }} />
                       </li>
                     ) : null}
-                    <li>No new offers can be created or sent</li>
-                    <li>You can cancel this deletion at any time</li>
+                    <li>{t("suppliers.no_new_offers_can_be_created_or_sent")}</li>
+                    <li>{t("suppliers.you_can_cancel_this_deletion_at_any_time")}</li>
                   </ul>
                 </div>
               ),
-              okText: "Understood",
+              okText: t("suppliers.understood"),
             });
           } else {
-            message.success("Supplier deleted successfully");
+            message.success(t("suppliers.supplier_deleted_successfully"));
             navigate("/suppliers");
           }
         } catch {
-          message.error("Failed to delete supplier");
+          message.error(t("suppliers.failed_to_delete_supplier"));
         }
       },
     });
@@ -234,46 +202,46 @@ const SupplierDetails = () => {
   const handleCancelDeletion = async () => {
     try {
       await cancelDeletion(supplier.id).unwrap();
-      message.success("Supplier deletion cancelled");
+      message.success(t("suppliers.supplier_deletion_cancelled"));
     } catch {
-      message.error("Failed to cancel deletion");
+      message.error(t("suppliers.failed_to_cancel_deletion"));
     }
   };
 
   const offerColumns: ColumnsType<SupplierOffer> = [
-    { title: "OFFER", dataIndex: "name", key: "name", render: (v) => <span className="font-semibold text-slate-700">{v}</span> },
+    { title: t("suppliers.offer"), dataIndex: "name", key: "name", render: (v) => <span className="font-semibold text-slate-700">{v}</span> },
     {
-      title: "COMMODITY",
+      title: t("suppliers.commodity"),
       dataIndex: "energyType",
       key: "energyType",
-      render: (v) => <Tag className="rounded border-0 bg-slate-100 text-xs text-slate-600 capitalize">{v}</Tag>,
+      render: (v: string) => <Tag className="rounded border-0 bg-slate-100 text-xs text-slate-600">{t(`suppliers.commodities.${v}`, { defaultValue: "—" })}</Tag>,
     },
     {
-      title: "PRICE TYPE",
+      title: t("offers_market.price_type"),
       dataIndex: "marketType",
       key: "marketType",
-      render: (v) => <span className="capitalize">{v}</span>,
+      render: (v: string) => <span>{t(`offers_market.price_${v}`, { defaultValue: "—" })}</span>,
     },
     {
-      title: "COMPENSATION",
+      title: t("offers_market.compensation"),
       dataIndex: "compensation",
       key: "compensation",
       render: (v) => <span className="text-xs text-slate-600 line-clamp-2">{v || "—"}</span>,
     },
     {
-      title: "PAYMENT METHOD",
+      title: t("offers_market.payment_method"),
       dataIndex: "paymentMethod",
       key: "paymentMethod",
       render: (v: OfferPaymentMethod) => (
-        <span className="text-xs text-slate-600">{PAYMENT_METHOD_LABELS[v] || "—"}</span>
+        <span className="text-xs text-slate-600">{t(`offers_market.${v}`, { defaultValue: "—" })}</span>
       ),
     },
     {
-      title: "STATUS",
+      title: t("common.status"),
       dataIndex: "offerStatus",
       key: "offerStatus",
       render: (v: string) => (
-        <Tag color={offerStatusColor[v] || "default"} className="rounded-full! px-2.5! text-xs font-semibold capitalize">{v}</Tag>
+        <Tag color={offerStatusColor[v] || "default"} className="rounded-full! px-2.5! text-xs font-semibold">{v === "published" ? t("suppliers.offer_published") : t(`offers_market.${v}`, { defaultValue: "—" })}</Tag>
       ),
     },
     {
@@ -282,8 +250,8 @@ const SupplierDetails = () => {
       width: 60,
       align: "center",
       render: () => (
-        <Tooltip title="Remove">
-          <button type="button" className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-500">
+        <Tooltip title={t("common.remove")}>
+          <button type="button" aria-label={t("common.remove")} className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-500">
             <FiTrash2 className="h-4 w-4" />
           </button>
         </Tooltip>
@@ -292,9 +260,10 @@ const SupplierDetails = () => {
   ];
 
   const tabs: { key: TabKey; label: string }[] = [
-    { key: "overview", label: "Overview" },
-    { key: "offers", label: `Offers (${offers.length})` },
-    { key: "billing", label: "Billing" },
+    { key: "overview", label: t("suppliers.overview") },
+    { key: "offers", label: t("suppliers.offers_count", { count: offers.length }) },
+    { key: "faqs", label: t("suppliers.faqs_tab") },
+    { key: "billing", label: t("suppliers.billing") },
   ];
 
   const contractDate = supplier.contractStartDate
@@ -304,22 +273,21 @@ const SupplierDetails = () => {
   return (
     <div className="space-y-5 pb-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <Button type="link" className="h-auto px-0 text-slate-500 hover:text-slate-800" icon={<FiArrowLeft />} onClick={() => navigate("/suppliers")}>
-        Back to Suppliers
+        {t("suppliers.back_to_suppliers")}
       </Button>
 
       {/* Pending Deletion Banner */}
       {isPendingDeletion && (
         <div className="flex items-center justify-between rounded-2xl border border-red-200 bg-red-50 p-4 shadow-sm">
           <div>
-            <p className="text-sm font-bold text-red-700">Supplier Scheduled for Deletion</p>
+            <p className="text-sm font-bold text-red-700">{t("suppliers.supplier_scheduled_for_deletion")}</p>
             <p className="mt-0.5 text-sm text-red-600">
-              This supplier will be automatically deleted on{" "}
-              <span className="font-semibold">
-                {supplier.scheduledDeletionDate
-                  ? dayjs(supplier.scheduledDeletionDate).format("DD/MM/YYYY")
-                  : "N/A"}
-              </span>
-              . No new offers can be created or sent during this period.
+              <Trans
+                t={t}
+                i18nKey="suppliers.deletion_banner"
+                values={{ date: supplier.scheduledDeletionDate ? dayjs(supplier.scheduledDeletionDate).format("DD/MM/YYYY") : "—" }}
+                components={{ strong: <span className="font-semibold" /> }}
+              />
             </p>
           </div>
           <Button
@@ -329,7 +297,7 @@ const SupplierDetails = () => {
             loading={isCancelling}
             className="shrink-0 rounded-lg"
           >
-            Cancel Deletion
+            {t("suppliers.cancel_deletion")}
           </Button>
         </div>
       )}
@@ -351,22 +319,22 @@ const SupplierDetails = () => {
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-2xl font-bold text-slate-800">{supplier.name}</h1>
-              <Tag className={`m-0 rounded-full border-0 px-3 py-0.5 text-[10px] font-bold ${statusTagClass[displayStatus] || ""}`}>{displayStatus}</Tag>
+              <Tag className={`m-0 rounded-full border-0 px-3 py-0.5 text-[10px] font-bold ${statusTagClass[supplier.status] || ""}`}>{t(`suppliers.status_${supplier.status}`)}</Tag>
             </div>
             <p className="mt-0.5 text-sm text-slate-500">{supplier.legalName || "—"}</p>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Select
+            aria-label={t("common.status")}
             value={supplier.status}
             onChange={handleStatusChange}
             disabled={isPendingDeletion}
             options={[
-              { value: "active", label: "Good" },
-              { value: "warning", label: "Warning" },
-              { value: "inactive", label: "Inactive" },
+              { value: "active", label: t("suppliers.status_active") },
+              { value: "inactive", label: t("suppliers.status_inactive") },
               ...(isPendingDeletion
-                ? [{ value: "pending_deletion", label: "Pending Deletion", disabled: true }]
+                ? [{ value: "pending_deletion", label: t("suppliers.status_pending_deletion"), disabled: true }]
                 : []),
             ]}
             className="min-w-[130px] [&_.ant-select-selector]:h-10! [&_.ant-select-selector]:rounded-lg [&_.ant-select-selection-item]:leading-[40px]!"
@@ -377,7 +345,7 @@ const SupplierDetails = () => {
             disabled={isPendingDeletion}
             className="h-10 rounded-lg font-medium"
           >
-            Edit Supplier
+            {t("suppliers.edit_supplier")}
           </Button>
           {!isPendingDeletion && (
             <Button
@@ -386,7 +354,7 @@ const SupplierDetails = () => {
               onClick={handleDeleteSupplier}
               className="h-10 rounded-lg font-medium"
             >
-              Delete
+              {t("common.delete")}
             </Button>
           )}
         </div>
@@ -395,9 +363,9 @@ const SupplierDetails = () => {
       {/* Meta cards */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
         {[
-          { label: "Active Offers", value: activeOffers.length },
-          { label: "Commodity", value: supplier.commodity ? supplier.commodity.charAt(0).toUpperCase() + supplier.commodity.slice(1) : "—" },
-          { label: "Contract Since", value: contractDate },
+          { label: t("suppliers.active_offers_label"), value: activeOffers.length },
+          { label: t("suppliers.commodity"), value: supplier.commodity ? t(`suppliers.commodities.${supplier.commodity}`) : "—" },
+          { label: t("suppliers.contract_since"), value: contractDate },
         ].map((c) => (
           <div key={c.label} className="rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm">
             <p className="text-xs text-slate-400">{c.label}</p>
@@ -428,14 +396,14 @@ const SupplierDetails = () => {
       {activeTab === "overview" && (
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
-            <h3 className="mb-4 text-base font-semibold text-slate-800">General Information</h3>
+            <h3 className="mb-4 text-base font-semibold text-slate-800">{t("suppliers.general_information")}</h3>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <InfoRow label="Brand Name" value={supplier.name} />
-              <InfoRow label="Legal Name" value={supplier.legalName} />
-              <InfoRow label="Tax ID" value={supplier.taxId} />
-              <InfoRow label="Commodity" value={supplier.commodity ? supplier.commodity.charAt(0).toUpperCase() + supplier.commodity.slice(1) : null} />
+              <InfoRow label={t("suppliers.brand_name")} value={supplier.name} />
+              <InfoRow label={t("suppliers.legal_name")} value={supplier.legalName} />
+              <InfoRow label={t("suppliers.tax_id")} value={supplier.taxId} />
+              <InfoRow label={t("suppliers.commodity")} value={supplier.commodity ? t(`suppliers.commodities.${supplier.commodity}`) : null} />
               <InfoRow
-                label="Website"
+                label={t("suppliers.website_url")}
                 value={
                   supplier.website ? (
                     <a href={supplier.website} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-blue-500 hover:text-blue-600">
@@ -448,21 +416,22 @@ const SupplierDetails = () => {
           </div>
 
           <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
-            <h3 className="mb-4 text-base font-semibold text-slate-800">Primary Contact</h3>
+            <h3 className="mb-4 text-base font-semibold text-slate-800">{t("suppliers.primary_contact")}</h3>
             <div className="space-y-4">
-              <InfoRow icon={<FiUser className="h-4 w-4" />} label="Contact Name" value={supplier.contactName} />
-              <InfoRow icon={<FiMail className="h-4 w-4" />} label="Email" value={supplier.contactEmail} />
-              <InfoRow icon={<FiPhone className="h-4 w-4" />} label="Phone Number" value={supplier.contactPhone} />
+              <InfoRow icon={<FiUser className="h-4 w-4" />} label={t("suppliers.contact_name")} value={supplier.contactName} />
+              <InfoRow icon={<FiMail className="h-4 w-4" />} label={t("suppliers.email")} value={supplier.contactEmail} />
+              <InfoRow icon={<FiPhone className="h-4 w-4" />} label={t("suppliers.phone_number")} value={supplier.contactPhone} />
             </div>
           </div>
 
           <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
-            <h3 className="mb-4 text-base font-semibold text-slate-800">Address</h3>
+            <h3 className="mb-4 text-base font-semibold text-slate-800">{t("suppliers.address")}</h3>
             <InfoRow
               icon={<FiMapPin className="h-4 w-4" />}
-              label="Address"
+              label={t("suppliers.address")}
               value={
-                [supplier.streetAddress, supplier.city, supplier.province, supplier.zipCode, supplier.country]
+                [supplier.streetAddress, supplier.city, supplier.province, supplier.zipCode,
+                  supplier.country && ["italy", "italia", "it"].includes(supplier.country.toLowerCase()) ? t("suppliers.italy") : supplier.country]
                   .filter(Boolean)
                   .join(", ") || null
               }
@@ -470,9 +439,9 @@ const SupplierDetails = () => {
           </div>
 
           <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
-            <h3 className="mb-1 text-base font-semibold text-slate-800">Contract Signing Instructions</h3>
+            <h3 className="mb-1 text-base font-semibold text-slate-800">{t("suppliers.contract_signing_instructions")}</h3>
             <p className="mb-4 text-xs text-slate-400">
-              Shown to users as "Contract Sign Guideline" on contracts from this supplier.
+              {t("suppliers.shown_to_users_as_contract_sign_guideline_on_contracts_from_this_supplier")}
             </p>
             {supplier.contractSigningInstructions || supplier.contractSigningDocumentUrl ? (
               <>
@@ -493,18 +462,18 @@ const SupplierDetails = () => {
                     className="mt-4 inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 transition-colors hover:border-[#7061ED] hover:text-[#7061ED]"
                   >
                     <FiFileText className="h-4 w-4" />
-                    {supplier.contractSigningDocumentName || "View document"}
+                    {supplier.contractSigningDocumentName || t("common.view")}
                   </a>
                 )}
               </>
             ) : (
-              <p className="text-sm leading-relaxed text-slate-600">No signing instructions.</p>
+              <p className="text-sm leading-relaxed text-slate-600">{t("suppliers.no_signing_instructions")}</p>
             )}
           </div>
 
           <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
-            <h3 className="mb-4 text-base font-semibold text-slate-800">Notes</h3>
-            <p className="text-sm leading-relaxed text-slate-600">{supplier.notes || "No notes."}</p>
+            <h3 className="mb-4 text-base font-semibold text-slate-800">{t("suppliers.notes")}</h3>
+            <p className="text-sm leading-relaxed text-slate-600">{supplier.notes || t("suppliers.no_notes")}</p>
           </div>
         </div>
       )}
@@ -513,7 +482,7 @@ const SupplierDetails = () => {
         <div className="rounded-2xl border border-slate-200/70 bg-white p-3 shadow-sm">
           {offers.length === 0 ? (
             <div className="py-12">
-              <Empty description="No offers yet" />
+              <Empty description={t("suppliers.no_offers_yet")} />
             </div>
           ) : (
             <Table<SupplierOffer>
@@ -528,12 +497,13 @@ const SupplierDetails = () => {
         </div>
       )}
 
+      {activeTab === "faqs" && <SupplierFaqs supplierId={supplier.id} disabled={isPendingDeletion} />}
+
       {activeTab === "billing" && (
         <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
-          <h3 className="mb-4 text-base font-semibold text-slate-800">Billing</h3>
+          <h3 className="mb-4 text-base font-semibold text-slate-800">{t("suppliers.billing")}</h3>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <InfoRow label="IBAN" value={supplier.iban ? <span className="font-mono">{supplier.iban}</span> : null} />
-            <InfoRow label="Contract Start Date" value={contractDate} />
+            <InfoRow label={t("suppliers.contract_start_date")} value={contractDate} />
           </div>
         </div>
       )}

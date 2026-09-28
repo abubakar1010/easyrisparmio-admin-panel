@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { Modal, Form, Input, Select, DatePicker, Button, Upload, message } from "antd";
 import { FiX } from "react-icons/fi";
 import { LuUpload, LuTrash2, LuFileText } from "react-icons/lu";
@@ -6,11 +8,13 @@ import dayjs from "dayjs";
 import {
   useCreateSupplierMutation,
   useUpdateSupplierMutation,
+  type ICreateSupplier,
 } from "../../redux/features/Suppliers/supplierApi";
 import { PhoneInput, phoneValidationRule } from "../../components/ui/PhoneInput";
 
 import { server_origin } from "../../config";
-import { taxIdMessage } from "../../utils/italianTaxId";
+import { getApiErrorMessage } from "../../utils/apiError";
+import { codiceFiscaleCheckCharacter, taxIdProblem } from "../../utils/italianTaxId";
 
 interface AddSupplierModalProps {
   isOpen: boolean;
@@ -27,62 +31,29 @@ const { TextArea } = Input;
  * The tax ID rule, taken from the shared util so this modal, the case editor
  * and the server cannot drift apart — one table, one verdict.
  */
-const italianTaxIdRule = {
-  validator: (_: unknown, value: string) => {
-    const problem = taxIdMessage(value);
-    return problem ? Promise.reject(new Error(problem)) : Promise.resolve();
+const italianTaxIdRule = (t: TFunction) => ({
+  validator: (_: unknown, value: string = "") => {
+    const problem = taxIdProblem(value);
+    return problem
+      ? Promise.reject(new Error(t(`suppliers.validation.tax_id_${problem}`, { character: codiceFiscaleCheckCharacter(value) })))
+      : Promise.resolve();
   },
-};
-
-/**
- * Validates Italian IBAN: 27 characters starting with IT, with mod-97 check.
- */
-const italianIbanRule = {
-  validator: (_: unknown, value: string) => {
-    if (!value) return Promise.resolve();
-    const cleaned = value.replace(/\s+/g, "").toUpperCase();
-
-    if (!/^IT\d{2}[A-Z]\d{10}[A-Z0-9]{12}$/.test(cleaned)) {
-      return Promise.reject(
-        new Error("IBAN must be a valid Italian IBAN (27 characters starting with IT)")
-      );
-    }
-
-    // IBAN mod-97 check
-    const rearranged = cleaned.slice(4) + cleaned.slice(0, 4);
-    const numericStr = rearranged
-      .split("")
-      .map((ch) => {
-        const code = ch.charCodeAt(0);
-        return code >= 65 && code <= 90 ? (code - 55).toString() : ch;
-      })
-      .join("");
-
-    let remainder = 0;
-    for (let i = 0; i < numericStr.length; i += 7) {
-      const chunk = String(remainder) + numericStr.slice(i, i + 7);
-      remainder = parseInt(chunk, 10) % 97;
-    }
-
-    return remainder === 1
-      ? Promise.resolve()
-      : Promise.reject(new Error("IBAN check digits are invalid"));
-  },
-};
+});
 
 /**
  * Validates Italian ZIP/CAP code: exactly 5 digits.
  */
-const italianZipRule = {
+const italianZipRule = (t: TFunction) => ({
   validator: (_: unknown, value: string) => {
     if (!value) return Promise.resolve();
     return /^\d{5}$/.test(value.trim())
       ? Promise.resolve()
-      : Promise.reject(new Error("Enter a valid 5-digit Italian CAP code"));
+      : Promise.reject(new Error(t("suppliers.validation.zip")));
   },
-};
+});
 
 const AddSupplierModal = ({ isOpen, onClose, mode = "add", supplierId, initialValues }: AddSupplierModalProps) => {
+  const { t } = useTranslation();
   const [form] = Form.useForm();
   const isEdit = mode === "edit";
 
@@ -130,15 +101,15 @@ const AddSupplierModal = ({ isOpen, onClose, mode = "add", supplierId, initialVa
   const handleLogoUpload = async (file: File) => {
     setUploadingLogo(true);
     try {
-      const { ok, url, error } = await uploadToServer(file);
+      const { ok, url } = await uploadToServer(file);
       if (ok && url) {
         setLogoUrl(url);
-        message.success("Icon uploaded successfully");
+        message.success(t("audit.icon_uploaded_successfully"));
       } else {
-        message.error(error || "Upload failed");
+        message.error(t("offers_market.upload_failed"));
       }
     } catch {
-      message.error("Upload failed");
+      message.error(t("offers_market.upload_failed"));
     } finally {
       setUploadingLogo(false);
     }
@@ -148,16 +119,16 @@ const AddSupplierModal = ({ isOpen, onClose, mode = "add", supplierId, initialVa
   const handleSigningDocUpload = async (file: File) => {
     setUploadingSigningDoc(true);
     try {
-      const { ok, url, error } = await uploadToServer(file);
+      const { ok, url } = await uploadToServer(file);
       if (ok && url) {
         setSigningDocUrl(url);
         setSigningDocName(file.name);
-        message.success("Document uploaded successfully");
+        message.success(t("offers_market.upload_success"));
       } else {
-        message.error(error || "Upload failed");
+        message.error(t("offers_market.upload_failed"));
       }
     } catch {
-      message.error("Upload failed");
+      message.error(t("offers_market.upload_failed"));
     } finally {
       setUploadingSigningDoc(false);
     }
@@ -179,7 +150,6 @@ const AddSupplierModal = ({ isOpen, onClose, mode = "add", supplierId, initialVa
       city: values.city,
       province: values.province,
       zipCode: values.zipCode?.trim(),
-      iban: values.iban?.replace(/\s+/g, "").toUpperCase(),
       contractStartDate: values.startDate ? dayjs(values.startDate).format("YYYY-MM-DD") : undefined,
       notes: values.notes || undefined,
       logoUrl: logoUrl || undefined,
@@ -196,15 +166,15 @@ const AddSupplierModal = ({ isOpen, onClose, mode = "add", supplierId, initialVa
     try {
       if (isEdit && supplierId) {
         await updateSupplier({ id: supplierId, data: payload }).unwrap();
-        message.success(`Supplier "${values.brandName}" updated`);
+        message.success(t("suppliers.updated", { name: values.brandName }));
       } else {
-        await createSupplier(payload as any).unwrap();
-        message.success(`Supplier "${values.brandName}" added`);
+        await createSupplier(payload as ICreateSupplier).unwrap();
+        message.success(t("suppliers.added", { name: values.brandName }));
       }
       onClose();
       if (!isEdit) form.resetFields();
-    } catch (err: any) {
-      message.error(err?.data?.message?.[0] || err?.data?.message || "Something went wrong");
+    } catch (err) {
+      message.error(getApiErrorMessage(err, t("common.generic_error")));
     }
   };
 
@@ -212,8 +182,8 @@ const AddSupplierModal = ({ isOpen, onClose, mode = "add", supplierId, initialVa
     <Modal
       title={
         <div className="py-2">
-          <h2 className="text-xl font-bold text-slate-800">{isEdit ? "Edit Supplier" : "Add Supplier"}</h2>
-          <p className="text-xs text-slate-400 font-medium">Supplier and Content Management</p>
+          <h2 className="text-xl font-bold text-slate-800">{isEdit ? t("suppliers.edit_supplier") : t("suppliers.add_supplier")}</h2>
+          <p className="text-xs text-slate-400 font-medium">{t("audit.supplier_and_content_management")}</p>
         </div>
       }
       open={isOpen}
@@ -235,17 +205,18 @@ const AddSupplierModal = ({ isOpen, onClose, mode = "add", supplierId, initialVa
       >
         {/* Supplier Icon */}
         <section>
-          <h3 className="text-[15px] font-bold text-slate-800 mb-4 px-1">Supplier Icon</h3>
+          <h3 className="text-[15px] font-bold text-slate-800 mb-4 px-1">{t("audit.supplier_icon")}</h3>
           <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-100 flex items-center gap-4">
             {logoUrl ? (
               <div className="relative">
                 <img
                   src={logoUrl.startsWith("http") ? logoUrl : `${server_origin}${logoUrl}`}
-                  alt="Supplier icon"
+                  alt={t("audit.supplier_icon_2")}
                   className="h-16 w-16 rounded-xl object-cover border border-slate-200"
                 />
                 <button
                   type="button"
+                  aria-label={t("suppliers.remove_icon")}
                   onClick={() => setLogoUrl(null)}
                   className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-600 transition-colors"
                 >
@@ -268,42 +239,41 @@ const AddSupplierModal = ({ isOpen, onClose, mode = "add", supplierId, initialVa
                   loading={uploadingLogo}
                   className="rounded-lg h-9 border-slate-200"
                 >
-                  {logoUrl ? "Replace Icon" : "Upload Icon"}
+                  {logoUrl ? t("suppliers.replace_icon") : t("suppliers.upload_icon")}
                 </Button>
               </Upload>
-              <p className="text-[11px] text-slate-400 mt-1">JPG, PNG or WebP. Max 10MB.</p>
+              <p className="text-[11px] text-slate-400 mt-1">{t("audit.jpg_png_or_webp_max_10mb")}</p>
             </div>
           </div>
         </section>
 
         {/* General Information */}
         <section>
-          <h3 className="text-[15px] font-bold text-slate-800 mb-4 px-1">General Information</h3>
+          <h3 className="text-[15px] font-bold text-slate-800 mb-4 px-1">{t("suppliers.general_information")}</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
-            <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Brand Name</span>} name="brandName" rules={[{ required: true, message: "Brand name is required" }]}>
-              <Input placeholder="Enter brand name" className="rounded-lg h-10 border-slate-200" />
+            <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t("suppliers.brand_name")}</span>} name="brandName" rules={[{ required: true, message: t("audit.brand_name_is_required") }]}>
+              <Input placeholder={t("audit.enter_brand_name")} className="rounded-lg h-10 border-slate-200" />
             </Form.Item>
-            <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Legal Name</span>} name="legalName" rules={[{ required: true, message: "Legal name is required" }]}>
-              <Input placeholder="Enter legal name" className="rounded-lg h-10 border-slate-200" />
+            <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t("suppliers.legal_name")}</span>} name="legalName" rules={[{ required: true, message: t("audit.legal_name_is_required") }]}>
+              <Input placeholder={t("audit.enter_legal_name")} className="rounded-lg h-10 border-slate-200" />
             </Form.Item>
-            <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Tax ID (Codice Fiscale / P.IVA)</span>} name="taxId" rules={[{ required: true, message: "Tax ID is required" }, italianTaxIdRule]}>
-              <Input placeholder="e.g., IT06655971007 or RSSMRA85T10A562S" className="rounded-lg h-10 border-slate-200 font-mono" />
+            <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t("audit.tax_id_codice_fiscale_p_iva")}</span>} name="taxId" rules={[{ required: true, message: t("audit.tax_id_is_required") }, italianTaxIdRule(t)]}>
+              <Input placeholder={t("audit.e_g_it06655971007_or_rssmra85t10a562s")} className="rounded-lg h-10 border-slate-200 font-mono" />
             </Form.Item>
-            <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Commodity</span>} name="commodity" rules={[{ required: true, message: "Select a commodity" }]}>
-              <Select placeholder="Select commodity" className="rounded-lg h-10 border-slate-200" popupClassName="rounded-xl">
-                <Option value="electricity">Electricity</Option>
-                <Option value="gas">Gas</Option>
-                <Option value="dual">Dual</Option>
+            <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t("suppliers.commodity")}</span>} name="commodity" rules={[{ required: true, message: t("audit.select_a_commodity") }]}>
+              <Select placeholder={t("audit.select_a_commodity")} className="rounded-lg h-10 border-slate-200" popupClassName="rounded-xl">
+                <Option value="electricity">{t("service_types.electricity")}</Option>
+                <Option value="gas">{t("service_types.gas")}</Option>
+                <Option value="dual">{t("suppliers.dual")}</Option>
               </Select>
             </Form.Item>
-            <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Status</span>} name="status" rules={[{ required: true, message: "Select a status" }]}>
-              <Select placeholder="Select status" className="rounded-lg h-10 border-slate-200" popupClassName="rounded-xl">
-                <Option value="active">Active</Option>
-                <Option value="warning">Warning</Option>
-                <Option value="inactive">Inactive</Option>
+            <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t("common.status")}</span>} name="status" rules={[{ required: true, message: t("audit.select_a_status") }]}>
+              <Select placeholder={t("audit.select_a_status")} className="rounded-lg h-10 border-slate-200" popupClassName="rounded-xl">
+                <Option value="active">{t("common.active")}</Option>
+                <Option value="inactive">{t("common.inactive")}</Option>
               </Select>
             </Form.Item>
-            <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Website</span>} name="website" rules={[{ type: "url", message: "Enter a valid URL" }]}>
+            <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t("suppliers.website_url")}</span>} name="website" rules={[{ type: "url", message: t("agreements.valid_url") }]}>
               <Input placeholder="https://..." className="rounded-lg h-10 border-slate-200" />
             </Form.Item>
           </div>
@@ -311,47 +281,44 @@ const AddSupplierModal = ({ isOpen, onClose, mode = "add", supplierId, initialVa
 
         {/* Primary Contact */}
         <section>
-          <h3 className="text-[15px] font-bold text-slate-800 mb-4 px-1">Primary Contact</h3>
+          <h3 className="text-[15px] font-bold text-slate-800 mb-4 px-1">{t("suppliers.primary_contact")}</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
-            <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Contact Name</span>} name="contactName" rules={[{ required: true, message: "Contact name is required" }]}>
-              <Input placeholder="Enter contact name" className="rounded-lg h-10 border-slate-200" />
+            <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t("suppliers.contact_name")}</span>} name="contactName" rules={[{ required: true, message: t("audit.contact_name_is_required") }]}>
+              <Input placeholder={t("audit.enter_contact_name")} className="rounded-lg h-10 border-slate-200" />
             </Form.Item>
-            <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Email</span>} name="email" rules={[{ required: true, message: "Email is required" }, { type: "email", message: "Enter a valid email" }]}>
-              <Input placeholder="Enter email" autoComplete="off" className="rounded-lg h-10 border-slate-200" />
+            <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t("auth.email")}</span>} name="email" rules={[{ required: true, message: t("audit.email_is_required") }, { type: "email", message: t("audit.enter_a_valid_email") }]}>
+              <Input placeholder={t("audit.enter_email")} autoComplete="off" className="rounded-lg h-10 border-slate-200" />
             </Form.Item>
-            <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Phone Number</span>} name="phoneNumber" rules={[{ required: true, message: "Phone number is required" }, phoneValidationRule("Enter a valid phone number")]}>
-              <PhoneInput />
+            <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t("suppliers.phone_number")}</span>} name="phoneNumber" rules={[{ required: true, message: t("audit.phone_number_is_required") }, phoneValidationRule(t("suppliers.validation.phone"))]}>
+              <PhoneInput placeholder={t("suppliers.phone_number")} />
             </Form.Item>
           </div>
         </section>
 
         {/* Address */}
         <section>
-          <h3 className="text-[15px] font-bold text-slate-800 mb-4 px-1">Address</h3>
+          <h3 className="text-[15px] font-bold text-slate-800 mb-4 px-1">{t("home.address")}</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
-            <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Street Address</span>} name="streetAddress" className="md:col-span-2" rules={[{ required: true, message: "Street address is required" }]}>
-              <Input placeholder="Enter street address" className="rounded-lg h-10 border-slate-200" />
+            <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t("suppliers.street_address")}</span>} name="streetAddress" className="md:col-span-2" rules={[{ required: true, message: t("audit.street_address_is_required") }]}>
+              <Input placeholder={t("audit.enter_street_address")} className="rounded-lg h-10 border-slate-200" />
             </Form.Item>
-            <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">City</span>} name="city" rules={[{ required: true, message: "City is required" }]}>
-              <Input placeholder="Enter city" className="rounded-lg h-10 border-slate-200" />
+            <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t("suppliers.city")}</span>} name="city" rules={[{ required: true, message: t("audit.city_is_required") }]}>
+              <Input placeholder={t("audit.enter_city")} className="rounded-lg h-10 border-slate-200" />
             </Form.Item>
-            <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Province</span>} name="province" rules={[{ required: true, message: "Province is required" }]}>
-              <Input placeholder="Enter province" className="rounded-lg h-10 border-slate-200" />
+            <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t("suppliers.province")}</span>} name="province" rules={[{ required: true, message: t("audit.province_is_required") }]}>
+              <Input placeholder={t("audit.enter_province")} className="rounded-lg h-10 border-slate-200" />
             </Form.Item>
-            <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">ZIP Code (CAP)</span>} name="zipCode" rules={[{ required: true, message: "ZIP code is required" }, italianZipRule]}>
-              <Input placeholder="e.g., 00198" maxLength={5} className="rounded-lg h-10 border-slate-200" />
+            <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t("audit.zip_code_cap")}</span>} name="zipCode" rules={[{ required: true, message: t("audit.zip_code_is_required") }, italianZipRule(t)]}>
+              <Input placeholder={t("audit.e_g_00198")} maxLength={5} className="rounded-lg h-10 border-slate-200" />
             </Form.Item>
           </div>
         </section>
 
         {/* Billing */}
         <section>
-          <h3 className="text-[15px] font-bold text-slate-800 mb-4 px-1">Billing</h3>
+          <h3 className="text-[15px] font-bold text-slate-800 mb-4 px-1">{t("suppliers.billing")}</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
-            <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">IBAN</span>} name="iban" className="md:col-span-2" rules={[{ required: true, message: "IBAN is required" }, italianIbanRule]}>
-              <Input placeholder="e.g., IT60X0542811101000000123456" className="rounded-lg h-10 border-slate-200 font-mono" />
-            </Form.Item>
-            <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Contract Start Date</span>} name="startDate">
+            <Form.Item label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t("audit.contract_start_date")}</span>} name="startDate">
               <DatePicker className="w-full rounded-lg h-10 border-slate-200" />
             </Form.Item>
           </div>
@@ -359,15 +326,13 @@ const AddSupplierModal = ({ isOpen, onClose, mode = "add", supplierId, initialVa
 
         {/* About Supplier */}
         <section>
-          <h3 className="text-[15px] font-bold text-slate-800 mb-1 px-1">About Supplier</h3>
+          <h3 className="text-[15px] font-bold text-slate-800 mb-1 px-1">{t("audit.about_supplier")}</h3>
           <p className="text-[11px] text-slate-400 mb-4 px-1">
-            Shown to the user in the "About this supplier" section of the utility
-            details screen, above the FAQs. Leave empty to hide it.
-          </p>
+            {t("audit.shown_to_the_user_in_the_about_this_supplier_section_of_the_utility_details_screen_above_the_faqs_leave_empty_to_hide_it")}</p>
           <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-100">
             <Form.Item name="description" className="mb-0">
               <TextArea
-                placeholder="Describe this supplier for the user..."
+                placeholder={t("audit.describe_this_supplier_for_the_user")}
                 rows={4}
                 className="rounded-lg border-slate-200 p-3"
               />
@@ -377,25 +342,24 @@ const AddSupplierModal = ({ isOpen, onClose, mode = "add", supplierId, initialVa
 
         {/* Contract Signing Instructions */}
         <section>
-          <h3 className="text-[15px] font-bold text-slate-800 mb-1 px-1">Contract Signing Instructions</h3>
+          <h3 className="text-[15px] font-bold text-slate-800 mb-1 px-1">{t("audit.contract_signing_instructions")}</h3>
           <p className="text-[11px] text-slate-400 mb-4 px-1">
-            Shown to the user as a "Contract Sign Guideline" section when a contract from this supplier is sent. Leave both empty to hide it.
-          </p>
+            {t("audit.shown_to_the_user_as_a_contract_sign_guideline_section_when_a_contract_from_this_supplier_is_sent_leave_both_empty_to_hide_it")}</p>
           <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-100 space-y-4">
             <Form.Item
-              label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Description</span>}
+              label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t("offers_market.description_label")}</span>}
               name="contractSigningInstructions"
               className="mb-0"
             >
               <TextArea
-                placeholder="Explain how the user should sign this supplier's contract..."
+                placeholder={t("audit.explain_how_the_user_should_sign_this_supplier_s_contract")}
                 rows={4}
                 className="rounded-lg border-slate-200 p-3"
               />
             </Form.Item>
 
             <div>
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Guideline Document</span>
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t("audit.guideline_document")}</span>
               <div className="mt-2 flex items-center gap-4">
                 {signingDocUrl ? (
                   <div className="relative flex items-center gap-3 bg-white border border-slate-200 rounded-xl px-3 py-2 max-w-[320px]">
@@ -406,10 +370,11 @@ const AddSupplierModal = ({ isOpen, onClose, mode = "add", supplierId, initialVa
                       rel="noreferrer"
                       className="text-sm text-slate-700 hover:text-[#7061ED] truncate"
                     >
-                      {signingDocName || "View document"}
+                      {signingDocName || t("suppliers.view_document")}
                     </a>
                     <button
                       type="button"
+                      aria-label={t("suppliers.remove_document")}
                       onClick={() => {
                         setSigningDocUrl(null);
                         setSigningDocName(null);
@@ -435,10 +400,10 @@ const AddSupplierModal = ({ isOpen, onClose, mode = "add", supplierId, initialVa
                       loading={uploadingSigningDoc}
                       className="rounded-lg h-9 border-slate-200"
                     >
-                      {signingDocUrl ? "Replace Document" : "Upload Document"}
+                      {signingDocUrl ? t("offers_market.replace_document") : t("offers_market.upload_document")}
                     </Button>
                   </Upload>
-                  <p className="text-[11px] text-slate-400 mt-1">PDF, JPG, PNG or WebP. Max 10MB.</p>
+                  <p className="text-[11px] text-slate-400 mt-1">{t("audit.pdf_jpg_png_or_webp_max_10mb")}</p>
                 </div>
               </div>
             </div>
@@ -447,11 +412,11 @@ const AddSupplierModal = ({ isOpen, onClose, mode = "add", supplierId, initialVa
 
         {/* Notes */}
         <section>
-          <h3 className="text-[15px] font-bold text-slate-800 mb-4 px-1">Notes</h3>
+          <h3 className="text-[15px] font-bold text-slate-800 mb-4 px-1">{t("suppliers.notes")}</h3>
           <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-100">
             <Form.Item name="notes" className="mb-0">
               <TextArea
-                placeholder="Write Some Notes....."
+                placeholder={t("audit.write_some_notes")}
                 rows={4}
                 className="rounded-lg border-slate-200 p-3"
               />
@@ -467,7 +432,7 @@ const AddSupplierModal = ({ isOpen, onClose, mode = "add", supplierId, initialVa
             loading={isCreating || isUpdating}
             className="bg-[#8b85f6] hover:bg-[#7a74e5] h-12 rounded-xl text-base font-bold border-0 shadow-lg shadow-indigo-100"
           >
-            {isEdit ? "Save Changes" : "Add Supplier"}
+            {isEdit ? t("common.save_changes") : t("suppliers.add_supplier")}
           </Button>
         </div>
       </Form>
