@@ -94,19 +94,20 @@ const AddSupplierModal = ({ isOpen, onClose, mode = "add", supplierId, initialVa
     return {
       ok: res.ok,
       url: (result?.data?.url || result?.url) as string | undefined,
-      error: result?.message || result?.data?.message,
+      // Shaped like an RTK Query error so getApiErrorMessage can say why.
+      error: { status: res.status, data: result },
     };
   };
 
   const handleLogoUpload = async (file: File) => {
     setUploadingLogo(true);
     try {
-      const { ok, url } = await uploadToServer(file);
+      const { ok, url, error } = await uploadToServer(file);
       if (ok && url) {
         setLogoUrl(url);
         message.success(t("audit.icon_uploaded_successfully"));
       } else {
-        message.error(t("offers_market.upload_failed"));
+        message.error(getApiErrorMessage(error, t("offers_market.upload_failed")));
       }
     } catch {
       message.error(t("offers_market.upload_failed"));
@@ -119,13 +120,13 @@ const AddSupplierModal = ({ isOpen, onClose, mode = "add", supplierId, initialVa
   const handleSigningDocUpload = async (file: File) => {
     setUploadingSigningDoc(true);
     try {
-      const { ok, url } = await uploadToServer(file);
+      const { ok, url, error } = await uploadToServer(file);
       if (ok && url) {
         setSigningDocUrl(url);
         setSigningDocName(file.name);
         message.success(t("offers_market.upload_success"));
       } else {
-        message.error(t("offers_market.upload_failed"));
+        message.error(getApiErrorMessage(error, t("offers_market.upload_failed")));
       }
     } catch {
       message.error(t("offers_market.upload_failed"));

@@ -648,12 +648,9 @@ const BillRequestDetailView = () => {
     const result = await sendSelectedOffers({ billId: bill.id, offers: offersPayload });
 
     if ("error" in result) {
-      const errData = (result.error as { data?: { message?: string | string[] } })?.data;
-      const msg = errData?.message;
-      const errorText = Array.isArray(msg) ? msg.join(", ") : typeof msg === "string" ? msg : "Failed to send offers";
       notification.error({
         message: i18n.t("audit.cannot_send_offers"),
-        description: errorText,
+        description: getApiErrorMessage(result.error),
         duration: 6,
       });
     } else {
@@ -3454,6 +3451,9 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
   const handleMultiUpload = async (fileList: File[]) => {
     setUploading(true);
     let successCount = 0;
+    // The last reason a file was refused (too large, wrong type...), so a
+    // total failure can say why instead of only that it failed.
+    let lastError: unknown;
     for (const file of fileList) {
       try {
         const formData = new FormData();
@@ -3473,16 +3473,19 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
             fileName: file.name,
           }).unwrap();
           successCount++;
+        } else {
+          lastError = { status: res.status, data: result };
         }
-      } catch {
+      } catch (err) {
         // continue with remaining files
+        lastError = err;
       }
     }
     setUploading(false);
     if (successCount > 0) {
       message.success(i18n.t("audit.documents_uploaded", { count: successCount }));
     } else {
-      message.error(i18n.t("audit.failed_to_upload_documents"));
+      message.error(getApiErrorMessage(lastError, i18n.t("audit.failed_to_upload_documents")));
     }
   };
 
