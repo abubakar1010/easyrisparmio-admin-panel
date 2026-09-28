@@ -55,6 +55,7 @@ export interface ICaseOffer {
   /** What a variable or indexed offer quotes instead of a price of its own. */
   spread?: number | null;
   fixedMonthlyFee?: number | null;
+  contractDurationMonths?: number | null;
   contractDurationDays?: number | null;
   isGreenEnergy?: boolean;
   supplier?: { id: string; name: string };

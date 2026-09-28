@@ -1,9 +1,12 @@
+import { getApiErrorMessage } from "../../utils/apiError";
+import { getLocale } from "../../utils/format";
 import { Table, Button, Tag, Space, Input, Select, Card, Spin, Empty, Modal, Dropdown, Tooltip, message } from "antd";
 import { FiPlus, FiSearch, FiEdit2, FiEye, FiMoreVertical } from "react-icons/fi";
 import { LuTrendingUp, LuTag, LuLeaf } from "react-icons/lu";
 import type { ColumnsType } from "antd/es/table";
 import type { MenuProps } from "antd";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import dayjs from "dayjs";
 import { useNavigate } from "react-router";
 import { CreateOfferModal } from "./components/CreateOfferModal";
@@ -17,6 +20,7 @@ import {
 } from "../../redux/features/Offers/offerApi";
 import { debounce } from "../../utils/debounce";
 import { formatMoney } from "../../utils/format";
+import { toContractDurationFormValue } from "../../utils/contractDuration";
 
 const { Option } = Select;
 
@@ -30,20 +34,20 @@ const statusDot: Record<string, string> = {
 
 const BASE_STATUS_TRANSITIONS: Record<string, { value: string; label: string }[]> = {
   draft: [
-    { value: "active", label: "Activate" },
-    { value: "archived", label: "Archive" },
+    { value: "active", label: "activate" },
+    { value: "archived", label: "archive" },
   ],
   active: [
-    { value: "expiring", label: "Mark Expiring" },
-    { value: "archived", label: "Archive" },
+    { value: "expiring", label: "mark_expiring" },
+    { value: "archived", label: "archive" },
   ],
   expiring: [
-    { value: "expired", label: "Mark Expired" },
-    { value: "archived", label: "Archive" },
+    { value: "expired", label: "mark_expired" },
+    { value: "archived", label: "archive" },
   ],
-  expired: [{ value: "archived", label: "Archive" }],
+  expired: [{ value: "archived", label: "archive" }],
   // Archiving retires an offer from the catalogue, it does not destroy it.
-  archived: [{ value: "active", label: "Restore" }],
+  archived: [{ value: "active", label: "restore" }],
 };
 
 /** Returns available status transitions for an offer, considering acceptance state. */
@@ -56,12 +60,13 @@ const getStatusTransitions = (offer: IOffer) => {
     (offer.offerStatus === "active" || offer.offerStatus === "archived") &&
     !offer.hasAcceptedCases;
   if (canReturnToDraft) {
-    transitions.unshift({ value: "draft", label: "Back to Draft" });
+    transitions.unshift({ value: "draft", label: "back_to_draft" });
   }
   return transitions;
 };
 
 const OffersMarket = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [createOfferOpen, setCreateOfferOpen] = useState(false);
   const [editOfferOpen, setEditOfferOpen] = useState(false);
@@ -119,7 +124,7 @@ const OffersMarket = () => {
     pricePerKwh: cleanDecimal(offer.pricePerKwh),
     pricePerSmc: cleanDecimal(offer.pricePerSmc),
     spread: cleanDecimal(offer.spread),
-    contractDurationDays: offer.contractDurationDays,
+    contractDuration: toContractDurationFormValue(offer.contractDurationMonths),
     isGreenEnergy: offer.isGreenEnergy,
     validFrom: offer.validFrom ? dayjs(offer.validFrom) : undefined,
     validity: offer.validUntil ? dayjs(offer.validUntil) : undefined,
@@ -134,49 +139,40 @@ const OffersMarket = () => {
 
   const handleDelete = (offer: IOffer) => {
     Modal.confirm({
-      title: `Delete "${offer.name}"?`,
+      title: t("offers_market.delete_confirm_title", { name: offer.name }),
       icon: null,
       width: 500,
       centered: true,
       content: (
         <div className="mt-2 space-y-3">
           <p className="text-sm text-slate-600">
-            Please review the following consequences before proceeding:
+            {t("offers_market.delete_confirm_intro")}
           </p>
           <ul className="list-disc space-y-1.5 pl-5 text-sm text-slate-600">
             <li>
-              This offer will be <strong>permanently removed</strong> from all
-              listings and can no longer be sent to users.
+              {t("offers_market.delete_confirm_item_1")}
             </li>
             <li>
-              If this offer has <strong>active contracts</strong>, the deletion
-              will be <strong>blocked</strong> — you must wait for contracts to
-              expire or cancel them first.
+              {t("offers_market.delete_confirm_item_2")}
             </li>
             <li>
-              If this offer has <strong>cases in progress</strong> (New, In
-              Progress, Documents Pending, Contract Sent, or Contract Signed),
-              the deletion will be <strong>blocked</strong>.
+              {t("offers_market.delete_confirm_item_3")}
             </li>
             <li>
-              Users who previously received this offer will still see their{" "}
-              <strong>historical records</strong>, but the offer details will no
-              longer be accessible.
+              {t("offers_market.delete_confirm_item_4")}
             </li>
           </ul>
         </div>
       ),
-      okText: "Yes, Delete Offer",
-      cancelText: "Cancel",
+      okText: t("offers_market.delete_offer_confirm"),
+      cancelText: t("common.cancel"),
       okButtonProps: { danger: true },
       onOk: async () => {
         try {
           await deleteOffer(offer.id).unwrap();
-          message.success("Offer deleted successfully");
+          message.success(t("offers_market.offer_deleted"));
         } catch (err: any) {
-          const msg = Array.isArray(err?.data?.message)
-            ? err.data.message[0]
-            : err?.data?.message || "Failed to delete offer";
+          const msg = getApiErrorMessage(err, t("offers_market.delete_failed"));
           message.error(msg);
         }
       },
@@ -184,19 +180,19 @@ const OffersMarket = () => {
   };
 
   const handleStatusChange = (offer: IOffer, newStatus: string) => {
-    const label =
-      getStatusTransitions(offer).find((t) => t.value === newStatus)?.label || newStatus;
+    const transitionKey = getStatusTransitions(offer).find((t) => t.value === newStatus)?.label;
+    const label = transitionKey ? t(`offers_market.${transitionKey}`) : t(`offers_market.${newStatus}`);
     Modal.confirm({
-      title: `${label} offer?`,
-      content: `Change "${offer.name}" status from "${offer.offerStatus}" to "${newStatus}".`,
+      title: t("offers_market.change_status_title", { action: label }),
+      content: t("offers_market.change_status_content", { name: offer.name, from: t(`offers_market.${offer.offerStatus}`), to: t(`offers_market.${newStatus}`) }),
       okText: label,
       centered: true,
       onOk: async () => {
         try {
           await updateStatus({ id: offer.id, offerStatus: newStatus }).unwrap();
-          message.success(`Offer status changed to ${newStatus}`);
+          message.success(t("offers_market.status_changed", { status: t(`offers_market.${newStatus}`) }));
         } catch {
-          message.error("Failed to update offer status");
+          message.error(t("offers_market.status_update_failed"));
         }
       },
     });
@@ -211,20 +207,20 @@ const OffersMarket = () => {
       render: (v) => v || "—",
     },
     {
-      title: "NAME",
+      title: t("notification_templates.name").toUpperCase(),
       dataIndex: "name",
       key: "name",
       render: (text) => <span className="font-bold text-slate-800">{text}</span>,
     },
     {
-      title: "SUPPLIER",
+      title: t("offers_market.supplier"),
       key: "supplier",
       className: "text-slate-500",
       responsive: ["md"],
       render: (_, record) => record.supplier?.name || "—",
     },
     {
-      title: "COMMODITY",
+      title: t("offers_market.commodity").toUpperCase(),
       dataIndex: "energyType",
       key: "energyType",
       render: (type: string) => (
@@ -237,20 +233,20 @@ const OffersMarket = () => {
               : "bg-purple-50 text-purple-600"
           }`}
         >
-          {type}
+          {t(`offers_market.${type}`)}
         </Tag>
       ),
       align: "center",
     },
     {
-      title: "PRICE TYPE",
+      title: t("offers_market.price_type"),
       dataIndex: "marketType",
       key: "marketType",
       className: "text-slate-500 capitalize",
       responsive: ["lg"],
     },
     {
-      title: "PAYMENT METHOD",
+      title: t("offers_market.payment_method"),
       dataIndex: "paymentMethod",
       key: "paymentMethod",
       className: "text-slate-500",
@@ -258,7 +254,7 @@ const OffersMarket = () => {
       render: (val: OfferPaymentMethod) => PAYMENT_METHOD_LABELS[val] || "—",
     },
     {
-      title: "ACTIVATION COST",
+      title: t("offers_market.activation_cost"),
       dataIndex: "activationCost",
       key: "activationCost",
       render: (val) => (
@@ -268,7 +264,7 @@ const OffersMarket = () => {
       ),
     },
     {
-      title: "COMPENSATION",
+      title: t("offers_market.compensation"),
       dataIndex: "compensation",
       key: "compensation",
       className: "text-slate-600",
@@ -277,41 +273,41 @@ const OffersMarket = () => {
       ),
     },
     {
-      title: "VALIDITY",
+      title: t("offers_market.validity"),
       dataIndex: "validUntil",
       key: "validUntil",
       className: "text-slate-500",
       responsive: ["md"],
-      render: (v) => (v ? new Date(v).toLocaleDateString("it-IT") : "—"),
+      render: (v) => (v ? new Date(v).toLocaleDateString(getLocale()) : "—"),
     },
     {
-      title: "STATUS",
+      title: t("common.status").toUpperCase(),
       dataIndex: "offerStatus",
       key: "offerStatus",
       render: (status: string) => (
         <span className="flex items-center gap-2">
           <span className={`h-2 w-2 rounded-full ${statusDot[status] || "bg-slate-300"}`} />
-          <span className="text-sm font-medium text-slate-600 capitalize">{status}</span>
+          <span className="text-sm font-medium text-slate-600">{t(`offers_market.${status}`)}</span>
         </span>
       ),
     },
     {
-      title: "ACTIONS",
+      title: t("common.actions").toUpperCase(),
       key: "action",
       width: 140,
       render: (_, record) => {
         const transitions = getStatusTransitions(record);
         const isImmutable = record.offerStatus !== "draft" && !!record.hasAcceptedCases;
         const menuItems: MenuProps["items"] = [
-          ...transitions.map((t) => ({
-            key: t.value,
-            label: t.label,
-            onClick: () => handleStatusChange(record, t.value),
+          ...transitions.map((transition) => ({
+            key: transition.value,
+            label: t(`offers_market.${transition.label}`),
+            onClick: () => handleStatusChange(record, transition.value),
           })),
           ...(transitions.length > 0 ? [{ type: "divider" as const }] : []),
           {
             key: "delete",
-            label: "Delete",
+            label: t("common.delete"),
             danger: true,
             onClick: () => handleDelete(record),
           },
@@ -319,7 +315,7 @@ const OffersMarket = () => {
 
         return (
           <Space size={2} onClick={(e) => e.stopPropagation()}>
-            <Tooltip title="View details">
+            <Tooltip title={t("offers_market.view_details")}>
               <Button
                 type="text"
                 size="small"
@@ -327,7 +323,7 @@ const OffersMarket = () => {
                 onClick={() => handleViewDetails(record)}
               />
             </Tooltip>
-            <Tooltip title={isImmutable ? "Offer accepted by users — fields locked" : "Edit"}>
+            <Tooltip title={isImmutable ? t("audit.offer_fields_locked") : t("common.edit")}>
               <Button
                 type="text"
                 size="small"
@@ -355,8 +351,8 @@ const OffersMarket = () => {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Offers & Market</h1>
-          <p className="text-sm text-slate-500 mt-1">Manage available offers and pricing</p>
+          <h1 className="text-2xl font-bold text-slate-800">{t("offers_market.title")}</h1>
+          <p className="text-sm text-slate-500 mt-1">{t("offers_market.description")}</p>
         </div>
         <Button
           type="primary"
@@ -364,17 +360,17 @@ const OffersMarket = () => {
           className="bg-[#8b85f6] hover:bg-[#7a74e5] rounded-lg h-10 px-6 font-bold border-0 shadow-sm"
           onClick={() => setCreateOfferOpen(true)}
         >
-          Create Offer
+          {t("offers_market.create_offer")}
         </Button>
       </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { title: "Total Offers", value: String(totalOffers), icon: <LuTag className="h-6 w-6" />, color: "bg-blue-50 text-blue-500" },
-          { title: "Active", value: String(activeCount), icon: <LuLeaf className="h-6 w-6" />, color: "bg-emerald-50 text-emerald-500" },
-          { title: "Avg Activation Cost", value: "—", icon: <LuLeaf className="h-6 w-6" />, color: "bg-emerald-50 text-emerald-500" },
-          { title: "Suppliers", value: String(new Set(offers.map((o) => o.supplierId)).size), icon: <LuTrendingUp className="h-6 w-6" />, color: "bg-purple-50 text-purple-500" },
+          { title: t("offers_market.total_offers"), value: String(totalOffers), icon: <LuTag className="h-6 w-6" />, color: "bg-blue-50 text-blue-500" },
+          { title: t("offers_market.active"), value: String(activeCount), icon: <LuLeaf className="h-6 w-6" />, color: "bg-emerald-50 text-emerald-500" },
+          { title: t("offers_market.avg_activation_cost"), value: "—", icon: <LuLeaf className="h-6 w-6" />, color: "bg-emerald-50 text-emerald-500" },
+          { title: t("suppliers.title"), value: String(new Set(offers.map((o) => o.supplierId)).size), icon: <LuTrendingUp className="h-6 w-6" />, color: "bg-purple-50 text-purple-500" },
         ].map((kpi, idx) => (
           <Card key={idx} className="border-slate-100 shadow-sm rounded-2xl overflow-hidden [&_.ant-card-body]:p-5">
             <div className="flex items-center gap-4">
@@ -395,7 +391,7 @@ const OffersMarket = () => {
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-white p-4">
           <div className="w-full min-w-0 flex-1 sm:min-w-[280px]">
             <Input
-              placeholder="Search offers by name or code..."
+              placeholder={t("offers_market.search_offers")}
               prefix={<FiSearch className="text-slate-400 mr-2" />}
               onChange={(e) => handleSearch(e.target.value)}
               className="h-11 rounded-xl border-slate-200 hover:border-indigo-400 focus:border-indigo-400 shadow-sm"
@@ -404,40 +400,40 @@ const OffersMarket = () => {
           <div className="grid w-full grid-cols-1 gap-2 sm:w-auto sm:grid-cols-[auto_auto_auto] sm:gap-3">
             <Select
               allowClear
-              placeholder="Commodity"
+              placeholder={t("offers_market.commodity")}
               onChange={(v) => { setEnergyType(v); setPage(1); }}
               style={{ height: "44px" }}
               className="w-full sm:w-36 [&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-xl [&_.ant-select-selector]:border-slate-200"
             >
-              <Option value="electricity">Electricity</Option>
-              <Option value="gas">Gas</Option>
-              <Option value="dual">Dual</Option>
+              <Option value="electricity">{t("offers_market.electricity")}</Option>
+              <Option value="gas">{t("offers_market.gas")}</Option>
+              <Option value="dual">{t("offers_market.dual")}</Option>
             </Select>
             <Select
               allowClear
-              placeholder="Status"
+              placeholder={t("common.status")}
               onChange={(v) => { setOfferStatus(v); setPage(1); }}
               style={{ height: "44px" }}
               className="w-full sm:w-32 [&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-xl [&_.ant-select-selector]:border-slate-200"
             >
-              <Option value="active">Active</Option>
-              <Option value="expiring">Expiring</Option>
-              <Option value="draft">Draft</Option>
-              <Option value="expired">Expired</Option>
-              <Option value="archived">Archived</Option>
+              <Option value="active">{t("offers_market.active")}</Option>
+              <Option value="expiring">{t("offers_market.expiring")}</Option>
+              <Option value="draft">{t("offers_market.draft")}</Option>
+              <Option value="expired">{t("offers_market.expired")}</Option>
+              <Option value="archived">{t("offers_market.archived")}</Option>
             </Select>
             {/* Direct Debit / Postal Order also match offers accepting both;
                 Both narrows to offers that accept both. */}
             <Select
               allowClear
-              placeholder="Payment Method"
+              placeholder={t("offers_market.payment_method")}
               onChange={(v) => { setPaymentMethod(v); setPage(1); }}
               style={{ height: "44px" }}
               className="w-full sm:w-44 [&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-xl [&_.ant-select-selector]:border-slate-200"
             >
-              <Option value="direct_debit">Direct Debit</Option>
-              <Option value="postal_order">Postal Order</Option>
-              <Option value="both">Both</Option>
+              <Option value="direct_debit">{t("offers_market.direct_debit")}</Option>
+              <Option value="postal_order">{t("offers_market.postal_order")}</Option>
+              <Option value="both">{t("offers_market.both")}</Option>
             </Select>
           </div>
         </div>
@@ -448,7 +444,7 @@ const OffersMarket = () => {
           </div>
         ) : offers.length === 0 ? (
           <div className="py-24">
-            <Empty description="No offers found" />
+            <Empty description={t("offers_market.no_offers_found")} />
           </div>
         ) : (
           <Table<IOffer>

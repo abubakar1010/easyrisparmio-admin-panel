@@ -25,6 +25,9 @@ export interface IOffer {
   spread: number | null;
   fixedMonthlyFee: number;
   activationCost: number;
+  /** Months the conditions hold after activation; null = indefinite. Not the validity window. */
+  contractDurationMonths: number | null;
+  /** Legacy days equivalent of `contractDurationMonths` (0 = indefinite). */
   contractDurationDays: number;
   isGreenEnergy: boolean;
   isActive: boolean;
@@ -79,7 +82,8 @@ export interface ICreateOffer {
   spread?: number;
   fixedMonthlyFee?: number;
   activationCost?: number;
-  contractDurationDays: number;
+  /** null = indefinite. */
+  contractDurationMonths: number | null;
   isGreenEnergy?: boolean;
   validFrom: string;
   validUntil?: string;

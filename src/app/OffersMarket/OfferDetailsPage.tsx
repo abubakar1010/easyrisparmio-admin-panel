@@ -1,13 +1,17 @@
+import i18n from "../../i18n";
+import { getLocale } from "../../utils/format";
 import { Button, Empty, Spin, Tag } from "antd";
 import { FiArrowLeft, FiExternalLink } from "react-icons/fi";
 import { LuDownload, LuLeaf, LuMail, LuPhone, LuUser, LuGlobe } from "react-icons/lu";
 import { useNavigate, useParams } from "react-router";
+import { useTranslation } from "react-i18next";
 import { server_origin } from "../../config";
 import {
   PAYMENT_METHOD_LABELS,
   useGetOfferByIdQuery,
 } from "../../redux/features/Offers/offerApi";
 import { formatMoney, formatUnitPrice } from "../../utils/format";
+import { formatContractDuration } from "../../utils/contractDuration";
 
 const statusColors: Record<string, { bg: string; text: string; dot: string }> = {
   active: { bg: "bg-emerald-50", text: "text-emerald-700", dot: "bg-emerald-500" },
@@ -38,17 +42,10 @@ const InfoRow = ({ label, value, icon }: { label: string; value: React.ReactNode
 );
 
 const formatDate = (date: string | null | undefined) =>
-  date ? new Date(date).toLocaleDateString("it-IT") : "\u2014";
-
-const formatDuration = (days: number) => {
-  if (days >= 30) {
-    const months = Math.floor(days / 30);
-    return `${months} month${months !== 1 ? "s" : ""}`;
-  }
-  return `${days} day${days !== 1 ? "s" : ""}`;
-};
+  date ? new Date(date).toLocaleDateString(getLocale()) : "\u2014";
 
 const OfferDetailsPage = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { offerId } = useParams();
   const { data: detail, isLoading } = useGetOfferByIdQuery(offerId!, { skip: !offerId });
@@ -64,9 +61,9 @@ const OfferDetailsPage = () => {
   if (!detail) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-24">
-        <Empty description="Offer not found" />
+        <Empty description={t("offers_market.offer_not_found")} />
         <Button onClick={() => navigate("/offers-market")} icon={<FiArrowLeft />} className="rounded-lg">
-          Back to Offers
+          {t("offers_market.back_to_offers")}
         </Button>
       </div>
     );
@@ -83,7 +80,7 @@ const OfferDetailsPage = () => {
         icon={<FiArrowLeft />}
         onClick={() => navigate("/offers-market")}
       >
-        Back to Offers
+        {t("offers_market.back_to_offers")}
       </Button>
 
       {/* Header */}
@@ -97,7 +94,7 @@ const OfferDetailsPage = () => {
               <h1 className="text-2xl font-bold text-slate-800">{detail.name}</h1>
               <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-0.5 text-[10px] font-bold capitalize ${sc.bg} ${sc.text}`}>
                 <span className={`h-1.5 w-1.5 rounded-full ${sc.dot}`} />
-                {detail.offerStatus}
+                {t(`offers_market.${detail.offerStatus}`)}
               </span>
             </div>
             <div className="mt-0.5 flex flex-wrap items-center gap-2 text-sm text-slate-500">
@@ -121,16 +118,16 @@ const OfferDetailsPage = () => {
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {[
           {
-            label: "Commodity",
+            label: t("offers_market.commodity"),
             value: (
               <Tag className={`mt-0.5 border-0 rounded font-bold text-[10px] px-2 py-0 uppercase ${energyTagColor[detail.energyType] || ""}`}>
-                {detail.energyType}
+                {t(`offers_market.${detail.energyType}`)}
               </Tag>
             ),
           },
-          { label: "Market Type", value: <span className="capitalize">{detail.marketType}</span> },
-          { label: "Contract Duration", value: formatDuration(detail.contractDurationDays) },
-          { label: "Target", value: <span className="capitalize">{detail.target}</span> },
+          { label: t("offers_market.market_type"), value: <span>{t(`offers_market.price_${detail.marketType}`)}</span> },
+          { label: t("offers_market.contract_duration"), value: formatContractDuration(detail) },
+          { label: t("offers_market.target"), value: <span>{t(`offers_market.${detail.target}`)}</span> },
         ].map((c) => (
           <div key={c.label} className="rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm">
             <p className="text-xs text-slate-400">{c.label}</p>
@@ -143,19 +140,19 @@ const OfferDetailsPage = () => {
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         {/* Pricing */}
         <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
-          <h3 className="mb-4 text-base font-semibold text-slate-800">Pricing</h3>
+          <h3 className="mb-4 text-base font-semibold text-slate-800">{t("offers_market.pricing")}</h3>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <InfoRow label="Fixed Monthly Fee" value={formatMoney(detail.fixedMonthlyFee)} />
-            <InfoRow label="Activation Cost" value={formatMoney(detail.activationCost)} />
+            <InfoRow label={t("offers_market.fixed_monthly_fee")} value={formatMoney(detail.fixedMonthlyFee)} />
+            <InfoRow label={t("offers_market.activation_cost")} value={formatMoney(detail.activationCost)} />
             {detail.marketType === "variable" || detail.marketType === "indexed" ? (
-              <InfoRow label="Spread" value={formatUnitPrice(detail.spread)} />
+              <InfoRow label={t("offers_market.spread")} value={formatUnitPrice(detail.spread)} />
             ) : (
               <>
                 {(detail.energyType === "electricity" || detail.energyType === "dual") && (
-                  <InfoRow label="Price / kWh" value={formatUnitPrice(detail.pricePerKwh)} />
+                  <InfoRow label={t("offers_market.price_per_kwh")} value={formatUnitPrice(detail.pricePerKwh)} />
                 )}
                 {(detail.energyType === "gas" || detail.energyType === "dual") && (
-                  <InfoRow label="Price / SMc" value={formatUnitPrice(detail.pricePerSmc)} />
+                  <InfoRow label={t("offers_market.price_per_smc")} value={formatUnitPrice(detail.pricePerSmc)} />
                 )}
               </>
             )}
@@ -164,26 +161,26 @@ const OfferDetailsPage = () => {
 
         {/* Contract & Validity */}
         <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
-          <h3 className="mb-4 text-base font-semibold text-slate-800">Contract & Validity</h3>
+          <h3 className="mb-4 text-base font-semibold text-slate-800">{t("offers_market.contract_validity")}</h3>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <InfoRow label="Valid From" value={formatDate(detail.validFrom)} />
-            <InfoRow label="Valid Until" value={formatDate(detail.validUntil)} />
-            <InfoRow label="Contract Duration" value={formatDuration(detail.contractDurationDays)} />
+            <InfoRow label={t("offers_market.valid_from")} value={formatDate(detail.validFrom)} />
+            <InfoRow label={t("offers_market.valid_until")} value={formatDate(detail.validUntil)} />
+            <InfoRow label={t("offers_market.contract_duration")} value={formatContractDuration(detail)} />
             <InfoRow
-              label="Green Energy"
+              label={t("offers_market.green_energy")}
               value={
                 detail.isGreenEnergy ? (
                   <span className="inline-flex items-center gap-1 text-emerald-600">
-                    <LuLeaf className="h-3.5 w-3.5" /> Yes
+                    <LuLeaf className="h-3.5 w-3.5" /> {t("common.yes")}
                   </span>
                 ) : (
-                  "No"
+                  t("common.no")
                 )
               }
             />
-            <InfoRow label="Version" value={detail.version} />
+            <InfoRow label={t("offers_market.version")} value={detail.version} />
             <InfoRow
-              label="Payment Method"
+              label={t("offers_market.payment_method")}
               value={PAYMENT_METHOD_LABELS[detail.paymentMethod] || "—"}
             />
           </div>
@@ -191,10 +188,10 @@ const OfferDetailsPage = () => {
 
         {/* Documents & Links */}
         <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
-          <h3 className="mb-4 text-base font-semibold text-slate-800">Documents & Links</h3>
+          <h3 className="mb-4 text-base font-semibold text-slate-800">{t("offers_market.documents_links")}</h3>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <InfoRow
-              label="Terms & Conditions"
+              label={t("offers_market.terms_conditions")}
               value={
                 detail.termsUrl ? (
                   <a
@@ -207,13 +204,13 @@ const OfferDetailsPage = () => {
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 text-indigo-500 hover:text-indigo-600"
                   >
-                    View & Download <LuDownload className="h-3 w-3" />
+                    {t("offers_market.view_download")} <LuDownload className="h-3 w-3" />
                   </a>
                 ) : null
               }
             />
             <InfoRow
-              label="Economic Conditions"
+              label={t("offers_market.economic_conditions")}
               value={
                 detail.economicConditionsUrl ? (
                   <a
@@ -226,7 +223,7 @@ const OfferDetailsPage = () => {
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 text-indigo-500 hover:text-indigo-600"
                   >
-                    View & Download <LuDownload className="h-3 w-3" />
+                    {t("offers_market.view_download")} <LuDownload className="h-3 w-3" />
                   </a>
                 ) : null
               }
@@ -238,34 +235,34 @@ const OfferDetailsPage = () => {
         {supplier && (
           <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-base font-semibold text-slate-800">Supplier Details</h3>
+              <h3 className="text-base font-semibold text-slate-800">{t("offers_market.supplier_details")}</h3>
               <Button
                 type="link"
                 size="small"
                 className="text-indigo-500 hover:text-indigo-600 p-0 h-auto"
                 onClick={() => navigate(`/suppliers/${supplier.id}`)}
               >
-                View Full Profile <FiExternalLink className="ml-1 inline h-3 w-3" />
+                {t("offers_market.view_full_profile")} <FiExternalLink className="ml-1 inline h-3 w-3" />
               </Button>
             </div>
             <div className="space-y-4">
-              <InfoRow icon={<LuUser className="h-4 w-4" />} label="Supplier Name" value={supplier.name} />
+              <InfoRow icon={<LuUser className="h-4 w-4" />} label={t("offers_market.supplier_name")} value={supplier.name} />
               {supplier.legalName && (
-                <InfoRow icon={<LuUser className="h-4 w-4" />} label="Legal Name" value={supplier.legalName} />
+                <InfoRow icon={<LuUser className="h-4 w-4" />} label={t("offers_market.legal_name")} value={supplier.legalName} />
               )}
               {supplier.contactName && (
-                <InfoRow icon={<LuUser className="h-4 w-4" />} label="Contact Person" value={supplier.contactName} />
+                <InfoRow icon={<LuUser className="h-4 w-4" />} label={t("offers_market.contact_person")} value={supplier.contactName} />
               )}
               {supplier.contactEmail && (
                 <InfoRow icon={<LuMail className="h-4 w-4" />} label="Email" value={supplier.contactEmail} />
               )}
               {supplier.contactPhone && (
-                <InfoRow icon={<LuPhone className="h-4 w-4" />} label="Phone" value={supplier.contactPhone} />
+                <InfoRow icon={<LuPhone className="h-4 w-4" />} label={t("home.phone")} value={supplier.contactPhone} />
               )}
               {supplier.website && (
                 <InfoRow
                   icon={<LuGlobe className="h-4 w-4" />}
-                  label="Website"
+                  label={i18n.t("suppliers.website_url")}
                   value={
                     <a href={supplier.website} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-indigo-500 hover:text-indigo-600">
                       {supplier.website.replace(/^https?:\/\//, "")} <FiExternalLink className="h-3 w-3" />
@@ -281,7 +278,7 @@ const OfferDetailsPage = () => {
       {/* Compensation */}
       {detail.compensation && (
         <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
-          <h3 className="mb-3 text-base font-semibold text-slate-800">Compensation</h3>
+          <h3 className="mb-3 text-base font-semibold text-slate-800">{t("offers_market.compensation")}</h3>
           <p className="text-sm leading-relaxed text-slate-600">{detail.compensation}</p>
         </div>
       )}
@@ -289,7 +286,7 @@ const OfferDetailsPage = () => {
       {/* Highlights */}
       {detail.highlights && detail.highlights.length > 0 && (
         <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
-          <h3 className="mb-3 text-base font-semibold text-slate-800">Highlights</h3>
+          <h3 className="mb-3 text-base font-semibold text-slate-800">{t("offers_market.highlights")}</h3>
           <div className="flex flex-wrap gap-2">
             {detail.highlights.map((h, i) => (
               <Tag key={i} className="rounded-full border-slate-200 px-3 py-1 text-xs text-slate-600">
@@ -303,15 +300,15 @@ const OfferDetailsPage = () => {
       {/* Description */}
       {detail.description && (
         <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
-          <h3 className="mb-3 text-base font-semibold text-slate-800">Description</h3>
+          <h3 className="mb-3 text-base font-semibold text-slate-800">{t("offers_market.description_label")}</h3>
           <p className="text-sm leading-relaxed text-slate-600">{detail.description}</p>
         </div>
       )}
 
       {/* Timestamps */}
       <div className="flex flex-wrap gap-6 text-[11px] text-slate-400 px-1">
-        <span>Created: {formatDate(detail.createdAt)}</span>
-        <span>Updated: {formatDate(detail.updatedAt)}</span>
+        <span>{t("offers_market.created")}: {formatDate(detail.createdAt)}</span>
+        <span>{t("offers_market.updated")}: {formatDate(detail.updatedAt)}</span>
       </div>
     </div>
   );

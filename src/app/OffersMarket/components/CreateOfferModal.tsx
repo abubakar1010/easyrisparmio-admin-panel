@@ -1,6 +1,9 @@
+import i18n from "../../../i18n";
+import { getApiErrorMessage } from "../../../utils/apiError";
 import { Alert, Button, DatePicker, Form, Input, Modal, Select, Switch, Upload, message } from "antd";
 import dayjs from "dayjs";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { LuUpload, LuFile, LuTrash2 } from "react-icons/lu";
 import {
   PAYMENT_METHOD_OPTIONS,
@@ -9,16 +12,23 @@ import {
 } from "../../../redux/features/Offers/offerApi";
 import { useGetSuppliersQuery } from "../../../redux/features/Suppliers/supplierApi";
 import { server_origin } from "../../../config";
+import {
+  CONTRACT_DURATION_MONTH_OPTIONS,
+  INDEFINITE_DURATION,
+  formatMonths,
+  fromContractDurationFormValue,
+  type ContractDurationFormValue,
+} from "../../../utils/contractDuration";
 
-const numericRule = (fieldLabel: string, maxDecimals?: number) => [
+const numericRule = (t: (key: string, values?: Record<string, unknown>) => string, fieldLabel: string, maxDecimals?: number) => [
   {
     validator: (_: unknown, value: string) => {
-      if (!value && value !== "0") return Promise.reject(`Please enter ${fieldLabel}`);
-      if (!/^\d+(\.\d+)?$/.test(value)) return Promise.reject(`Please enter a valid ${fieldLabel}`);
+      if (!value && value !== "0") return Promise.reject(t("offers_market.required", { field: fieldLabel }));
+      if (!/^\d+(\.\d+)?$/.test(value)) return Promise.reject(t("offers_market.valid_number", { field: fieldLabel }));
       if (maxDecimals !== undefined && value.includes(".")) {
         const decimals = value.split(".")[1]?.length || 0;
         if (decimals > maxDecimals)
-          return Promise.reject(`${fieldLabel} allows up to ${maxDecimals} decimal places`);
+          return Promise.reject(t("offers_market.max_decimals", { field: fieldLabel, count: maxDecimals }));
       }
       return Promise.resolve();
     },
@@ -71,6 +81,7 @@ export const CreateOfferModal = ({
   initialValues,
   isImmutable = false,
 }: CreateOfferModalProps) => {
+  const { t } = useTranslation();
   const [form] = Form.useForm();
   const isEdit = mode === "edit";
   const [createOffer, { isLoading: isCreating }] = useCreateOfferMutation();
@@ -87,20 +98,50 @@ export const CreateOfferModal = ({
     | undefined;
   const selectedSupplier = Form.useWatch("supplier", form);
 
-  // Filter suppliers: only active, not pending deletion, and matching commodity
-  const filteredSuppliers = allSuppliers.filter((s) => {
-    if (!s.isActive || s.status === "pending_deletion") return false;
-    if (!commodity || !s.commodity) return true;
-    // dual supplier can serve any commodity
-    if (s.commodity === "dual") return true;
-    // Dual suppliers already returned above, so anything still here is single
-    // commodity — which cannot serve a dual offer.
-    if (commodity === "dual") return false;
-    return s.commodity === commodity;
-  });
+  // Why a supplier cannot carry this offer, or null if it can. Mirrors the
+  // backend's checks (OffersService.create) so a listed supplier never fails
+  // on save.
+  const supplierBlockReason = (s: (typeof allSuppliers)[number]): string | null => {
+    if (s.status === "pending_deletion") return t("offers_market.supplier_pending_deletion");
+    if (s.status !== "active") return t("offers_market.supplier_inactive");
+    if (!commodity || !s.commodity || s.commodity === "dual") return null;
+    if (commodity === "dual") return t("offers_market.supplier_needs_dual");
+    if (s.commodity !== commodity) {
+      return t("offers_market.supplier_commodity_only", { commodity: t(`offers_market.${s.commodity}`) });
+    }
+    return null;
+  };
+
+  const filteredSuppliers = allSuppliers.filter((s) => supplierBlockReason(s) === null);
+
+  // Every supplier is listed, so none seems to be missing: the ones that cannot
+  // carry this offer come last, disabled, with the reason beside them.
+  const supplierOptions = allSuppliers
+    .map((s) => {
+      const reason = supplierBlockReason(s);
+      return {
+        value: s.id,
+        label: s.commodity ? `${s.name} (${t(`offers_market.${s.commodity}`)})` : s.name,
+        disabled: reason !== null,
+        reason,
+      };
+    })
+    .sort((a, b) => Number(a.disabled) - Number(b.disabled));
   const priceType = Form.useWatch("priceType", form);
   const validFrom = Form.useWatch("validFrom", form);
-  const validUntil = Form.useWatch("validity", form);
+  const contractDuration = Form.useWatch("contractDuration", form) as ContractDurationFormValue | undefined;
+
+  // Standard terms, plus the offer's own if it holds one outside the list
+  // (a seeded 6-month offer must still show what it is when edited).
+  const durationMonths: number[] = [...CONTRACT_DURATION_MONTH_OPTIONS];
+  if (typeof contractDuration === "number" && !durationMonths.includes(contractDuration)) {
+    durationMonths.push(contractDuration);
+    durationMonths.sort((a, b) => a - b);
+  }
+  const contractDurationOptions = [
+    ...durationMonths.map((months) => ({ value: months, label: formatMonths(months) })),
+    { value: INDEFINITE_DURATION, label: formatMonths(null) },
+  ];
 
   const [economicConditionsUrl, setEconomicConditionsUrl] = useState<string | null>(null);
   const [termsDocUrl, setTermsDocUrl] = useState<string | null>(null);
@@ -139,16 +180,6 @@ export const CreateOfferModal = ({
     }
   }, [priceType, form, open]);
 
-  // Auto-calculate contract duration in days from date range
-  useEffect(() => {
-    if (validFrom && validUntil) {
-      const days = dayjs(validUntil).diff(dayjs(validFrom), "day");
-      form.setFieldsValue({ contractDurationDays: days > 0 ? days : undefined });
-    } else {
-      form.setFieldsValue({ contractDurationDays: undefined });
-    }
-  }, [validFrom, validUntil, form]);
-
   const handleDocUpload = async (
     file: File,
     setUrl: (url: string | null) => void,
@@ -171,12 +202,12 @@ export const CreateOfferModal = ({
         setUrl(url);
         form.setFieldsValue({ [fieldName]: url });
         form.validateFields([fieldName]).catch(() => {});
-        message.success("Document uploaded successfully");
+        message.success(t("offers_market.upload_success"));
       } else {
-        message.error(result?.message || result?.data?.message || "Upload failed");
+        message.error(getApiErrorMessage({ status: res.status, data: result }, t("offers_market.upload_failed")));
       }
     } catch {
-      message.error("Upload failed");
+      message.error(t("offers_market.upload_failed"));
     } finally {
       setLoading(false);
     }
@@ -184,6 +215,15 @@ export const CreateOfferModal = ({
   };
 
   const handleSubmit = async (values: Record<string, any>) => {
+    // Valid from / until only bound when the offer can be sold. The contract
+    // duration is its own field and is never derived from them.
+    const startDate = dayjs(values.validFrom ?? null).startOf("day");
+    const endDate = dayjs(values.validity ?? null).startOf("day");
+    if (!startDate.isValid() || !endDate.isValid() || !endDate.isAfter(startDate)) {
+      message.error(t("offers_market.required_fields"));
+      return;
+    }
+
     const payload = {
       name: values.offerName,
       offerCode: values.offerCode || undefined,
@@ -196,12 +236,10 @@ export const CreateOfferModal = ({
       pricePerKwh: values.pricePerKwh ? parseFloat(values.pricePerKwh) : undefined,
       pricePerSmc: values.pricePerSmc ? parseFloat(values.pricePerSmc) : undefined,
       spread: values.spread ? parseFloat(values.spread) : undefined,
-      contractDurationDays: values.contractDurationDays || 1,
+      contractDurationMonths: fromContractDurationFormValue(values.contractDuration),
       isGreenEnergy: values.isGreenEnergy ?? false,
-      validFrom: dayjs(values.validFrom).format("YYYY-MM-DD"),
-      validUntil: values.validity
-        ? dayjs(values.validity).format("YYYY-MM-DD")
-        : undefined,
+      validFrom: startDate.format("YYYY-MM-DD"),
+      validUntil: endDate.format("YYYY-MM-DD"),
       target: values.target || undefined,
       paymentMethod: values.paymentMethod,
       highlights: values.highlights?.length ? values.highlights : undefined,
@@ -214,24 +252,22 @@ export const CreateOfferModal = ({
     try {
       if (isEdit && offerId) {
         await updateOffer({ id: offerId, data: payload }).unwrap();
-        message.success("Offer updated successfully");
+        message.success(t("offers_market.offer_updated"));
       } else {
         await createOffer(payload).unwrap();
-        message.success("Offer created successfully");
+        message.success(t("offers_market.offer_created"));
       }
       form.resetFields();
       onClose();
     } catch (err: any) {
       console.error("Offer save error:", err);
-      const msg = Array.isArray(err?.data?.message)
-        ? err.data.message.join(", ")
-        : err?.data?.message || err?.message || `Failed to ${isEdit ? "update" : "create"} offer`;
+      const msg = getApiErrorMessage(err, t("offers_market.save_failed", { action: isEdit ? t("common.update").toLowerCase() : t("common.create").toLowerCase() }));
       message.error(msg);
     }
   };
 
   const handleFinishFailed = () => {
-    message.error("Please fill in all required fields correctly");
+    message.error(t("offers_market.required_fields"));
   };
 
   const handleCancel = () => {
@@ -251,7 +287,7 @@ export const CreateOfferModal = ({
       width="min(920px, calc(100vw - 24px))"
       title={
         <span className="text-xl! font-bold text-slate-800">
-          {isEdit ? "Edit Offer" : "Create New Offer"}
+          {isEdit ? t("offers_market.edit_offer") : t("offers_market.create_new_offer")}
         </span>
       }
       className="[&_.ant-modal-content]:rounded-2xl [&_.ant-modal-content]:p-4 sm:[&_.ant-modal-content]:p-6 [&_.ant-modal-header]:rounded-t-2xl [&_.ant-modal-body]:pt-3"
@@ -262,65 +298,68 @@ export const CreateOfferModal = ({
             type="warning"
             showIcon
             className="mb-4"
-            message="This offer has been accepted by users and cannot be modified. Only status changes are allowed from the offers list."
+            message={t("offers_market.offer_locked_message")}
           />
         )}
         {/* General Information */}
         <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">
-          General Information
+          {t("offers_market.general_information")}
         </p>
         <div className="grid grid-cols-1 gap-x-3 gap-y-1 sm:grid-cols-2">
           <Form.Item
             name="offerName"
-            label="Offer Name"
-            rules={[{ required: true, message: "Please enter offer name" }]}
+            label={t("offers_market.offer_name")}
+            rules={[{ required: true, message: t("offers_market.required", { field: t("offers_market.offer_name").toLowerCase() }) }]}
           >
-            <Input placeholder="e.g. Trend Home Electricity" className="h-11 rounded-lg" />
+            <Input placeholder={i18n.t("audit.e_g_trend_home_electricity")} className="h-11 rounded-lg" />
           </Form.Item>
-          <Form.Item name="offerCode" label="Offer Code" rules={[{ required: true, message: "Please enter offer code" }]}>
-            <Input placeholder="e.g. OFF-007" className="h-11 rounded-lg" />
+          <Form.Item name="offerCode" label={t("offers_market.offer_code")} rules={[{ required: true, message: t("offers_market.required", { field: t("offers_market.offer_code").toLowerCase() }) }]}>
+            <Input placeholder={i18n.t("audit.e_g_off_007")} className="h-11 rounded-lg" />
           </Form.Item>
         </div>
 
         <div className="grid grid-cols-1 gap-x-3 gap-y-1 sm:grid-cols-2">
           <Form.Item
             name="supplier"
-            label="Supplier"
-            rules={[{ required: true, message: "Please select supplier" }]}
+            label={t("offers_market.supplier")}
+            rules={[{ required: true, message: t("offers_market.select_supplier") }]}
             help={
               commodity && filteredSuppliers.length === 0
-                ? "No suppliers available for the selected commodity"
+                ? t("offers_market.no_suppliers_for_commodity")
                 : undefined
             }
           >
             <Select
               size="large"
-              placeholder={commodity ? `Select ${commodity} supplier` : "Select supplier"}
+              placeholder={t("offers_market.select_supplier")}
               showSearch
               optionFilterProp="label"
               className="[&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-lg"
-              notFoundContent={commodity ? `No ${commodity} suppliers found` : "No suppliers found"}
-              options={filteredSuppliers.map((s) => ({
-                value: s.id,
-                label: s.commodity
-                  ? `${s.name} (${s.commodity.charAt(0).toUpperCase() + s.commodity.slice(1)})`
-                  : s.name,
-              }))}
+              notFoundContent={t("offers_market.no_suppliers_found")}
+              options={supplierOptions}
+              optionRender={(option) => (
+                <div className="flex items-center justify-between gap-3">
+                  <span className="truncate">{option.data.label}</span>
+                  {option.data.reason && (
+                    <span className="shrink-0 text-xs text-slate-400">{option.data.reason}</span>
+                  )}
+                </div>
+              )}
             />
           </Form.Item>
           <Form.Item
             name="commodity"
-            label="Commodity"
-            rules={[{ required: true, message: "Please select commodity" }]}
+            label={t("offers_market.commodity")}
+            rules={[{ required: true, message: t("offers_market.select_commodity") }]}
           >
             <Select
               size="large"
-              placeholder="Select commodity"
+              placeholder={t("offers_market.select_commodity")}
               className="[&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-lg"
               options={[
-                { value: "electricity", label: "Electricity" },
-                { value: "gas", label: "Gas" },
-                { value: "dual", label: "Dual" },
+                { value: "electricity", label: t("offers_market.electricity") },
+                { value: "gas", label: t("offers_market.gas") },
+                { value: "dual", label: t("offers_market.dual") },
               ]}
             />
           </Form.Item>
@@ -328,57 +367,57 @@ export const CreateOfferModal = ({
 
         {/* Pricing */}
         <p className="mb-2 mt-3 text-xs font-bold uppercase tracking-wider text-slate-400">
-          Pricing
+          {t("offers_market.pricing")}
         </p>
         <div className="grid grid-cols-1 gap-x-3 gap-y-1 sm:grid-cols-3">
           <Form.Item
             name="priceType"
-            label="Price Type"
-            rules={[{ required: true, message: "Please select price type" }]}
+            label={t("offers_market.price_type")}
+            rules={[{ required: true, message: t("offers_market.select_price_type") }]}
           >
             <Select
               size="large"
-              placeholder="Select price type"
+              placeholder={t("offers_market.select_price_type")}
               className="[&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-lg"
               options={[
-                { value: "fixed", label: "Fixed" },
-                { value: "variable", label: "Variable" },
-                { value: "indexed", label: "Indexed" },
+                { value: "fixed", label: t("offers_market.price_fixed") },
+                { value: "variable", label: t("offers_market.price_variable") },
+                { value: "indexed", label: t("offers_market.price_indexed") },
               ]}
             />
           </Form.Item>
           <Form.Item
             name="fixedMonthlyFee"
-            label="Fixed Monthly Fee (EUR)"
-            rules={numericRule("fixed monthly fee", 2)}
+            label={`${t("offers_market.fixed_monthly_fee")} (EUR)`}
+            rules={numericRule(t, t("offers_market.fixed_monthly_fee").toLowerCase(), 2)}
           >
-            <NumericInput placeholder="e.g. 9.90" />
+            <NumericInput placeholder={i18n.t("audit.e_g_9_90")} />
           </Form.Item>
           <Form.Item
             name="activationCost"
-            label="Activation Cost (EUR)"
-            rules={numericRule("activation cost", 2)}
+            label={`${t("offers_market.activation_cost")} (EUR)`}
+            rules={numericRule(t, t("offers_market.activation_cost").toLowerCase(), 2)}
           >
-            <NumericInput placeholder="e.g. 45" />
+            <NumericInput placeholder={i18n.t("audit.e_g_45")} />
           </Form.Item>
         </div>
 
         {priceType === "variable" || priceType === "indexed" ? (
           <div className="grid grid-cols-1 gap-x-3 gap-y-1 sm:grid-cols-2">
-            <Form.Item name="spread" label="Spread (EUR)" rules={numericRule("spread")}>
-              <NumericInput placeholder="e.g. 0.012" />
+            <Form.Item name="spread" label={`${t("offers_market.spread")} (EUR)`} rules={numericRule(t, t("offers_market.spread").toLowerCase())}>
+              <NumericInput placeholder={i18n.t("audit.e_g_0_012")} />
             </Form.Item>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-x-3 gap-y-1 sm:grid-cols-2">
             {(commodity === "electricity" || commodity === "dual" || !commodity) && (
-              <Form.Item name="pricePerKwh" label="Price per kWh (EUR)" rules={numericRule("price per kWh")}>
-                <NumericInput placeholder="e.g. 0.085" />
+              <Form.Item name="pricePerKwh" label={`${t("offers_market.price_per_kwh")} (EUR)`} rules={numericRule(t, t("offers_market.price_per_kwh").toLowerCase())}>
+                <NumericInput placeholder={i18n.t("audit.e_g_0_085")} />
               </Form.Item>
             )}
             {(commodity === "gas" || commodity === "dual" || !commodity) && (
-              <Form.Item name="pricePerSmc" label="Price per SMc (EUR)" rules={numericRule("price per SMc")}>
-                <NumericInput placeholder="e.g. 0.45" />
+              <Form.Item name="pricePerSmc" label={`${t("offers_market.price_per_smc")} (EUR)`} rules={numericRule(t, t("offers_market.price_per_smc").toLowerCase())}>
+                <NumericInput placeholder={i18n.t("audit.e_g_0_45")} />
               </Form.Item>
             )}
           </div>
@@ -386,10 +425,25 @@ export const CreateOfferModal = ({
 
         {/* Contract & Validity */}
         <p className="mb-2 mt-3 text-xs font-bold uppercase tracking-wider text-slate-400">
-          Contract & Validity
+          {t("offers_market.contract_validity")}
         </p>
         <div className="grid grid-cols-1 gap-x-3 gap-y-1 sm:grid-cols-2">
-          <Form.Item name="validFrom" label="Valid From" rules={[{ required: true, message: "Please select valid from date" }]}>
+          <Form.Item
+            name="contractDuration"
+            label={t("offers_market.contract_duration")}
+            extra={t("offers_market.contract_duration_hint")}
+            rules={[{ required: true, message: t("offers_market.select_contract_duration") }]}
+          >
+            <Select
+              size="large"
+              placeholder={t("offers_market.select_contract_duration")}
+              className="[&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-lg"
+              options={contractDurationOptions}
+            />
+          </Form.Item>
+        </div>
+        <div className="grid grid-cols-1 gap-x-3 gap-y-1 sm:grid-cols-2">
+          <Form.Item name="validFrom" label={t("offers_market.valid_from")} rules={[{ required: true, message: t("offers_market.valid_from") }]}>
             <DatePicker
               className="h-11! w-full rounded-lg"
               format="DD/MM/YYYY"
@@ -397,7 +451,7 @@ export const CreateOfferModal = ({
               disabledDate={(current) => current < dayjs().startOf("day")}
             />
           </Form.Item>
-          <Form.Item name="validity" label="Valid Until" rules={[{ required: true, message: "Please select valid until date" }]}>
+          <Form.Item name="validity" label={t("offers_market.valid_until")} rules={[{ required: true, message: t("offers_market.valid_until") }]}>
             <DatePicker
               className="h-11! w-full rounded-lg"
               format="DD/MM/YYYY"
@@ -415,66 +469,61 @@ export const CreateOfferModal = ({
         </div>
 
         <div className="grid grid-cols-1 gap-x-3 gap-y-1 sm:grid-cols-2 lg:grid-cols-4">
-          <Form.Item name="target" label="Target" rules={[{ required: true, message: "Please select target" }]}>
+          <Form.Item name="target" label={t("offers_market.target")} rules={[{ required: true, message: t("offers_market.select_target") }]}>
             <Select
               size="large"
-              placeholder="Select target"
+              placeholder={t("offers_market.select_target")}
               className="[&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-lg"
               options={[
-                { value: "personal", label: "Personal" },
-                { value: "business", label: "Business" },
-                { value: "both", label: "Both" },
+                { value: "personal", label: t("offers_market.personal") },
+                { value: "business", label: t("offers_market.business") },
+                { value: "both", label: t("offers_market.both") },
               ]}
             />
           </Form.Item>
           <Form.Item
             name="paymentMethod"
-            label="Payment Method"
-            rules={[{ required: true, message: "Please select payment method" }]}
+            label={t("offers_market.payment_method")}
+            rules={[{ required: true, message: t("offers_market.select_payment_method") }]}
           >
             <Select
               size="large"
-              placeholder="Select payment method"
+              placeholder={t("offers_market.select_payment_method")}
               className="[&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-lg"
-              options={PAYMENT_METHOD_OPTIONS}
+              options={PAYMENT_METHOD_OPTIONS.map((option) => ({ ...option, label: t(`offers_market.${option.value}`) }))}
             />
           </Form.Item>
-          <Form.Item name="status" label="Status" rules={[{ required: true, message: "Please select status" }]}>
+          <Form.Item name="status" label={t("common.status")} rules={[{ required: true, message: t("offers_market.select_status") }]}>
             <Select
               size="large"
-              placeholder="Select status"
+              placeholder={t("offers_market.select_status")}
               disabled={isEdit}
               className="[&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-lg"
               options={
                 isEdit
                   ? [
-                      { value: "draft", label: "Draft" },
-                      { value: "active", label: "Active" },
-                      { value: "expiring", label: "Expiring" },
-                      { value: "expired", label: "Expired" },
-                      { value: "archived", label: "Archived" },
+                      ...["draft", "active", "expiring", "expired", "archived"].map((value) => ({ value, label: t(`offers_market.${value}`) })),
                     ]
                   : [
-                      { value: "draft", label: "Draft" },
-                      { value: "active", label: "Active" },
+                      ...["draft", "active"].map((value) => ({ value, label: t(`offers_market.${value}`) })),
                     ]
               }
             />
           </Form.Item>
-          <Form.Item name="isGreenEnergy" label="Green Energy" valuePropName="checked" initialValue={false}>
+          <Form.Item name="isGreenEnergy" label={t("offers_market.green_energy")} valuePropName="checked" initialValue={false}>
             <Switch />
           </Form.Item>
         </div>
 
         {/* Additional Details */}
         <p className="mb-2 mt-3 text-xs font-bold uppercase tracking-wider text-slate-400">
-          Additional Details
+          {t("offers_market.additional_details")}
         </p>
 
         <div className="grid grid-cols-1 gap-x-3 gap-y-1 sm:grid-cols-2">
           <Form.Item
             name="termsUrl"
-            label="Terms & Conditions Document"
+            label={t("offers_market.terms_document")}
           >
             <div>
               <div className="flex items-center gap-3">
@@ -489,7 +538,7 @@ export const CreateOfferModal = ({
                     loading={uploadingTerms}
                     className="h-10 rounded-lg"
                   >
-                    {termsDocUrl ? "Replace Document" : "Upload Document"}
+                    {termsDocUrl ? t("offers_market.replace_document") : t("offers_market.upload_document")}
                   </Button>
                 </Upload>
                 {termsDocUrl && (
@@ -504,7 +553,7 @@ export const CreateOfferModal = ({
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-sm text-indigo-500 hover:text-indigo-600"
                     >
-                      <LuFile className="h-3.5 w-3.5" /> View
+                      <LuFile className="h-3.5 w-3.5" /> {t("common.view")}
                     </a>
                     <button
                       type="button"
@@ -514,7 +563,7 @@ export const CreateOfferModal = ({
                       }}
                       className="inline-flex items-center gap-1 text-sm text-red-400 hover:text-red-500"
                     >
-                      <LuTrash2 className="h-3.5 w-3.5" /> Remove
+                      <LuTrash2 className="h-3.5 w-3.5" /> {t("common.remove")}
                     </button>
                   </div>
                 )}
@@ -524,8 +573,8 @@ export const CreateOfferModal = ({
 
           <Form.Item
             name="economicConditionsUrl"
-            label="Economic Conditions Document"
-            rules={[{ required: true, message: "Please upload an Economic Conditions document" }]}
+            label={t("offers_market.economic_conditions_document")}
+            rules={[{ required: true, message: t("offers_market.economic_conditions_document") }]}
           >
             <div>
               <div className="flex items-center gap-3">
@@ -540,7 +589,7 @@ export const CreateOfferModal = ({
                     loading={uploadingEcon}
                     className="h-10 rounded-lg"
                   >
-                    {economicConditionsUrl ? "Replace Document" : "Upload Document"}
+                    {economicConditionsUrl ? t("offers_market.replace_document") : t("offers_market.upload_document")}
                   </Button>
                 </Upload>
                 {economicConditionsUrl && (
@@ -555,7 +604,7 @@ export const CreateOfferModal = ({
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-sm text-indigo-500 hover:text-indigo-600"
                     >
-                      <LuFile className="h-3.5 w-3.5" /> View
+                      <LuFile className="h-3.5 w-3.5" /> {t("common.view")}
                     </a>
                     <button
                       type="button"
@@ -565,7 +614,7 @@ export const CreateOfferModal = ({
                       }}
                       className="inline-flex items-center gap-1 text-sm text-red-400 hover:text-red-500"
                     >
-                      <LuTrash2 className="h-3.5 w-3.5" /> Remove
+                      <LuTrash2 className="h-3.5 w-3.5" /> {t("common.remove")}
                     </button>
                   </div>
                 )}
@@ -574,10 +623,10 @@ export const CreateOfferModal = ({
           </Form.Item>
         </div>
 
-        <Form.Item name="highlights" label="Highlights">
+        <Form.Item name="highlights" label={t("offers_market.highlights")}>
           <Select
             mode="tags"
-            placeholder="Type and press Enter to add"
+            placeholder={t("offers_market.add_highlight")}
             className="[&_.ant-select-selector]:min-h-11 [&_.ant-select-selector]:rounded-lg"
             open={false}
           />
@@ -585,27 +634,27 @@ export const CreateOfferModal = ({
 
         <Form.Item
           name="compensation"
-          label="Compensation"
-          rules={[{ required: true, message: "Please enter compensation details" }]}
+          label={t("offers_market.compensation")}
+          rules={[{ required: true, message: t("offers_market.required", { field: t("offers_market.compensation").toLowerCase() }) }]}
         >
           <Input.TextArea
             rows={2}
-            placeholder="e.g. €50 bonus on first bill, cashback, etc."
+            placeholder={i18n.t("audit.e_g_50_bonus_on_first_bill_cashback_etc")}
             className="rounded-lg"
           />
         </Form.Item>
 
-        <Form.Item name="notes" label="Description">
+        <Form.Item name="notes" label={t("offers_market.description_label")}>
           <Input.TextArea
             rows={3}
-            placeholder="Description about this offer..."
+            placeholder={t("offers_market.description_label")}
             className="rounded-lg"
           />
         </Form.Item>
 
         <div className="mt-2 flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 sm:mt-4 sm:flex-row sm:justify-end">
           <Button onClick={handleCancel} className="h-10 rounded-lg px-5 sm:min-w-[96px]">
-            {isImmutable ? "Close" : "Cancel"}
+            {isImmutable ? t("common.close") : t("common.cancel")}
           </Button>
           {!isImmutable && (
             <Button
@@ -614,7 +663,7 @@ export const CreateOfferModal = ({
               loading={isCreating || isUpdating}
               className="h-10 rounded-lg bg-[#8b85f6] px-5 font-semibold hover:bg-[#7a74e5] sm:min-w-[136px]"
             >
-              {isEdit ? "Save Changes" : "Create Offer"}
+              {isEdit ? t("offers_market.save_changes") : t("offers_market.create_offer")}
             </Button>
           )}
         </div>

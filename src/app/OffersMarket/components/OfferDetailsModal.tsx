@@ -1,3 +1,6 @@
+import i18n from "../../../i18n";
+import { useTranslation } from "react-i18next";
+import { getLocale } from "../../../utils/format";
 import { Modal, Spin, Tag } from "antd";
 import { useEffect } from "react";
 import { FiExternalLink } from "react-icons/fi";
@@ -9,6 +12,7 @@ import {
   type IOffer,
 } from "../../../redux/features/Offers/offerApi";
 import { formatMoney, formatUnitPrice } from "../../../utils/format";
+import { formatContractDuration } from "../../../utils/contractDuration";
 
 type OfferDetailsModalProps = {
   open: boolean;
@@ -38,9 +42,10 @@ const InfoRow = ({ label, value }: { label: string; value: React.ReactNode }) =>
 );
 
 const formatDate = (date: string | null | undefined) =>
-  date ? new Date(date).toLocaleDateString("it-IT") : "—";
+  date ? new Date(date).toLocaleDateString(getLocale()) : "—";
 
 export const OfferDetailsModal = ({ open, onClose, offer }: OfferDetailsModalProps) => {
+  useTranslation();
   const [triggerGetOffer, { data: offerDetail, isLoading, isFetching }] =
     useLazyGetOfferByIdQuery();
 
@@ -84,7 +89,7 @@ export const OfferDetailsModal = ({ open, onClose, offer }: OfferDetailsModalPro
                 )}
                 <span className="text-xs text-slate-300">|</span>
                 <span className="text-xs text-slate-400">
-                  {detail.supplier?.name || "Unknown supplier"}
+                  {detail.supplier?.name || i18n.t("audit.unknown_supplier")}
                 </span>
               </div>
             </div>
@@ -102,7 +107,7 @@ export const OfferDetailsModal = ({ open, onClose, offer }: OfferDetailsModalPro
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
             <div>
               <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                Commodity
+                {i18n.t("offers_market.commodity")}
               </p>
               <Tag
                 className={`mt-1 border-0 rounded font-bold text-[10px] px-2 py-0 uppercase ${
@@ -112,10 +117,10 @@ export const OfferDetailsModal = ({ open, onClose, offer }: OfferDetailsModalPro
                 {detail.energyType}
               </Tag>
             </div>
-            <InfoRow label="Market Type" value={<span className="capitalize">{detail.marketType}</span>} />
-            <InfoRow label="Target" value={<span className="capitalize">{detail.target}</span>} />
+            <InfoRow label={i18n.t("offers_market.market_type")} value={<span className="capitalize">{detail.marketType}</span>} />
+            <InfoRow label={i18n.t("offers_market.target")} value={<span className="capitalize">{detail.target}</span>} />
             <InfoRow
-              label="Payment Method"
+              label={i18n.t("client_management.payment_method")}
               value={PAYMENT_METHOD_LABELS[detail.paymentMethod] || "—"}
             />
           </div>
@@ -123,19 +128,19 @@ export const OfferDetailsModal = ({ open, onClose, offer }: OfferDetailsModalPro
           <hr className="my-4 border-slate-100" />
 
           {/* Pricing */}
-          <p className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">Pricing</p>
+          <p className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">{i18n.t("offers_market.pricing")}</p>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-            <InfoRow label="Fixed Monthly Fee" value={formatMoney(detail.fixedMonthlyFee)} />
-            <InfoRow label="Activation Cost" value={formatMoney(detail.activationCost)} />
+            <InfoRow label={i18n.t("offers_market.fixed_monthly_fee")} value={formatMoney(detail.fixedMonthlyFee)} />
+            <InfoRow label={i18n.t("audit.activation_cost")} value={formatMoney(detail.activationCost)} />
             {detail.marketType === "variable" || detail.marketType === "indexed" ? (
-              <InfoRow label="Spread" value={formatUnitPrice(detail.spread)} />
+              <InfoRow label={i18n.t("offers_market.spread")} value={formatUnitPrice(detail.spread)} />
             ) : (
               <>
                 {(detail.energyType === "electricity" || detail.energyType === "dual") && (
-                  <InfoRow label="Price / kWh" value={formatUnitPrice(detail.pricePerKwh)} />
+                  <InfoRow label={i18n.t("offers_market.price_per_kwh")} value={formatUnitPrice(detail.pricePerKwh)} />
                 )}
                 {(detail.energyType === "gas" || detail.energyType === "dual") && (
-                  <InfoRow label="Price / SMc" value={formatUnitPrice(detail.pricePerSmc)} />
+                  <InfoRow label={i18n.t("offers_market.price_per_smc")} value={formatUnitPrice(detail.pricePerSmc)} />
                 )}
               </>
             )}
@@ -145,24 +150,24 @@ export const OfferDetailsModal = ({ open, onClose, offer }: OfferDetailsModalPro
 
           {/* Contract & Validity */}
           <p className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">
-            Contract & Validity
+            {i18n.t("offers_market.contract_validity")}
           </p>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
             <InfoRow
-              label="Contract Duration"
-              value={detail.contractDurationDays >= 30 ? `${Math.floor(detail.contractDurationDays / 30)} month${Math.floor(detail.contractDurationDays / 30) !== 1 ? "s" : ""}` : `${detail.contractDurationDays} day${detail.contractDurationDays !== 1 ? "s" : ""}`}
+              label={i18n.t("home.contract_duration")}
+              value={formatContractDuration(detail)}
             />
-            <InfoRow label="Valid From" value={formatDate(detail.validFrom)} />
-            <InfoRow label="Valid Until" value={formatDate(detail.validUntil)} />
+            <InfoRow label={i18n.t("agreements.valid_from")} value={formatDate(detail.validFrom)} />
+            <InfoRow label={i18n.t("agreements.valid_until")} value={formatDate(detail.validUntil)} />
           </div>
 
           <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
             <InfoRow
-              label="Green Energy"
+              label={i18n.t("offers_market.green_energy")}
               value={
                 detail.isGreenEnergy ? (
                   <span className="inline-flex items-center gap-1 text-emerald-600">
-                    <LuLeaf className="h-3.5 w-3.5" /> Yes
+                    <LuLeaf className="h-3.5 w-3.5" /> {i18n.t("common.yes")}
                   </span>
                 ) : (
                   "No"
@@ -170,7 +175,7 @@ export const OfferDetailsModal = ({ open, onClose, offer }: OfferDetailsModalPro
               }
             />
             <InfoRow
-              label="Terms & Conditions"
+              label={i18n.t("offers_market.terms_conditions")}
               value={
                 detail.termsUrl ? (
                   <a
@@ -179,7 +184,7 @@ export const OfferDetailsModal = ({ open, onClose, offer }: OfferDetailsModalPro
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 text-indigo-500 hover:text-indigo-600"
                   >
-                    View <FiExternalLink className="h-3 w-3" />
+                    {i18n.t("notifications.view_details")} <FiExternalLink className="h-3 w-3" />
                   </a>
                 ) : (
                   "—"
@@ -187,7 +192,7 @@ export const OfferDetailsModal = ({ open, onClose, offer }: OfferDetailsModalPro
               }
             />
             <InfoRow
-              label="Economic Conditions"
+              label={i18n.t("offers_market.economic_conditions")}
               value={
                 detail.economicConditionsUrl ? (
                   <a
@@ -200,14 +205,14 @@ export const OfferDetailsModal = ({ open, onClose, offer }: OfferDetailsModalPro
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 text-indigo-500 hover:text-indigo-600"
                   >
-                    View & Download <LuDownload className="h-3 w-3" />
+                    {i18n.t("offers_market.view_download")} <LuDownload className="h-3 w-3" />
                   </a>
                 ) : (
                   "—"
                 )
               }
             />
-            <InfoRow label="Version" value={detail.version} />
+            <InfoRow label={i18n.t("static_pages.version")} value={detail.version} />
           </div>
 
           {/* Compensation */}
@@ -215,7 +220,7 @@ export const OfferDetailsModal = ({ open, onClose, offer }: OfferDetailsModalPro
             <>
               <hr className="my-4 border-slate-100" />
               <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">
-                Compensation
+                {i18n.t("audit.compensation")}
               </p>
               <p className="text-sm leading-relaxed text-slate-600">{detail.compensation}</p>
             </>
@@ -226,7 +231,7 @@ export const OfferDetailsModal = ({ open, onClose, offer }: OfferDetailsModalPro
             <>
               <hr className="my-4 border-slate-100" />
               <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">
-                Highlights
+                {i18n.t("offers_market.highlights")}
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {detail.highlights.map((h, i) => (
@@ -243,7 +248,7 @@ export const OfferDetailsModal = ({ open, onClose, offer }: OfferDetailsModalPro
             <>
               <hr className="my-4 border-slate-100" />
               <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">
-                Description
+                {i18n.t("support_topics.description")}
               </p>
               <p className="text-sm leading-relaxed text-slate-600">{detail.description}</p>
             </>
@@ -252,8 +257,8 @@ export const OfferDetailsModal = ({ open, onClose, offer }: OfferDetailsModalPro
           {/* Timestamps */}
           <hr className="my-4 border-slate-100" />
           <div className="flex flex-wrap gap-6 text-[11px] text-slate-400">
-            <span>Created: {formatDate(detail.createdAt)}</span>
-            <span>Updated: {formatDate(detail.updatedAt)}</span>
+            <span>{i18n.t("audit.created")} {formatDate(detail.createdAt)}</span>
+            <span>{i18n.t("audit.updated")} {formatDate(detail.updatedAt)}</span>
           </div>
         </div>
       ) : null}

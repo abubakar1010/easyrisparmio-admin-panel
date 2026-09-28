@@ -172,6 +172,7 @@ export interface IOfferWithSavings {
   spread: number | null;
   fixedMonthlyFee: number;
   activationCost: number;
+  contractDurationMonths?: number | null;
   contractDurationDays: number;
   isGreenEnergy: boolean;
   paymentMethod: OfferPaymentMethod;
