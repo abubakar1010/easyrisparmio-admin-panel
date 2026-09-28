@@ -3,11 +3,10 @@ import type { UploadFile, UploadProps } from "antd";
 import { useState } from "react";
 import { FiUser, FiLock, FiSave, FiGlobe } from "react-icons/fi";
 import { useAppSelector, useAppDispatch } from "../../redux/hooks";
-import { getRoleLabel } from "../../lib/helpers/getRoleLabel";
-import type { TUserRole } from "../../types/common.type";
 import { useUpdateProfileMutation, useChangePasswordMutation } from "../../redux/features/Auth/authApi";
 import { setUser } from "../../redux/features/Auth/authSlice";
 import { useTranslation } from "react-i18next";
+import { currentLanguage } from "../../i18n";
 import { PhoneInput, phoneValidationRule } from "../../components/ui/PhoneInput";
 import { supportedLanguages } from "../../constants/language.contants";
 import { errorAlert } from "../../lib/helpers/alert";
@@ -65,7 +64,6 @@ const Settings = () => {
 
   const handleLanguageChange = (value: string) => {
     i18n.changeLanguage(value);
-    localStorage.setItem("dashboard_language", value);
   };
 
   return (
@@ -124,7 +122,7 @@ const Settings = () => {
               lastName: user?.lastName || "",
               email: user?.email || "",
               phone: user?.phone || "",
-              role: getRoleLabel(user?.role as TUserRole) || t("settings.administrator"),
+              role: t(`settings.role_${user?.role || "user"}`, { defaultValue: t("settings.role_user") }),
             }}
             onFinish={async (values) => {
               try {
@@ -181,7 +179,7 @@ const Settings = () => {
                 name="role"
                 label={<span className="text-[14px] font-medium text-slate-600">{t("settings.role")}</span>}
               >
-                <Input placeholder={t("settings.administrator")} className="h-11 rounded-lg border-slate-200" disabled />
+                <Input placeholder={t(`settings.role_${user?.role || "user"}`, { defaultValue: t("settings.role_user") })} className="h-11 rounded-lg border-slate-200" disabled />
               </Form.Item>
             </div>
 
@@ -216,7 +214,7 @@ const Settings = () => {
             {t("settings.language_description")}
           </p>
           <Select
-            value={i18n.language}
+            value={currentLanguage()}
             onChange={handleLanguageChange}
             className="w-full"
             size="large"
@@ -259,7 +257,7 @@ const Settings = () => {
                 message.success(t("auth.password_changed_success"));
                 passwordForm.resetFields();
               } catch (err) {
-                errorAlert({ error: err as { data?: { message?: string | string[] } } });
+                errorAlert({ error: err });
               }
             }}
             className="w-full"

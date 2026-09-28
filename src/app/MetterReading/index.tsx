@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button, Tag, Dropdown, type MenuProps, Spin, Empty, Input, Select, message } from "antd";
 import { FiPlus, FiMoreVertical, FiArrowRight, FiSearch } from "react-icons/fi";
 import { LuZap, LuDroplets, LuWifi, LuFlame, LuActivity } from "react-icons/lu";
@@ -29,6 +30,7 @@ const getTypeConfig = (type: string) => {
 };
 
 const MeterReading = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [queryParams, setQueryParams] = useState<IMeterQuery>({ page: 1, limit: 20 });
@@ -56,27 +58,27 @@ const MeterReading = () => {
       func: async () => {
         try {
           await deleteMeter(id).unwrap();
-          message.success("Service type deleted successfully");
+          message.success(t("service_types.deleted"));
         } catch {
-          message.error("Failed to delete service type");
+          message.error(t("service_types.delete_failed"));
         }
       },
-      title: "Delete Service Type",
-      object: "delete this service type",
-      okay: "Delete",
+      title: t("service_types.delete_title"),
+      object: t("service_types.delete_object"),
+      okay: t("common.delete"),
     });
   };
 
   const getMenuItems = (meter: IMeter): MenuProps["items"] => [
     {
       key: "view",
-      label: "View Details",
+      label: t("service_types.view_details"),
       onClick: () => navigate(`/meter-reading/${meter.id}`),
     },
     { type: "divider" },
     {
       key: "delete",
-      label: "Delete",
+      label: t("common.delete"),
       danger: true,
       onClick: () => handleDelete(meter.id),
     },
@@ -87,8 +89,8 @@ const MeterReading = () => {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-cborder/45 pb-4">
         <div>
-          <h1 className="text-xl font-semibold text-brand tracking-tight">Service Types</h1>
-          <p className="text-sm text-slate-500 mt-1">Manage the types of services provided on the platform</p>
+          <h1 className="text-xl font-semibold text-brand tracking-tight">{t("service_types.title")}</h1>
+          <p className="text-sm text-slate-500 mt-1">{t("service_types.subtitle")}</p>
         </div>
         <Button
           type="primary"
@@ -96,7 +98,7 @@ const MeterReading = () => {
           onClick={() => setIsModalOpen(true)}
           className="bg-[#6366f1] hover:bg-[#4f46e5] rounded-lg h-10 px-5 font-semibold border-0 shadow-sm"
         >
-          Add Service Type
+          {t("service_types.add")}
         </Button>
       </div>
 
@@ -104,21 +106,21 @@ const MeterReading = () => {
       <div className="flex flex-wrap items-center gap-3">
         <Input
           prefix={<FiSearch className="text-slate-400" />}
-          placeholder="Search by name..."
+          placeholder={t("service_types.search")}
           allowClear
           onChange={(e) => handleSearch(e.target.value)}
           className="w-64 rounded-lg"
         />
         <Select
-          placeholder="Utility Type"
+          placeholder={t("service_types.utility_type")}
           allowClear
           onChange={(val) => handleFilterType(val || "all")}
           className="w-40"
           options={[
-            { value: "all", label: "All Types" },
-            ...Object.entries(utilityTypeLabels).map(([value, label]) => ({
+            { value: "all", label: t("service_types.all_types") },
+            ...Object.entries(utilityTypeLabels).map(([value]) => ({
               value,
-              label,
+              label: t(`service_types.${value}`),
             })),
           ]}
         />
@@ -134,7 +136,7 @@ const MeterReading = () => {
         </div>
       ) : meters.length === 0 ? (
         <div className="flex items-center justify-center py-20">
-          <Empty description="No service types found" />
+          <Empty description={t("service_types.no_types")} />
         </div>
       ) : (
         <>
@@ -163,7 +165,7 @@ const MeterReading = () => {
                             : "bg-slate-50 text-slate-500 border-slate-200"
                         }`}
                       >
-                        {meter.isActive ? "Active" : "Inactive"}
+                        {meter.isActive ? t("common.active") : t("common.inactive")}
                       </Tag>
                       <Dropdown
                         menu={{ items: getMenuItems(meter) }}
@@ -187,7 +189,7 @@ const MeterReading = () => {
                     </h2>
                     <div className="mt-1">
                       <p className="font-mono text-xs font-semibold text-slate-500 bg-slate-50 px-2 py-0.5 rounded border border-slate-100 inline-block capitalize">
-                        {meter.utilityType}
+                        {t(`service_types.${meter.utilityType}`)}
                       </p>
                     </div>
                   </div>
@@ -203,7 +205,7 @@ const MeterReading = () => {
                       </p>
                     ) : (
                       <p className="text-sm text-slate-400 italic">
-                        No description
+                        {t("service_types.no_description")}
                       </p>
                     )}
                   </div>
@@ -214,7 +216,7 @@ const MeterReading = () => {
                       onClick={() => navigate(`/meter-reading/${meter.id}`)}
                       className="w-full flex items-center justify-center gap-2 text-sm font-semibold text-brand hover:text-indigo-600 transition-colors py-1"
                     >
-                      View Details{" "}
+                      {t("service_types.view_details")}{" "}
                       <FiArrowRight className="transition-transform group-hover:translate-x-1" />
                     </button>
                   </div>
@@ -227,7 +229,7 @@ const MeterReading = () => {
           {meta && meta.totalPages > 1 && (
             <div className="flex items-center justify-between pt-4 border-t border-slate-100">
               <p className="text-sm text-slate-500">
-                Showing {meters.length} of {meta.total} service types
+                {t("common.showing")} {meters.length} {t("common.of")} {meta.total} {t("service_types.title").toLowerCase()}
               </p>
               <div className="flex items-center gap-2">
                 <Button
@@ -236,10 +238,10 @@ const MeterReading = () => {
                     setQueryParams((prev) => ({ ...prev, page: (prev.page || 1) - 1 }))
                   }
                 >
-                  Previous
+                  {t("common.back")}
                 </Button>
                 <span className="text-sm text-slate-600 px-2">
-                  Page {meta.page} of {meta.totalPages}
+                  {t("common.page")} {meta.page} {t("common.of")} {meta.totalPages}
                 </span>
                 <Button
                   disabled={meta.page >= meta.totalPages}
@@ -247,7 +249,7 @@ const MeterReading = () => {
                     setQueryParams((prev) => ({ ...prev, page: (prev.page || 1) + 1 }))
                   }
                 >
-                  Next
+                  {t("common.next")}
                 </Button>
               </div>
             </div>

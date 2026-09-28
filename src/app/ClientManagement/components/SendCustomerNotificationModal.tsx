@@ -1,3 +1,4 @@
+import { getApiErrorMessage } from "../../../utils/apiError";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, Button, Form, Input, Modal, Select, Spin, Tooltip, message } from "antd";
 import { FiSend, FiX } from "react-icons/fi";
@@ -156,7 +157,7 @@ const SendCustomerNotificationModal = ({
       onClose();
     } catch (err: any) {
       message.error(
-        err?.data?.message?.[0] || t("notifications.sent_error"),
+        getApiErrorMessage(err, t("notifications.sent_error")),
       );
     }
   };

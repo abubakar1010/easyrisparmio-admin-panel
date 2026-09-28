@@ -106,7 +106,7 @@ const AddEditNotificationTemplateModal = ({
         <Form.Item
           label={<span className={labelClass}>{t("notification_templates.name")}</span>}
           name="name"
-          rules={[{ required: true, message: t("notification_templates.name") }]}
+          rules={[{ required: true, message: t("notification_templates.name_required") }]}
         >
           <Input maxLength={120} className={inputClass} />
         </Form.Item>
@@ -166,7 +166,7 @@ const AddEditNotificationTemplateModal = ({
           }
           name="title"
           rules={[
-            { required: true, message: t("notification_templates.template_title") },
+            { required: true, message: t("notification_templates.title_required") },
           ]}
         >
           <Input
@@ -189,7 +189,7 @@ const AddEditNotificationTemplateModal = ({
           }
           name="body"
           rules={[
-            { required: true, message: t("notification_templates.template_body") },
+            { required: true, message: t("notification_templates.body_required") },
           ]}
         >
           <Input.TextArea

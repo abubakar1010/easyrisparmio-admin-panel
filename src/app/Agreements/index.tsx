@@ -1,9 +1,11 @@
+import { getLocale } from '../../utils/format';
 import { Button, Input, Select, Spin, Empty, Switch, Table, Tag, Modal, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { FiEdit2, FiEye, FiPlus, FiSearch, FiTag, FiTrash2 } from "react-icons/fi";
 import { LuCalendarDays } from "react-icons/lu";
 import { useState } from "react";
 import { useNavigate } from "react-router";
+import { useTranslation } from "react-i18next";
 import dayjs from "dayjs";
 import {
   useGetAgreementsAdminQuery,
@@ -17,6 +19,7 @@ import AgreementFormModal from "./AgreementFormModal";
 const { Option } = Select;
 
 const Agreements = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -49,25 +52,25 @@ const Agreements = () => {
   const handleToggleStatus = async (agreement: IAgreement) => {
     try {
       await toggleStatus({ id: agreement.id, isActive: !agreement.isActive }).unwrap();
-      message.success("Status updated");
+      message.success(t("agreements.status_updated"));
     } catch {
-      message.error("Failed to update status");
+      message.error(t("agreements.update_failed"));
     }
   };
 
   const handleDelete = (agreement: IAgreement) => {
     Modal.confirm({
-      title: "Delete agreement?",
-      content: `"${agreement.partnerName}" will be removed.`,
-      okText: "Delete",
+      title: t("agreements.delete_agreement"),
+      content: `"${agreement.partnerName}" ${t("agreements.will_be_removed")}`,
+      okText: t("common.delete"),
       okButtonProps: { danger: true },
       centered: true,
       onOk: async () => {
         try {
           await deleteAgreement(agreement.id).unwrap();
-          message.success("Agreement deleted");
+          message.success(t("agreements.agreement_deleted"));
         } catch {
-          message.error("Failed to delete");
+          message.error(t("agreements.delete_failed"));
         }
       },
     });
@@ -100,7 +103,7 @@ const Agreements = () => {
 
   const columns: ColumnsType<IAgreement> = [
     {
-      title: "PARTNER",
+      title: t("agreements.partner"),
       key: "partner",
       width: 220,
       render: (_, record) => (
@@ -117,14 +120,14 @@ const Agreements = () => {
       ),
     },
     {
-      title: "TITLE",
+      title: t("agreements.title_column"),
       dataIndex: "title",
       key: "title",
       width: 200,
       render: (value: string) => <span className="text-sm text-slate-700">{value}</span>,
     },
     {
-      title: "DISCOUNT",
+      title: t("agreements.discount"),
       dataIndex: "discountDescription",
       key: "discount",
       render: (value: string) => (
@@ -135,45 +138,45 @@ const Agreements = () => {
       ),
     },
     {
-      title: "VALIDITY",
+      title: t("agreements.validity"),
       key: "validity",
       width: 160,
       render: (_, record) => (
         <div className="text-sm text-slate-500">
           <p className="inline-flex items-center gap-1.5">
             <LuCalendarDays className="h-3.5 w-3.5" />
-            {new Date(record.validFrom).toLocaleDateString("it-IT")}
+            {new Date(record.validFrom).toLocaleDateString(getLocale())}
           </p>
-          {record.validUntil && <p>{new Date(record.validUntil).toLocaleDateString("it-IT")}</p>}
+          {record.validUntil && <p>{new Date(record.validUntil).toLocaleDateString(getLocale())}</p>}
         </div>
       ),
     },
     {
-      title: "AUDIENCE",
+      title: t("agreements.audience"),
       dataIndex: "targetAudience",
       key: "targetAudience",
       width: 120,
       render: (value: string) => (
         <Tag className="rounded-full border-0 bg-slate-100 px-2.5 text-xs font-semibold capitalize text-slate-600">
-          {value}
+          {value === "personal" ? t("client_management.private") : value === "business" ? t("client_management.business") : t("agreements.both")}
         </Tag>
       ),
     },
     {
-      title: "STATUS",
+      title: t("common.status"),
       key: "status",
       width: 120,
       render: (_, record) => (
         <div className="flex items-center gap-2">
           <Switch size="small" checked={record.isActive} onChange={() => handleToggleStatus(record)} />
           <span className={`text-sm font-medium ${record.isActive ? "text-emerald-600" : "text-slate-500"}`}>
-            {record.isActive ? "Active" : "Inactive"}
+            {record.isActive ? t("common.active") : t("common.inactive")}
           </span>
         </div>
       ),
     },
     {
-      title: "ACTIONS",
+      title: t("common.actions"),
       key: "actions",
       width: 140,
       render: (_, record) => (
@@ -191,8 +194,8 @@ const Agreements = () => {
     <div className="space-y-5 pb-8">
       <div className="mb-4 flex flex-col gap-3 border-b border-cborder/45 pb-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-brand">Agreements</h2>
-          <p className="text-sm text-owngray">Management of partnerships and discounts for customers</p>
+          <h2 className="text-xl font-semibold text-brand">{t("agreements.title")}</h2>
+          <p className="text-sm text-owngray">{t("agreements.description")}</p>
         </div>
         <Button
           type="primary"
@@ -200,7 +203,7 @@ const Agreements = () => {
           className="h-10 rounded-lg border-0 bg-[#8b85f6] px-5 font-semibold hover:bg-[#7a74e5]"
           onClick={() => setAddOpen(true)}
         >
-          Add Agreement
+          {t("agreements.add_agreement")}
         </Button>
       </div>
 
@@ -209,7 +212,7 @@ const Agreements = () => {
         <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 bg-white p-4">
           <div className="min-w-[240px] flex-1">
             <Input
-              placeholder="Search by partner, title..."
+              placeholder={t("agreements.search_placeholder")}
               prefix={<FiSearch className="mr-2 text-slate-400" />}
               onChange={(e) => handleSearch(e.target.value)}
               className="h-11 rounded-xl border-slate-200"
@@ -217,29 +220,29 @@ const Agreements = () => {
           </div>
           <Select
             allowClear
-            placeholder="Status"
+            placeholder={t("common.status")}
             onChange={(v) => { setStatusFilter(v); setPage(1); }}
             className="w-36 [&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-xl"
           >
-            <Option value={true}>Active</Option>
-            <Option value={false}>Inactive</Option>
+            <Option value={true}>{t("common.active")}</Option>
+            <Option value={false}>{t("common.inactive")}</Option>
           </Select>
           <Select
             allowClear
-            placeholder="Audience"
+            placeholder={t("agreements.audience")}
             onChange={(v) => { setAudienceFilter(v); setPage(1); }}
             className="w-36 [&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-xl"
           >
-            <Option value="personal">Personal</Option>
-            <Option value="business">Business</Option>
-            <Option value="both">Both</Option>
+            <Option value="personal">{t("client_management.private")}</Option>
+            <Option value="business">{t("client_management.business")}</Option>
+            <Option value="both">{t("agreements.both")}</Option>
           </Select>
         </div>
 
         {isLoading ? (
           <div className="flex items-center justify-center py-24"><Spin size="large" /></div>
         ) : agreements.length === 0 ? (
-          <div className="py-24"><Empty description="No agreements found" /></div>
+          <div className="py-24"><Empty description={t("agreements.no_agreements")} /></div>
         ) : (
           <Table<IAgreement>
             rowKey="id"

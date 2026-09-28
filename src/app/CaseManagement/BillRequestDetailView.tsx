@@ -1,3 +1,5 @@
+import { getApiErrorMessage } from "../../utils/apiError";
+import { getLocale } from "../../utils/format";
 import { useState, useCallback, useContext, useMemo, useRef, createContext } from "react";
 import { App, Button, Input, InputNumber, Spin, Empty, Tag, Select, Table, Upload, Tooltip, DatePicker, Modal, message } from "antd";
 import dayjs, { type Dayjs } from "dayjs";
@@ -61,10 +63,13 @@ import {
 import { useAppDispatch, useAppSelector } from "../../redux/hooks";
 import { cn } from "../../utils/cn";
 import { formatMoney, formatQuantity, formatUnitPrice } from "../../utils/format";
+import { formatContractDuration } from "../../utils/contractDuration";
 import { server_url, server_origin } from "../../config";
 import EditBillModal from "./EditBillModal";
 import EditCaseModal from "./EditCaseModal";
 import VerificationFileList from "./VerificationFileList";
+import i18n from "../../i18n";
+import { useTranslation } from "react-i18next";
 
 /* ── Status & Step Configuration ─────────────────────────── */
 
@@ -82,30 +87,22 @@ const pipelineStatusOrder = [
 ];
 
 const stepConfig = [
-  { label: "Upload & Analysis", statuses: ["pending_email", "uploaded", "analyzing", "analyzed"] },
-  { label: "Verification", statuses: ["verification_review", "verification_required", "verified"] },
-  { label: "Offers", statuses: ["offer_sent", "offer_accepted"] },
-  { label: "Contract", statuses: ["contract_sent"] },
-  { label: "In Activation", statuses: ["awaiting_activation"] },
-  { label: "Activated", statuses: ["activated"] },
+  { label: "case_management.steps.upload_analysis", statuses: ["pending_email", "uploaded", "analyzing", "analyzed"] },
+  { label: "case_management.steps.verification", statuses: ["verification_review", "verification_required", "verified"] },
+  { label: "case_management.steps.offers", statuses: ["offer_sent", "offer_accepted"] },
+  { label: "case_management.steps.contract", statuses: ["contract_sent"] },
+  { label: "case_management.steps.in_activation", statuses: ["awaiting_activation"] },
+  { label: "case_management.steps.activated", statuses: ["activated"] },
 ];
 
-const statusLabel: Record<string, string> = {
-  pending_email: "Pending (Email)",
-  uploaded: "Uploaded",
-  analyzing: "Analyzing",
-  analyzed: "Analyzed",
-  error: "Error",
-  verification_review: "Verification Review",
-  verification_required: "Verification Required",
-  verified: "Verified",
-  offer_sent: "Offer Sent",
-  offer_accepted: "Offer Accepted",
-  contract_sent: "Contract Sent",
-  awaiting_activation: "In Activation",
-  activated: "Activated",
-  cancelled: "Cancelled",
-};
+const localizedStatus = (status: string) =>
+  i18n.t(`case_management.status.${status}`, { defaultValue: status });
+
+const localizedUi = (key: string, fallback: string, options?: Record<string, unknown>) =>
+  i18n.t(`case_management.ui.${key}`, { defaultValue: fallback, ...options });
+
+const localizedDetail = (key: string, fallback: string, options?: Record<string, unknown>) =>
+  i18n.t(`case_management.detail.${key}`, { defaultValue: fallback, ...options });
 
 const statusTagColor: Record<string, string> = {
   pending_email: "purple",
@@ -132,12 +129,12 @@ const statusTagColor: Record<string, string> = {
  * any time, which moves the case forward or backward.
  */
 const statusGroups: { label: string; statuses: string[] }[] = [
-  { label: "Upload & Analysis", statuses: ["uploaded", "analyzing", "analyzed"] },
-  { label: "Verification", statuses: ["verification_review", "verification_required", "verified"] },
-  { label: "Offers", statuses: ["offer_sent", "offer_accepted"] },
-  { label: "Contract", statuses: ["contract_sent"] },
-  { label: "Activation", statuses: ["awaiting_activation", "activated"] },
-  { label: "Other", statuses: ["cancelled"] },
+  { label: "case_management.steps.upload_analysis", statuses: ["uploaded", "analyzing", "analyzed"] },
+  { label: "case_management.steps.verification", statuses: ["verification_review", "verification_required", "verified"] },
+  { label: "case_management.steps.offers", statuses: ["offer_sent", "offer_accepted"] },
+  { label: "case_management.steps.contract", statuses: ["contract_sent"] },
+  { label: "case_management.steps.activation", statuses: ["awaiting_activation", "activated"] },
+  { label: "case_management.steps.other", statuses: ["cancelled"] },
 ];
 
 /**
@@ -202,7 +199,7 @@ function getStepStates(billStatus: string): ("done" | "current" | "pending")[] {
 const fmtDate = (val: string | null | undefined) => {
   if (!val) return "—";
   try {
-    return new Date(val).toLocaleDateString("en-US", {
+    return new Date(val).toLocaleDateString(getLocale(), {
       month: "2-digit",
       day: "2-digit",
       year: "numeric",
@@ -216,7 +213,7 @@ const fmtDate = (val: string | null | undefined) => {
 const fmtDateIt = (val: string | null | undefined) => {
   if (!val) return "—";
   try {
-    return new Date(val).toLocaleDateString("it-IT", {
+    return new Date(val).toLocaleDateString(getLocale(), {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -256,7 +253,7 @@ function CaseStatusSelect({
 }) {
   const buildOption = (status: string) => ({
     value: status,
-    label: statusLabel[status] || status,
+    label: localizedStatus(status),
     // The case is already here — nothing to change.
     disabled: status === currentStatus,
   });
@@ -264,10 +261,10 @@ function CaseStatusSelect({
   const options = [
     // A system-managed status is only listed while the case is parked in it.
     ...(systemOnlyStatuses.includes(currentStatus)
-      ? [{ label: "Current", options: [buildOption(currentStatus)] }]
+      ? [{ label: i18n.t("case_management.current"), options: [buildOption(currentStatus)] }]
       : []),
     ...statusGroups.map((group) => ({
-      label: group.label,
+      label: i18n.t(group.label),
       options: group.statuses.map(buildOption),
     })),
   ];
@@ -289,7 +286,7 @@ function CaseStatusSelect({
             className={`h-2 w-2 shrink-0 rounded-full ${statusDotClass[currentStatus] || "bg-slate-300"}`}
           />
           <span className="font-semibold text-slate-700">
-            {statusLabel[currentStatus] || currentStatus}
+            {localizedStatus(currentStatus)}
           </span>
         </span>
       )}
@@ -307,16 +304,16 @@ function CaseStatusSelect({
               <span
                 className={`h-2 w-2 shrink-0 rounded-full ${statusDotClass[status] || "bg-slate-300"}`}
               />
-              <span className="truncate">{statusLabel[status] || status}</span>
+              <span className="truncate">{localizedStatus(status)}</span>
             </span>
             {isCurrent ? (
               <span className="flex shrink-0 items-center gap-1 rounded-full bg-[#7061ED] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
                 <FiCheck className="h-2.5 w-2.5" />
-                Current
+                {i18n.t("case_management.current")}
               </span>
             ) : direction === "backward" ? (
               <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700">
-                Back
+                {i18n.t("case_management.back")}
               </span>
             ) : null}
           </div>
@@ -362,7 +359,7 @@ function CaseActionsPanel({
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-5">
-      <h3 className="text-sm font-bold text-slate-700 mb-4">Actions</h3>
+      <h3 className="text-sm font-bold text-slate-700 mb-4">{i18n.t("common.actions")}</h3>
       <div className="flex flex-wrap gap-3">
         {billStatus === "verification_review" && (
           <>
@@ -373,16 +370,16 @@ function CaseActionsPanel({
               onClick={() => onTransition("verified")}
               className="bg-emerald-500 hover:bg-emerald-600 border-0"
             >
-              Approve — Mark Verified
+              {localizedUi("approve_verified", "Approve — Mark Verified")}
             </Button>
             <Button danger icon={<FiSend />} onClick={onRequestCorrections}>
-              Request Corrections
+              {localizedUi("request_corrections", "Request Corrections")}
             </Button>
           </>
         )}
         {billStatus === "verified" && (
           <Button type="primary" icon={<FiSend />} onClick={onGoToOffers}>
-            Send Offers
+            {localizedUi("send_offers", "Send Offers")}
           </Button>
         )}
         {billStatus === "offer_accepted" && (
@@ -392,7 +389,7 @@ function CaseActionsPanel({
             loading={isTransitioning}
             onClick={() => onTransition("contract_sent")}
           >
-            Send Contract to Customer
+            {localizedUi("send_contract", "Send Contract to Customer")}
           </Button>
         )}
         {billStatus === "contract_sent" && (
@@ -402,7 +399,7 @@ function CaseActionsPanel({
             loading={isTransitioning}
             onClick={onMoveToActivation}
           >
-            Move to In Activation
+            {localizedUi("move_to_activation", "Move to In Activation")}
           </Button>
         )}
         {billStatus === "awaiting_activation" && (
@@ -413,7 +410,7 @@ function CaseActionsPanel({
             onClick={() => onTransition("activated")}
             className="bg-emerald-500 hover:bg-emerald-600 border-0"
           >
-            Activate Utility
+            {localizedUi("activate_utility", "Activate Utility")}
           </Button>
         )}
       </div>
@@ -424,17 +421,18 @@ function CaseActionsPanel({
 /* ── Tab definitions ─────────────────────────────────────── */
 
 const tabKeys = [
-  { key: "overview", label: "Overview" },
-  { key: "available_offers", label: "Offers" },
-  { key: "bill_data", label: "Bill Data" },
-  { key: "verification", label: "Verification" },
-  { key: "notes", label: "Notes" },
-  { key: "case_details", label: "Case Details" },
+  { key: "overview", label: "overview" },
+  { key: "available_offers", label: "offers" },
+  { key: "bill_data", label: "bill_data" },
+  { key: "verification", label: "verification" },
+  { key: "notes", label: "notes" },
+  { key: "case_details", label: "case_details" },
 ] as const;
 
 /* ── Main Component ──────────────────────────────────────── */
 
 const BillRequestDetailView = () => {
+  useTranslation();
   const { message, notification } = App.useApp();
   const navigate = useNavigate();
   const { billId } = useParams();
@@ -479,15 +477,10 @@ const BillRequestDetailView = () => {
       offerOrderSave.current = offerOrderSave.current
         .catch(() => undefined)
         .then(() => reorderBillOffers({ billId, offerIds }).unwrap())
-        .catch((err: { data?: { message?: string | string[] } }) => {
-          const msg = err?.data?.message;
+        .catch((err: unknown) => {
           notification.error({
-            message: "Could not save the offer order",
-            description: Array.isArray(msg)
-              ? msg.join(", ")
-              : typeof msg === "string"
-                ? msg
-                : "The customer still sees the previous order — the list has been reloaded.",
+            message: i18n.t("audit.could_not_save_the_offer_order"),
+            description: getApiErrorMessage(err, i18n.t("audit.offer_order_reloaded")),
             duration: 6,
           });
         });
@@ -524,13 +517,13 @@ const BillRequestDetailView = () => {
       await transitionBillStatus({ billId: bill.id, targetStatus, ...dates }).unwrap();
       const movedBack = getStatusDirection(previousStatus, targetStatus) === "backward";
       message.success(
-        `${movedBack ? "Status moved back to" : "Status updated to"} "${
-          statusLabel[targetStatus] || targetStatus
-        }" — the customer has been notified.`,
+        i18n.t(movedBack ? "audit.status_moved_back_notified" : "audit.status_updated_notified", {
+          status: localizedStatus(targetStatus),
+        }),
       );
       refetch();
     } catch (err: any) {
-      message.error(err?.data?.message?.[0] || err?.data?.message || "Failed to update status");
+      message.error(getApiErrorMessage(err, i18n.t("audit.status_update_failed")));
     } finally {
       setIsTransitioning(false);
     }
@@ -577,7 +570,7 @@ const BillRequestDetailView = () => {
   const handleSendVerificationRequest = async () => {
     if (!bill) return;
     if (!verificationMessage.trim()) {
-      message.warning("Please enter a message");
+      message.warning(i18n.t("notification_templates.body_required"));
       return;
     }
     setIsTransitioning(true);
@@ -587,12 +580,12 @@ const BillRequestDetailView = () => {
         targetStatus: "verification_required",
         message: verificationMessage,
       }).unwrap();
-      message.success("Verification request sent");
+      message.success(i18n.t("audit.verification_request_sent"));
       setShowVerificationModal(false);
       setVerificationMessage("");
       refetch();
     } catch (err: any) {
-      message.error(err?.data?.message?.[0] || err?.data?.message || "Failed to send request");
+      message.error(getApiErrorMessage(err, i18n.t("audit.request_send_failed")));
     } finally {
       setIsTransitioning(false);
     }
@@ -609,9 +602,9 @@ const BillRequestDetailView = () => {
   if (!bill) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-24">
-        <Empty description="Bill request not found" />
+        <Empty description={i18n.t("audit.bill_request_not_found")} />
         <Button onClick={() => navigate("/case-management")} icon={<FiArrowLeft />}>
-          Back to Case Management
+          {i18n.t("audit.back_to_case_management")}
         </Button>
       </div>
     );
@@ -637,7 +630,7 @@ const BillRequestDetailView = () => {
 
   const handleSendOffers = async () => {
     if (selectedRowKeys.length === 0) {
-      message.warning("Please select at least one offer");
+      message.warning(i18n.t("audit.please_select_at_least_one_offer"));
       return;
     }
 
@@ -659,12 +652,12 @@ const BillRequestDetailView = () => {
       const msg = errData?.message;
       const errorText = Array.isArray(msg) ? msg.join(", ") : typeof msg === "string" ? msg : "Failed to send offers";
       notification.error({
-        message: "Cannot send offers",
+        message: i18n.t("audit.cannot_send_offers"),
         description: errorText,
         duration: 6,
       });
     } else {
-      message.success(`${selectedRowKeys.length} offer(s) sent to user`);
+      message.success(i18n.t("audit.offers_sent_to_user", { count: selectedRowKeys.length }));
       setSelectedRowKeys([]);
       refetch();
     }
@@ -677,21 +670,21 @@ const BillRequestDetailView = () => {
           <div className="space-y-6">
             {/* Current Status */}
             <div className="bg-white rounded-xl border border-slate-200 p-5">
-              <h3 className="text-sm font-bold text-slate-700 mb-3">Current Status</h3>
+              <h3 className="text-sm font-bold text-slate-700 mb-3">{localizedUi("current_status", "Current Status")}</h3>
               <Tag color={statusTagColor[bill.status]} className="rounded-full! px-4! py-1! text-sm! font-semibold! border-0!">
-                {statusLabel[bill.status] || bill.status}
+                {localizedStatus(bill.status)}
               </Tag>
               <p className="text-sm text-slate-500 mt-2">
-                {bill.status === "verification_review" && "Review the extracted bill data. Approve or request corrections from the user."}
-                {bill.status === "verified" && "Bill data verified. You can now send offers to the user."}
-                {bill.status === "offer_sent" && "Offers have been sent. Waiting for the user to select an offer."}
-                {bill.status === "offer_accepted" && "User has accepted an offer. Send them the contract."}
-                {bill.status === "contract_sent" && "The customer is signing with the supplier. Move to In Activation once the supplier confirms."}
-                {bill.status === "awaiting_activation" && "Utility is in activation. Mark as activated when ready."}
-                {bill.status === "activated" && "Utility is activated and live."}
-                {bill.status === "analyzing" && "Bill is being analyzed by the system."}
-                {bill.status === "analyzed" && "Analysis complete. Moving to verification review."}
-                {bill.status === "verification_required" && "Waiting for user to provide requested information."}
+                {bill.status === "verification_review" && localizedUi("description_verification_review", "Review the extracted bill data. Approve or request corrections from the user.")}
+                {bill.status === "verified" && localizedUi("description_verified", "Bill data verified. You can now send offers to the user.")}
+                {bill.status === "offer_sent" && localizedUi("description_offer_sent", "Offers have been sent. Waiting for the user to select an offer.")}
+                {bill.status === "offer_accepted" && localizedUi("description_offer_accepted", "User has accepted an offer. Send them the contract.")}
+                {bill.status === "contract_sent" && localizedUi("description_contract_sent", "The customer is signing with the supplier. Move to In Activation once the supplier confirms.")}
+                {bill.status === "awaiting_activation" && localizedUi("description_awaiting_activation", "Utility is in activation. Mark as activated when ready.")}
+                {bill.status === "activated" && localizedUi("description_activated", "Utility is activated and live.")}
+                {bill.status === "analyzing" && localizedUi("description_analyzing", "Bill is being analyzed by the system.")}
+                {bill.status === "analyzed" && localizedUi("description_analyzed", "Analysis complete. Moving to verification review.")}
+                {bill.status === "verification_required" && localizedUi("description_verification_required", "Waiting for user to provide requested information.")}
               </p>
             </div>
 
@@ -709,8 +702,8 @@ const BillRequestDetailView = () => {
               <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5 flex items-center gap-3">
                 <FiCheckCircle className="text-emerald-500 h-6 w-6 flex-shrink-0" />
                 <div>
-                  <p className="text-emerald-700 font-semibold">Utility Activated</p>
-                  <p className="text-emerald-600 text-sm">This utility has been successfully activated.</p>
+                  <p className="text-emerald-700 font-semibold">{localizedUi("utility_activated", "Utility Activated")}</p>
+                  <p className="text-emerald-600 text-sm">{localizedUi("utility_activated_success", "This utility has been successfully activated.")}</p>
                 </div>
               </div>
             )}
@@ -718,18 +711,18 @@ const BillRequestDetailView = () => {
             {/* Case info section (visible from offer_accepted onward) */}
             {activeCase && (
               <div className="bg-white rounded-xl border border-slate-200 p-5">
-                <h3 className="text-sm font-bold text-slate-700 mb-3">Case Information</h3>
+                <h3 className="text-sm font-bold text-slate-700 mb-3">{i18n.t("audit.case_information")}</h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                   <div>
-                    <span className="text-slate-400">Case Number</span>
+                    <span className="text-slate-400">{i18n.t("audit.case_number")}</span>
                     <p className="font-semibold text-slate-700">{activeCase.caseNumber || "—"}</p>
                   </div>
                   <div>
-                    <span className="text-slate-400">Type</span>
+                    <span className="text-slate-400">{i18n.t("notifications.notification_type")}</span>
                     <p className="font-semibold text-slate-700 capitalize">{activeCase.caseType || "—"}</p>
                   </div>
                   <div>
-                    <span className="text-slate-400">Priority</span>
+                    <span className="text-slate-400">{i18n.t("support_ticket.priority")}</span>
                     <p className="font-semibold text-slate-700 capitalize">{activeCase.priority || "—"}</p>
                   </div>
                 </div>
@@ -773,7 +766,7 @@ const BillRequestDetailView = () => {
         return (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-slate-700">Verification History</h3>
+              <h3 className="text-base font-bold text-slate-700">{localizedDetail("verification_history", "Verification history")}</h3>
               <div className="flex items-center gap-2">
                 {/* The uploaded documents are never re-analysed — the admin reads
                     them here and writes the values in by hand. */}
@@ -782,11 +775,11 @@ const BillRequestDetailView = () => {
                   icon={<FiEdit2 className="h-3 w-3" />}
                   onClick={() => setVerificationEditOpen(true)}
                 >
-                  Edit Bill Data
+                  {i18n.t("case_management.edit_bill")}
                 </Button>
                 {bill.status === "verification_review" && bill.verifications?.some((v: any) => v.status === "submitted") && (
                   <Button danger size="small" onClick={() => setShowVerificationModal(true)}>
-                    Request Further Corrections
+                    {localizedDetail("request_further_corrections", "Request further corrections")}
                   </Button>
                 )}
               </div>
@@ -797,16 +790,16 @@ const BillRequestDetailView = () => {
                   {/* Round header */}
                   <div className="flex items-center justify-between px-5 py-3 bg-slate-50 border-b border-slate-200">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-slate-500">Round {idx + 1}</span>
+                      <span className="text-xs font-semibold text-slate-500">{localizedDetail("round", "Round {{count}}", { count: idx + 1 })}</span>
                       {/* Contract requests are no longer created, but old rounds
                           are still in this list — say which kind each one was. */}
                       {v.type === "contract" && (
                         <Tag color="purple" className="rounded-full! border-0! text-xs!">
-                          SIGNED CONTRACT
+                          {localizedDetail("signed_contract", "Signed contract")}
                         </Tag>
                       )}
                       <Tag color={v.status === "pending" ? "orange" : v.status === "submitted" ? "blue" : "green"} className="rounded-full! border-0! text-xs!">
-                        {v.status === "pending" ? "AWAITING USER" : v.status === "submitted" ? "USER RESPONDED" : "RESOLVED"}
+                        {localizedDetail(v.status === "pending" ? "awaiting_user" : v.status === "submitted" ? "user_responded" : "resolved", v.status === "pending" ? "Awaiting user" : v.status === "submitted" ? "User responded" : "Resolved")}
                       </Tag>
                     </div>
                     <span className="text-xs text-slate-400">{fmtDate(v.createdAt)}</span>
@@ -816,7 +809,7 @@ const BillRequestDetailView = () => {
                     {/* Admin request */}
                     <div className="bg-orange-50 rounded-lg p-4 border border-orange-100">
                       <p className="text-xs font-semibold text-orange-700 mb-2 flex items-center gap-1">
-                        <FiSend className="h-3 w-3" /> Admin Request
+                        <FiSend className="h-3 w-3" /> {localizedDetail("admin_request", "Admin request")}
                       </p>
                       <p className="text-sm text-slate-700">{v.adminMessage}</p>
                     </div>
@@ -825,7 +818,7 @@ const BillRequestDetailView = () => {
                     {v.status !== "pending" && (
                       <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
                         <p className="text-xs font-semibold text-blue-700 mb-2 flex items-center gap-1">
-                          <LuMessageSquare className="h-3 w-3" /> User Response
+                          <LuMessageSquare className="h-3 w-3" /> {localizedDetail("user_response", "User response")}
                         </p>
 
                         {v.userMessage && (
@@ -834,25 +827,25 @@ const BillRequestDetailView = () => {
 
                         {v.files && v.files.length > 0 && (
                           <div>
-                            <p className="text-xs text-slate-400 mb-1">Uploaded Documents ({v.files.length})</p>
+                            <p className="text-xs text-slate-400 mb-1">{localizedDetail("uploaded_documents_count", "Uploaded documents ({{count}})", { count: v.files.length })}</p>
                             <VerificationFileList billId={bill.id} files={v.files} />
                           </div>
                         )}
 
                         {!v.userMessage && (!v.files || v.files.length === 0) && (
-                          <p className="text-sm text-slate-400 italic">No documents submitted by user.</p>
+                          <p className="text-sm text-slate-400 italic">{localizedDetail("no_documents_submitted", "The user has not submitted any documents.")}</p>
                         )}
                       </div>
                     )}
 
                     {v.resolvedAt && (
-                      <p className="text-xs text-slate-400">Resolved: {fmtDate(v.resolvedAt)}</p>
+                      <p className="text-xs text-slate-400">{localizedDetail("resolved_on", "Resolved: {{date}}", { date: fmtDate(v.resolvedAt) })}</p>
                     )}
                   </div>
                 </div>
               ))
             ) : (
-              <Empty description="No verification history" />
+              <Empty description={localizedDetail("no_verification_history", "No verification history")} />
             )}
           </div>
         );
@@ -881,7 +874,7 @@ const BillRequestDetailView = () => {
         className="flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors"
       >
         <FiArrowLeft className="h-4 w-4" />
-        Back
+        {i18n.t("case_management.back")}
       </button>
 
       {/* Main Card */}
@@ -899,18 +892,18 @@ const BillRequestDetailView = () => {
             >
               <span className="flex items-center gap-1">
                 {isElectricity ? <LuZap className="h-3 w-3" /> : <LuFlame className="h-3 w-3" />}
-                {isElectricity ? "Electricity" : "Gas"}
+                {i18n.t(isElectricity ? "home.electricity" : "home.gas")}
               </span>
             </Tag>
             <Tag
               color={statusTagColor[bill.status] || "default"}
               className="m-0! rounded-md! border-0! px-2.5! py-0.5! text-xs! font-semibold!"
             >
-              {statusLabel[bill.status] || bill.status}
+              {localizedStatus(bill.status)}
             </Tag>
             {activeCase && (
               <Tag className="m-0! rounded-md! border-0! bg-purple-50! px-2.5! py-0.5! text-xs! font-semibold! text-purple-600!">
-                Case {activeCase.caseNumber || activeCase.id.slice(0, 8)}
+                {localizedDetail("case_number", "Case {{number}}", { number: activeCase.caseNumber || activeCase.id.slice(0, 8) })}
               </Tag>
             )}
           </div>
@@ -927,8 +920,8 @@ const BillRequestDetailView = () => {
           <p className="mt-1 text-sm text-slate-500">
             {bill.podNumber && <>POD {bill.podNumber} • </>}
             {bill.pdrNumber && <>PDR {bill.pdrNumber} • </>}
-            {bill.totalAmount != null && <>Amount: {fmt(bill.totalAmount)} • </>}
-            Uploaded {fmtDate(bill.createdAt)}
+            {bill.totalAmount != null && <>{localizedDetail("amount_label", "Amount: ")}{fmt(bill.totalAmount)} • </>}
+            {localizedDetail("uploaded_on", "Uploaded {{date}}", { date: fmtDate(bill.createdAt) })}
           </p>
 
           {/* ── Stepper ────────────────────────────────── */}
@@ -966,7 +959,7 @@ const BillRequestDetailView = () => {
                           : "text-slate-400"
                     }`}
                   >
-                    {step.label}
+                    {i18n.t(step.label)}
                   </span>
                 </div>
               );
@@ -977,7 +970,7 @@ const BillRequestDetailView = () => {
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-slate-200/70 py-4">
             <div className="flex items-center gap-2.5">
               <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                Case status
+                {localizedDetail("case_status", "Case status")}
               </span>
               <CaseStatusSelect
                 currentStatus={bill.status}
@@ -986,7 +979,7 @@ const BillRequestDetailView = () => {
               />
             </div>
             <span className="text-xs text-slate-400">
-              Pick any status — forward or backward. The customer is notified of every change.
+              {localizedDetail("status_help", "Pick any status — forward or backward. The customer is notified of every change.")}
             </span>
           </div>
         </div>
@@ -1007,7 +1000,7 @@ const BillRequestDetailView = () => {
                     active ? "text-[#7061ED]" : "text-slate-500 hover:text-slate-700"
                   }`}
                 >
-                  {tab.label}
+                  {localizedUi(tab.label, tab.label)}
                   {active && (
                     <div className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-[#7061ED]" />
                   )}
@@ -1030,26 +1023,25 @@ const BillRequestDetailView = () => {
 
       {/* Verification Request Modal */}
       <Modal
-        title="Request Verification from User"
+        title={localizedDetail("request_verification", "Request verification from user")}
         open={showVerificationModal}
         onCancel={() => { setShowVerificationModal(false); setVerificationMessage(""); }}
         onOk={handleSendVerificationRequest}
         confirmLoading={isTransitioning}
-        okText="Send Request"
+        okText={localizedDetail("send_request", "Send request")}
       >
         <div className="space-y-4 mt-4">
           <div>
-            <label className="text-sm font-medium text-slate-700">Message to User *</label>
+            <label className="text-sm font-medium text-slate-700">{localizedDetail("message_to_user", "Message to user")} *</label>
             <Input.TextArea
               rows={4}
               value={verificationMessage}
               onChange={(e) => setVerificationMessage(e.target.value)}
-              placeholder="Explain what the user needs to send you..."
+              placeholder={localizedDetail("verification_message_placeholder", "Explain what the user needs to send you...")}
             />
           </div>
           <p className="text-xs text-slate-400">
-            The user will receive this message and can respond by uploading a document or taking a
-            photo from the app.
+            {localizedDetail("verification_message_help", "The user will receive this message and can respond by uploading a document or taking a photo from the app.")}
           </p>
         </div>
       </Modal>
@@ -1057,22 +1049,21 @@ const BillRequestDetailView = () => {
       {/* Move to In Activation — the dates come from the supplier, so they are
           collected here rather than stamped automatically. */}
       <Modal
-        title="Move to In Activation"
+        title={i18n.t("audit.move_to_in_activation")}
         open={showActivationModal}
         onCancel={() => setShowActivationModal(false)}
         onOk={handleMoveToActivation}
         confirmLoading={isTransitioning}
-        okText="Move to In Activation"
+        okText={i18n.t("audit.move_to_in_activation")}
         okButtonProps={{ disabled: !activationDate || !expiryDate }}
       >
         <div className="space-y-4 mt-4">
           <p className="text-sm text-slate-500">
-            The customer has signed with the supplier. Enter the dates the supplier confirmed —
-            the customer sees them on their utility straight away.
+            {i18n.t("audit.the_customer_has_signed_with_the_supplier_enter_the_dates_the_supplier_confirmed_the_customer_sees_them_on_their_utility_straight_away")}
           </p>
           <div>
             <label className="text-sm font-medium text-slate-700 block mb-1">
-              Activation Date *
+              {i18n.t("audit.activation_date")}
             </label>
             <DatePicker
               className="w-full"
@@ -1084,18 +1075,18 @@ const BillRequestDetailView = () => {
                 if (d && expiryDate && !expiryDate.isAfter(d, "day")) setExpiryDate(null);
               }}
               format="DD/MM/YYYY"
-              placeholder="Select activation date"
+              placeholder={i18n.t("audit.select_activation_date")}
             />
           </div>
           <div>
-            <label className="text-sm font-medium text-slate-700 block mb-1">Expiry Date *</label>
+            <label className="text-sm font-medium text-slate-700 block mb-1">{i18n.t("audit.expiry_date")}</label>
             <DatePicker
               className="w-full"
               value={expiryDate}
               onChange={setExpiryDate}
               disabledDate={(d) => !!activationDate && !d.isAfter(activationDate, "day")}
               format="DD/MM/YYYY"
-              placeholder="Select expiry date"
+              placeholder={i18n.t("audit.select_expiry_date")}
             />
           </div>
         </div>
@@ -1381,14 +1372,14 @@ function AvailableOffersTab({
 
   const columns: ColumnsType<IOfferWithSavings> = [
     {
-      title: "ORDER",
+      title: localizedDetail("order", "ORDER"),
       key: "displayOrder",
       width: 78,
       render: (_, record) => {
         const position = positions.get(record.id);
         if (position === undefined) {
           return (
-            <Tooltip title="Tick this offer to give it a place in the customer's list, then drag it where you want it.">
+            <Tooltip title={localizedDetail("offer_order_unselected_tooltip", "Tick this offer to give it a place in the customer's list, then drag it where you want it.")}>
               <span className="text-xs text-slate-300">—</span>
             </Tooltip>
           );
@@ -1401,23 +1392,23 @@ function AvailableOffersTab({
               title={
                 draggable
                   ? run === "queued"
-                    ? "Drag to set the order these will be sent in — or focus this handle and use ↑ ↓"
-                    : "Drag to set the order the customer sees — or focus this handle and use ↑ ↓"
+                    ? localizedDetail("queued_drag_tooltip", "Drag to set the order these will be sent in — or focus this handle and use ↑ ↓")
+                    : localizedDetail("sent_drag_tooltip", "Drag to set the order the customer sees — or focus this handle and use ↑ ↓")
                   : caseCreated
-                    ? "The customer has already chosen — the order no longer changes what they see"
+                    ? localizedDetail("customer_chose_tooltip", "The customer has already chosen — the order no longer changes what they see")
                     : isSorted
-                      ? "Clear the column sort to rearrange the order"
+                      ? localizedDetail("clear_sort_tooltip", "Clear the column sort to rearrange the order")
                       : run === "queued"
-                        ? "Tick another offer to arrange the batch before sending it"
-                        : "There is nothing to reorder yet — only one offer has been sent"
+                        ? localizedDetail("arrange_batch_tooltip", "Tick another offer to arrange the batch before sending it")
+                        : localizedDetail("nothing_to_reorder_tooltip", "There is nothing to reorder yet — only one offer has been sent")
               }
             >
               <span
                 data-offer-handle={record.id}
                 role="button"
                 aria-label={
-                  `Reorder ${record.name}, position ${position} of ${arrangement.length}` +
-                  (run === "queued" ? " — waiting to be sent" : "")
+                  localizedDetail("reorder_offer_aria", "Reorder {{name}}, position {{position}} of {{count}}", { name: record.name, position, count: arrangement.length }) +
+                  (run === "queued" ? ` — ${localizedDetail("waiting_to_send", "waiting to be sent")}` : "")
                 }
                 aria-disabled={!draggable}
                 tabIndex={draggable ? 0 : -1}
@@ -1459,7 +1450,7 @@ function AvailableOffersTab({
             <Tooltip
               title={
                 run === "queued"
-                  ? `Position ${position} of ${arrangement.length} once this batch is sent`
+                  ? localizedDetail("queued_position_tooltip", "Position {{position}} of {{count}} once this batch is sent", { position, count: arrangement.length })
                   : undefined
               }
             >
@@ -1480,7 +1471,7 @@ function AvailableOffersTab({
       align: "left",
     },
     {
-      title: "OFFER",
+      title: localizedDetail("offer", "OFFER"),
       key: "name",
       width: 200,
       render: (_, record) => (
@@ -1498,15 +1489,15 @@ function AvailableOffersTab({
             >
               <LuStar className="h-2.5 w-2.5" />
               {runOf(record.id) === "queued"
-                ? "Will be shown first"
-                : "Shown first in app"}
+                ? localizedDetail("will_be_shown_first", "Will be shown first")
+                : localizedDetail("shown_first_in_app", "Shown first in app")}
             </span>
           )}
         </div>
       ),
     },
     {
-      title: "TYPE",
+      title: localizedDetail("type", "TYPE"),
       key: "energyType",
       width: 100,
       render: (_, record) => (
@@ -1514,22 +1505,22 @@ function AvailableOffersTab({
           color={record.energyType === "electricity" ? "blue" : record.energyType === "gas" ? "orange" : "purple"}
           className="border-0 rounded text-[10px] font-bold uppercase"
         >
-          {record.energyType}
+          {i18n.t(`suppliers.commodities.${record.energyType}`, { defaultValue: record.energyType })}
         </Tag>
       ),
       align: "center",
     },
     {
-      title: "MARKET",
+      title: localizedDetail("market", "MARKET"),
       key: "marketType",
       width: 90,
       render: (_, record) => (
-        <span className="text-xs font-medium text-slate-600 capitalize">{record.marketType}</span>
+        <span className="text-xs font-medium text-slate-600">{i18n.t(`offers_market.price_${record.marketType}`, { defaultValue: record.marketType })}</span>
       ),
       align: "center",
     },
     {
-      title: `PRICE/${unit.toUpperCase()}`,
+      title: i18n.t("audit.price_per_unit_column", { unit: unit.toUpperCase() }),
       key: "price",
       width: 110,
       render: (_, record) => {
@@ -1553,7 +1544,7 @@ function AvailableOffersTab({
       align: "right",
     },
     {
-      title: "FIXED FEE",
+      title: localizedDetail("fixed_fee", "FIXED FEE"),
       key: "fixedFee",
       width: 90,
       render: (_, record) => (
@@ -1562,11 +1553,11 @@ function AvailableOffersTab({
       align: "right",
     },
     {
-      title: "DURATION",
+      title: localizedDetail("duration", "DURATION"),
       key: "duration",
       width: 80,
       render: (_, record) => (
-        <span className="text-xs text-slate-600">{record.contractDurationDays >= 30 ? `${Math.floor(record.contractDurationDays / 30)} mo` : `${record.contractDurationDays} days`}</span>
+        <span className="text-xs text-slate-600">{formatContractDuration(record)}</span>
       ),
       align: "center",
     },
@@ -1576,14 +1567,14 @@ function AvailableOffersTab({
       width: 40,
       render: (_, record) =>
         record.isGreenEnergy ? (
-          <Tooltip title="Green energy">
+          <Tooltip title={i18n.t("offers_market.green_energy")}>
             <LuLeaf className="h-4 w-4 text-emerald-500" />
           </Tooltip>
         ) : null,
       align: "center",
     },
     {
-      title: "COMPENSATION",
+      title: localizedDetail("compensation", "COMPENSATION"),
       key: "compensation",
       width: 150,
       render: (_, record) => (
@@ -1591,17 +1582,17 @@ function AvailableOffersTab({
       ),
     },
     {
-      title: "PAYMENT METHOD",
+      title: i18n.t("offers_market.payment_method"),
       key: "paymentMethod",
       width: 150,
       render: (_, record) => (
         <span className="text-xs text-slate-600">
-          {PAYMENT_METHOD_LABELS[record.paymentMethod] || "—"}
+          {i18n.t(`offers_market.${record.paymentMethod}`, { defaultValue: PAYMENT_METHOD_LABELS[record.paymentMethod] || "—" })}
         </span>
       ),
     },
     {
-      title: "EST. SAVINGS",
+      title: localizedDetail("estimated_savings", "EST. SAVINGS"),
       key: "savings",
       width: 140,
       render: (_, record) => (
@@ -1633,12 +1624,12 @@ function AvailableOffersTab({
         <div className="flex flex-col items-center gap-1">
           {record.id === userSelectedOfferId && (
             <Tag color="purple" className="border-0! rounded-full! text-[10px]! font-bold! m-0!">
-              User Selected
+              {localizedDetail("user_selected", "User selected")}
             </Tag>
           )}
           {record.isSent && record.id !== userSelectedOfferId && (
             <Tag color="green" className="border-0! rounded-full! text-[10px]! font-bold! m-0!">
-              Already Sent
+              {localizedDetail("already_sent", "Already sent")}
             </Tag>
           )}
         </div>
@@ -1653,10 +1644,10 @@ function AvailableOffersTab({
       {billStatus === "pending_email" && (
         <div className="rounded-lg bg-purple-50 border border-purple-200 px-4 py-3">
           <p className="text-sm font-semibold text-purple-800">
-            This bill was submitted via email and is awaiting document upload.
+            {localizedDetail("email_bill_pending", "This bill was submitted via email and is awaiting document upload.")}
           </p>
           <p className="text-xs text-purple-600 mt-0.5">
-            Upload the bill document through the OCR tab before sending offers.
+            {localizedDetail("upload_bill_before_offers", "Upload the bill document through the OCR tab before sending offers.")}
           </p>
         </div>
       )}
@@ -1665,10 +1656,10 @@ function AvailableOffersTab({
       {caseCreated && (
         <div className="rounded-lg bg-purple-50 border border-purple-200 px-4 py-3">
           <p className="text-sm font-semibold text-purple-800">
-            User has accepted an offer and a case has been created.
+            {localizedDetail("offer_accepted_case_created", "The user has accepted an offer and a case has been created.")}
           </p>
           <p className="text-xs text-purple-600 mt-0.5">
-            No more offers can be sent for this bill. The user-selected offer is highlighted below.
+            {localizedDetail("offers_locked_after_acceptance", "No more offers can be sent for this bill. The user's selected offer is highlighted below.")}
           </p>
         </div>
       )}
@@ -1678,12 +1669,13 @@ function AvailableOffersTab({
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-emerald-50/50 p-3">
           <div>
             <p className="text-sm font-semibold text-emerald-800">
-              {selectedRowKeys.length} offer{selectedRowKeys.length > 1 ? "s" : ""} selected
+              {selectedRowKeys.length === 1
+                ? localizedDetail("offer_selected", "{{count}} offer selected", { count: selectedRowKeys.length })
+                : localizedDetail("offers_selected", "{{count}} offers selected", { count: selectedRowKeys.length })}
             </p>
             {queuedOrder.length > 1 && !isSorted && (
               <p className="text-xs text-emerald-700 mt-0.5">
-                They will be sent in the order shown at the top of the table — drag the
-                handles to change it before sending.
+                {localizedDetail("offers_selected_order_help", "They will be sent in the order shown at the top of the table — drag the handles to change it before sending.")}
               </p>
             )}
           </div>
@@ -1694,7 +1686,7 @@ function AvailableOffersTab({
             onClick={onSendOffers}
             className="!bg-emerald-500 hover:!bg-emerald-600 border-0 rounded-lg h-9 px-5 font-semibold"
           >
-            Send Selected Offers
+            {localizedDetail("send_selected_offers", "Send selected offers")}
           </Button>
         </div>
       )}
@@ -1706,8 +1698,10 @@ function AvailableOffersTab({
             <div className="rounded-lg bg-cyan-50 px-3 py-2">
               <p className="text-xs text-cyan-700">
                 {sentCount > 0
-                  ? `${sentCount} offer${sentCount > 1 ? "s" : ""} already sent to user. You can still select and send additional offers.`
-                  : "Offers have already been sent for this bill. You can still select and send additional offers."}
+                  ? sentCount === 1
+                    ? localizedDetail("offer_already_sent_count", "{{count}} offer has already been sent to the user. You can still select and send more.", { count: sentCount })
+                    : localizedDetail("offers_already_sent_count", "{{count}} offers have already been sent to the user. You can still select and send more.", { count: sentCount })
+                  : localizedDetail("offers_already_sent", "Offers have already been sent for this bill. You can still select and send additional offers.")}
               </p>
             </div>
           );
@@ -1721,23 +1715,18 @@ function AvailableOffersTab({
           <p className="text-xs text-violet-700">
             {isSorted ? (
               <>
-                The rows are sorted for browsing only — the customer still sees the order
-                you set. Clear the sort to rearrange it.
+                {localizedDetail("sorted_offers_help", "The rows are sorted for browsing only — the customer still sees the order you set. Clear the sort to rearrange it.")}
               </>
             ) : (
               <>
                 <span className="font-semibold">
-                  Drag the handles to set the order the customer sees.
+                  {localizedDetail("drag_offers_help", "Drag the handles to set the order the customer sees.")}
                 </span>{" "}
-                The offer at the top is shown first in the app. Nothing is re-sorted by
-                price or savings on top of it.
+                {localizedDetail("top_offer_help", "The offer at the top is shown first in the app. Nothing is re-sorted by price or savings on top of it.")}
                 {queuedOrder.length > 0 && sentOrder.length > 0 && (
                   <>
                     {" "}
-                    The{" "}
-                    <span className="font-semibold text-amber-600">amber</span> positions
-                    are the batch you have yet to send: arrange it now and it joins the end
-                    of the list in that order.
+                    {localizedDetail("queued_offer_position_help", "The amber positions are the batch you have yet to send: arrange it now and it joins the end of the list in that order.")}
                   </>
                 )}
               </>
@@ -1751,7 +1740,7 @@ function AvailableOffersTab({
                 setSortDirection(null);
               }}
             >
-              Clear sort
+              {localizedDetail("clear_sort", "Clear sort")}
             </Button>
           )}
         </div>
@@ -1762,16 +1751,16 @@ function AvailableOffersTab({
           <Spin size="large" />
         </div>
       ) : offers.length === 0 ? (
-        <Empty description="No active offers available for this bill type" />
+        <Empty description={localizedDetail("no_active_offers", "No active offers available for this bill type")} />
       ) : (
         <>
           <div className="flex items-center gap-2 mb-2">
             <LuPackageSearch className="h-4 w-4 text-amber-500" />
             <h4 className="text-sm font-semibold text-slate-800">
-              Available Offers ({offers.length})
+              {localizedDetail("available_offers_count", "Available offers ({{count}})", { count: offers.length })}
               {sentOrder.length > 0 && (
                 <span className="text-slate-400 font-normal ml-1">
-                  ({sentOrder.length} already sent)
+                  ({localizedDetail("offers_already_sent_short", "{{count}} already sent", { count: sentOrder.length })})
                 </span>
               )}
             </h4>
@@ -1837,6 +1826,7 @@ function BillDataTab({
   onMoveToActivation: () => void;
   onGoToOffers: () => void;
 }) {
+  useTranslation();
   const isElectricity = bill.billType === "electricity";
   const token = useAppSelector((state) => state.auth.token);
   const [editOpen, setEditOpen] = useState(false);
@@ -1853,7 +1843,7 @@ function BillDataTab({
     const res = await fetch(url, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    if (!res.ok) throw new Error("Failed to fetch file");
+    if (!res.ok) throw new Error(String(res.status));
     return res.blob();
   }, [token]);
 
@@ -1876,7 +1866,7 @@ function BillDataTab({
       setPreviewUrl(objUrl);
       setPreviewOpen(true);
     } catch {
-      message.error("Failed to load document");
+      message.error(i18n.t("case_management.load_document_failed"));
     } finally {
       setPreviewLoading(null);
     }
@@ -1891,7 +1881,7 @@ function BillDataTab({
         bf.originalName || `bill-${bill.id.slice(0, 8)}.${ext}`,
       );
     } catch {
-      message.error("Failed to download document");
+      message.error(i18n.t("case_management.download_document_failed"));
     }
   };
 
@@ -1905,37 +1895,39 @@ function BillDataTab({
 
   const groups = [
     {
-      title: "Bill Overview",
+      title: localizedDetail("bill_overview", "Bill overview"),
       rows: [
         {
-          label: "Bill Type",
+          label: localizedDetail("bill_type", "Bill type"),
           value: (
             <Tag color={isElectricity ? "blue" : "orange"} className="m-0!">
               <span className="flex items-center gap-1">
                 {isElectricity ? <LuZap className="h-3 w-3" /> : <LuFlame className="h-3 w-3" />}
-                {isElectricity ? "Electricity" : "Gas"}
+                {i18n.t(isElectricity ? "home.electricity" : "home.gas")}
               </span>
             </Tag>
           ),
         },
         {
-          label: "Status",
+          label: localizedDetail("status", "Status"),
           value: (
             <Tag color={statusTagColor[bill.status] || "default"} className="m-0!">
-              {statusLabel[bill.status] || bill.status}
+              {localizedStatus(bill.status)}
             </Tag>
           ),
         },
-        { label: "Upload Date", value: fmtDate(bill.createdAt) },
-        { label: "Last Updated", value: fmtDate(bill.updatedAt) },
+        { label: localizedDetail("upload_date", "Upload date"), value: fmtDate(bill.createdAt) },
+        { label: localizedDetail("last_updated", "Last updated"), value: fmtDate(bill.updatedAt) },
         {
-          label: `Uploaded Documents${billFiles.length > 0 ? ` (${billFiles.length})` : ""}`,
+          label: billFiles.length > 0
+            ? localizedDetail("uploaded_documents_count", "Uploaded documents ({{count}})", { count: billFiles.length })
+            : localizedDetail("uploaded_documents", "Uploaded documents"),
           value: billFiles.length > 0 ? (
             <div className="space-y-3">
               {/* Original Upload */}
               {originalFiles.length > 0 && (
                 <div>
-                  <p className="text-xs font-semibold text-slate-500 mb-1">Original Upload</p>
+                  <p className="text-xs font-semibold text-slate-500 mb-1">{localizedDetail("original_upload", "Original upload")}</p>
                   <div className="space-y-2">
                     {originalFiles.map((bf, idx) => (
                       <div key={bf.id} className="flex items-center gap-3">
@@ -1950,7 +1942,7 @@ function BillDataTab({
                           className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors disabled:opacity-50"
                         >
                           <FiEye className="h-3 w-3" />
-                          {previewLoading === bf.id ? "..." : "View"}
+                          {previewLoading === bf.id ? "..." : i18n.t("case_management.view")}
                         </button>
                         <button
                           type="button"
@@ -1958,7 +1950,7 @@ function BillDataTab({
                           className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-800 transition-colors"
                         >
                           <LuDownload className="h-3 w-3" />
-                          Download
+                          {i18n.t("case_management.download")}
                         </button>
                       </div>
                     ))}
@@ -1970,7 +1962,7 @@ function BillDataTab({
               {reuploadedFiles.length > 0 && (
                 <div>
                   {originalFiles.length > 0 && <div className="border-t border-slate-200 my-2" />}
-                  <p className="text-xs font-semibold text-slate-500 mb-1">Re-uploaded Documents</p>
+                  <p className="text-xs font-semibold text-slate-500 mb-1">{localizedDetail("reuploaded_documents", "Re-uploaded documents")}</p>
                   <div className="space-y-2">
                     {reuploadedFiles.map((bf, idx) => (
                       <div key={bf.id} className="flex items-center gap-3">
@@ -1978,7 +1970,7 @@ function BillDataTab({
                         <span className="text-xs text-slate-600 truncate max-w-[120px]">
                           {bf.originalName || bf.fileUrl.split("/").pop()}
                         </span>
-                        <Tag color="blue" className="text-[10px]! leading-tight! px-1! py-0! m-0!">Re-upload</Tag>
+                        <Tag color="blue" className="text-[10px]! leading-tight! px-1! py-0! m-0!">{localizedDetail("reupload", "Re-upload")}</Tag>
                         <button
                           type="button"
                           onClick={() => handleView(bf)}
@@ -1986,7 +1978,7 @@ function BillDataTab({
                           className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors disabled:opacity-50"
                         >
                           <FiEye className="h-3 w-3" />
-                          {previewLoading === bf.id ? "..." : "View"}
+                          {previewLoading === bf.id ? "..." : i18n.t("case_management.view")}
                         </button>
                         <button
                           type="button"
@@ -1994,7 +1986,7 @@ function BillDataTab({
                           className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-800 transition-colors"
                         >
                           <LuDownload className="h-3 w-3" />
-                          Download
+                          {i18n.t("case_management.download")}
                         </button>
                       </div>
                     ))}
@@ -2003,30 +1995,30 @@ function BillDataTab({
               )}
             </div>
           ) : bill.fileUrl ? (
-            <span className="text-xs text-slate-500">1 file (legacy)</span>
+            <span className="text-xs text-slate-500">{localizedDetail("legacy_file", "1 file (legacy)")}</span>
           ) : "—",
         },
       ],
     },
     {
-      title: "Financial Breakdown",
+      title: localizedDetail("financial_breakdown", "Financial breakdown"),
       rows: [
-        { label: "Total Amount", value: fmt(bill.totalAmount) },
+        { label: localizedDetail("total_amount", "Total amount"), value: fmt(bill.totalAmount) },
         {
-          label: "Cost per Unit",
+          label: localizedDetail("cost_per_unit", "Cost per unit"),
           value: formatUnitPrice(bill.costPerUnit, undefined, { fallback: null }),
         },
-        { label: "Fixed Charges", value: fmt(bill.fixedCharges) },
-        { label: "Taxes", value: fmt(bill.taxes) },
+        { label: localizedDetail("fixed_charges", "Fixed charges"), value: fmt(bill.fixedCharges) },
+        { label: localizedDetail("taxes", "Taxes"), value: fmt(bill.taxes) },
         {
-          label: isElectricity ? "Consumption (kWh)" : "Consumption (Smc)",
+          label: localizedDetail("consumption", "Consumption ({{unit}})", { unit: isElectricity ? "kWh" : "Smc" }),
           value: fmtNum(
             isElectricity ? bill.consumptionKwh : bill.consumptionSmc,
             isElectricity ? "kWh" : "Smc",
           ),
         },
         {
-          label: "Billing Period",
+          label: localizedDetail("billing_period", "Billing period"),
           value:
             bill.billingPeriodStart || bill.billingPeriodEnd
               ? `${fmtDate(bill.billingPeriodStart)} — ${fmtDate(bill.billingPeriodEnd)}`
@@ -2035,35 +2027,35 @@ function BillDataTab({
       ],
     },
     {
-      title: "Customer Information",
+      title: localizedDetail("customer_information", "Customer information"),
       rows: [
         {
-          label: "Name",
+          label: localizedDetail("name", "Name"),
           value: bill.user
             ? `${bill.user.firstName} ${bill.user.lastName}`
             : bill.customerName || null,
         },
-        { label: "Email", value: bill.user?.email || null },
+        { label: localizedDetail("email", "Email"), value: bill.user?.email || null },
         // A company's certified address, which is its own and not the mailbox
         // the account signs in with. Absent for a private customer.
         ...(bill.user?.businessProfile?.pecEmail
           ? [{ label: "PEC", value: bill.user.businessProfile.pecEmail }]
           : []),
-        { label: "Supply Address", value: bill.supplyAddress || null },
-        { label: "Codice Fiscale", value: bill.codiceFiscale || null },
-        { label: "Partita IVA", value: bill.partitaIva || null },
+        { label: localizedDetail("supply_address", "Supply address"), value: bill.supplyAddress || null },
+        { label: localizedDetail("codice_fiscale", "Codice Fiscale"), value: bill.codiceFiscale || null },
+        { label: localizedDetail("partita_iva", "Partita IVA"), value: bill.partitaIva || null },
       ],
     },
     {
-      title: "Supply Details",
+      title: localizedDetail("supply_details", "Supply details"),
       rows: [
-        { label: "Supplier", value: bill.supplierName || bill.supplier?.name || (bill.rawAnalysisData?.ocrSupplierName as string) || null },
-        { label: isElectricity ? "POD Number" : "PDR Number", value: (isElectricity ? bill.podNumber : bill.pdrNumber) || null },
-        ...(isElectricity && bill.pdrNumber ? [{ label: "PDR Number", value: bill.pdrNumber }] : []),
-        ...(!isElectricity && bill.podNumber ? [{ label: "POD Number", value: bill.podNumber }] : []),
-        { label: "Contract Number", value: bill.contractNumber || null },
-        { label: "Meter Number", value: bill.meterNumber || null },
-        ...(bill.meterId ? [{ label: "Meter ID", value: bill.meterId }] : []),
+        { label: localizedDetail("supplier", "Supplier"), value: bill.supplierName || bill.supplier?.name || (bill.rawAnalysisData?.ocrSupplierName as string) || null },
+        { label: isElectricity ? "POD" : "PDR", value: (isElectricity ? bill.podNumber : bill.pdrNumber) || null },
+        ...(isElectricity && bill.pdrNumber ? [{ label: "PDR", value: bill.pdrNumber }] : []),
+        ...(!isElectricity && bill.podNumber ? [{ label: "POD", value: bill.podNumber }] : []),
+        { label: localizedDetail("contract_number", "Contract number"), value: bill.contractNumber || null },
+        { label: localizedDetail("meter_number", "Meter number"), value: bill.meterNumber || null },
+        ...(bill.meterId ? [{ label: localizedDetail("meter_id", "Meter ID"), value: bill.meterId }] : []),
       ],
     },
   ];
@@ -2071,14 +2063,14 @@ function BillDataTab({
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <h4 className="text-sm font-semibold text-slate-800">Bill Data</h4>
+        <h4 className="text-sm font-semibold text-slate-800">{i18n.t("case_management.ui.bill_data")}</h4>
         <Button
           type="primary"
           size="small"
           icon={<FiEdit2 className="h-3 w-3" />}
           onClick={() => setEditOpen(true)}
         >
-          Edit Bill Data
+          {i18n.t("case_management.edit_bill")}
         </Button>
       </div>
 
@@ -2096,8 +2088,8 @@ function BillDataTab({
         <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5 flex items-center gap-3">
           <FiCheckCircle className="text-emerald-500 h-6 w-6 flex-shrink-0" />
           <div>
-            <p className="text-emerald-700 font-semibold">Utility Activated</p>
-            <p className="text-emerald-600 text-sm">This utility has been successfully activated.</p>
+            <p className="text-emerald-700 font-semibold">{localizedUi("utility_activated", "Utility activated")}</p>
+            <p className="text-emerald-600 text-sm">{localizedUi("utility_activated_success", "This utility has been successfully activated.")}</p>
           </div>
         </div>
       )}
@@ -2112,7 +2104,7 @@ function BillDataTab({
                 {r.value ? (
                   <div className="text-sm font-medium text-slate-700 mt-0.5">{r.value}</div>
                 ) : (
-                  <p className="text-xs italic text-amber-500 mt-0.5">Not found in document</p>
+                  <p className="text-xs italic text-amber-500 mt-0.5">{localizedDetail("not_found_in_document", "Not found in document")}</p>
                 )}
               </div>
             ))}
@@ -2128,13 +2120,13 @@ function BillDataTab({
         onCancel={handleClosePreview}
         footer={
           <div className="flex justify-end gap-2">
-            <Button onClick={handleClosePreview}>Close</Button>
+            <Button onClick={handleClosePreview}>{i18n.t("case_management.close")}</Button>
           </div>
         }
         title={
           <span className="flex items-center gap-2">
             <FiFileText className="h-4 w-4 text-indigo-500" />
-            Bill Document
+            {localizedDetail("bill_document", "Bill document")}
           </span>
         }
         width={900}
@@ -2146,21 +2138,21 @@ function BillDataTab({
             {previewType === "pdf" ? (
               <iframe
                 src={previewUrl}
-                title="Bill Document"
+                title={localizedDetail("bill_document", "Bill document")}
                 className="w-full border-0 rounded-lg"
                 style={{ height: 600 }}
               />
             ) : previewType === "image" ? (
               <img
                 src={previewUrl}
-                alt="Bill Document"
+                alt={localizedDetail("bill_document", "Bill document")}
                 className="max-w-full max-h-[600px] object-contain"
               />
             ) : (
               <div className="flex flex-col items-center gap-3 py-12">
                 <FiFileText className="h-12 w-12 text-slate-300" />
                 <p className="text-sm text-slate-500">
-                  Preview not available for this file type. Please download the file to view it.
+                  {i18n.t("case_management.preview_unavailable")}
                 </p>
               </div>
             )}
@@ -2186,10 +2178,10 @@ const eventIconMap: Record<string, { icon: React.ReactNode; color: string }> = {
 };
 
 const caseSubTabs: { key: string; label: string; counted?: boolean }[] = [
-  { key: "case_data", label: "Case Overview" },
-  { key: "timeline", label: "Timeline" },
-  { key: "documents", label: "Documents", counted: true },
-  { key: "activation", label: "Activation" },
+  { key: "case_data", get label() { return i18n.t("audit.case_overview"); } },
+  { key: "timeline", get label() { return i18n.t("audit.timeline"); } },
+  { key: "documents", get label() { return i18n.t("faq_management.category_documents"); }, counted: true },
+  { key: "activation", get label() { return i18n.t("case_management.steps.activation"); } },
 ];
 
 function CaseDetailsTab({
@@ -2204,6 +2196,7 @@ function CaseDetailsTab({
   onStatusSelect: (status: string) => void;
   statusUpdating: boolean;
 }) {
+  useTranslation();
   const { data: caseData, isLoading } = useGetCaseByIdQuery(caseId!, { skip: !caseId });
   const [subTab, setSubTab] = useState("case_data");
   const billStatus = bill.status;
@@ -2211,7 +2204,7 @@ function CaseDetailsTab({
   if (!caseId) {
     return (
       <div className="py-12">
-        <Empty description="No case created yet for this bill request" />
+        <Empty description={i18n.t("audit.no_case_created_yet_for_this_bill_request")} />
       </div>
     );
   }
@@ -2227,7 +2220,7 @@ function CaseDetailsTab({
   if (!caseData) {
     return (
       <div className="py-12">
-        <Empty description="Case not found" />
+        <Empty description={i18n.t("audit.case_not_found")} />
       </div>
     );
   }
@@ -2271,7 +2264,7 @@ function CaseDetailsTab({
             color={statusTagColor[billStatus] || "default"}
             className="m-0! rounded-md! border-0! px-2.5! py-0.5! text-xs! font-semibold!"
           >
-            {statusLabel[billStatus] || billStatus}
+            {localizedStatus(billStatus)}
           </Tag>
           <Tag className="m-0! rounded-md! border-0! bg-orange-50! px-2.5! py-0.5! text-xs! font-semibold! text-orange-600! capitalize!">
             {caseData.caseType?.replace("_", " ")}
@@ -2288,7 +2281,7 @@ function CaseDetailsTab({
                   }`}
                 >
                   <LuClock3 className="h-3.5 w-3.5" />
-                  SLA: {daysLeft > 0 ? `${daysLeft}d left` : "Overdue"}
+                  SLA: {daysLeft > 0 ? i18n.t("audit.sla_days_left", { count: daysLeft }) : i18n.t("audit.sla_overdue")}
                 </span>
               );
             })()
@@ -2347,8 +2340,9 @@ function CaseDetailsTab({
 /* ── Case Sub-sections ──────────────────────────────────── */
 
 function CaseTimeline({ events }: { events: ICaseEvent[] }) {
+  useTranslation();
   if (events.length === 0) {
-    return <p className="py-8 text-center text-sm text-slate-400">No activity yet.</p>;
+    return <p className="py-8 text-center text-sm text-slate-400">{i18n.t("audit.no_activity_yet")}</p>;
   }
 
   return (
@@ -2366,7 +2360,7 @@ function CaseTimeline({ events }: { events: ICaseEvent[] }) {
                 <h4 className="text-sm font-bold text-slate-800">{event.title}</h4>
                 {isFirst && (
                   <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700">
-                    Current
+                    {i18n.t("audit.current_step")}
                   </span>
                 )}
               </div>
@@ -2374,10 +2368,10 @@ function CaseTimeline({ events }: { events: ICaseEvent[] }) {
                 <p className="mt-0.5 text-sm text-slate-600">{event.description}</p>
               )}
               <p className="mt-1 text-xs text-slate-400">
-                <span className="text-[#7061ED] font-medium">{event.actorLabel || "System"}</span>
+                <span className="text-[#7061ED] font-medium">{event.actorLabel || i18n.t("audit.system_actor")}</span>
                 {" • "}
                 {fmtDate(event.createdAt)}{" "}
-                {new Date(event.createdAt).toLocaleTimeString("en-US", {
+                {new Date(event.createdAt).toLocaleTimeString(getLocale(), {
                   hour: "2-digit",
                   minute: "2-digit",
                   hour12: false,
@@ -2413,27 +2407,32 @@ const fmtAddress = (a: CaseAddress): string => {
   return [street, town].filter(Boolean).join(", ") || "—";
 };
 
-const paymentMethodLabel: Record<string, string> = {
-  rid_bancario: "Direct debit (SDD)",
-  postal_order: "Postal order",
-  credit_card: "Credit card",
-  bank_transfer: "Bank transfer",
+/** Translation keys for the enum values the case overview spells out. */
+const paymentMethodKey: Record<string, string> = {
+  rid_bancario: "audit.direct_debit_sdd",
+  postal_order: "offers_market.postal_order",
+  credit_card: "client_management.payment_credit_card",
+  bank_transfer: "client_management.payment_bank_transfer",
 };
 
-const invoiceDeliveryLabel: Record<string, string> = {
-  digital: "Digital (by email)",
-  paper: "Paper (by post)",
+const invoiceDeliveryKey: Record<string, string> = {
+  digital: "audit.digital_by_email",
+  paper: "audit.paper_by_post",
 };
 
-const documentTypeLabel: Record<string, string> = {
-  identity_document: "Identity document",
-  id_card: "ID card",
-  codice_fiscale: "Codice Fiscale",
-  partita_iva: "Partita IVA",
-  bill: "Bill",
-  contract: "Contract",
-  signed_contract: "Signed contract",
+const documentTypeKey: Record<string, string> = {
+  identity_document: "audit.doc_identity_document",
+  id_card: "audit.doc_id_card",
+  codice_fiscale: "case_management.detail.codice_fiscale",
+  partita_iva: "case_management.detail.partita_iva",
+  bill: "audit.doc_bill",
+  contract: "audit.doc_contract",
+  signed_contract: "case_management.detail.signed_contract",
 };
+
+/** Label for an enum value, or the raw value when it has no translation. */
+const enumLabel = (keys: Record<string, string>, value: string) =>
+  keys[value] ? i18n.t(keys[value]) : value;
 
 type DataRow = {
   label: string;
@@ -2473,7 +2472,7 @@ type DataCard = {
  */
 async function downloadAuthedFile(url: string, token: string | null, fileName: string) {
   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-  if (!res.ok) throw new Error("Failed to fetch file");
+  if (!res.ok) throw new Error(String(res.status));
   const objectUrl = URL.createObjectURL(await res.blob());
   const anchor = document.createElement("a");
   anchor.href = objectUrl;
@@ -2513,7 +2512,7 @@ const fmtDateTime = (val: string | null | undefined) => {
   if (!val) return "—";
   try {
     const d = new Date(val);
-    return `${fmtDateIt(val)} ${d.toLocaleTimeString("it-IT", {
+    return `${fmtDateIt(val)} ${d.toLocaleTimeString(getLocale(), {
       hour: "2-digit",
       minute: "2-digit",
     })}`;
@@ -2612,6 +2611,7 @@ function OverviewCard({
   drag: CardDragState;
   children: React.ReactNode;
 }) {
+  useTranslation();
   const position = drag.positionOf(cardKey);
   const isDropTarget = drag.overKey === cardKey && drag.draggingKey !== cardKey;
   // Dragged forward, the card lands after the one it was dropped on; dragged
@@ -2648,11 +2648,11 @@ function OverviewCard({
           {position}
         </span>
         <h4 className="text-sm font-bold text-slate-800">{title}</h4>
-        <Tooltip title="Drag to rearrange the cards — or focus this handle and use ← →">
+        <Tooltip title={i18n.t("audit.drag_to_rearrange_the_cards_or_focus_this_handle_and_use")}>
           <span
             data-card-handle={cardKey}
             role="button"
-            aria-label={`Reorder ${title}, card ${position} of ${drag.total}`}
+            aria-label={i18n.t("audit.reorder_card", { title, position, total: drag.total })}
             tabIndex={0}
             draggable
             onDragStart={(event) => {
@@ -2765,6 +2765,7 @@ function FileRow({
   onDownload: (file: OverviewFile) => void;
   busy: boolean;
 }) {
+  useTranslation();
   return (
     <div>
       <span className="text-xs leading-snug text-slate-400">{file.group}</span>
@@ -2782,7 +2783,7 @@ function FileRow({
         <span className="shrink-0 text-xs text-slate-400">{fmtDateIt(file.uploadedAt)}</span>
         {file.verified != null && (
           <span
-            title={file.verified ? "Verified" : "Awaiting verification"}
+            title={file.verified ? i18n.t("audit.file_verified") : i18n.t("audit.file_awaiting_verification")}
             className={file.verified ? "text-emerald-500" : "text-amber-500"}
           >
             {file.verified ? (
@@ -2796,7 +2797,7 @@ function FileRow({
           type="button"
           onClick={() => onDownload(file)}
           disabled={busy}
-          title="Download"
+          title={i18n.t("case_management.download")}
           className="shrink-0 text-slate-400 transition-colors hover:text-slate-700 disabled:opacity-50"
         >
           <LuDownload className="h-3.5 w-3.5" />
@@ -2825,6 +2826,7 @@ function CaseDataSection({
   bill: IBill;
   customerName: string;
 }) {
+  useTranslation();
   const token = useAppSelector((state) => state.auth.token);
   const dash = (v: string | null | undefined) => (v && v.trim() ? v : "—");
   const [editing, setEditing] = useState(false);
@@ -2981,7 +2983,7 @@ function CaseDataSection({
     })),
     ...documents.map((doc) => ({
       id: `doc-${doc.id}`,
-      group: documentTypeLabel[doc.documentType] || doc.documentType,
+      group: enumLabel(documentTypeKey, doc.documentType),
       name: doc.fileName,
       uploadedAt: doc.createdAt,
       url: `${server_url}cases/${caseData.id}/documents/${doc.id}/file`,
@@ -2994,7 +2996,7 @@ function CaseDataSection({
     try {
       await downloadAuthedFile(file.url, token, file.name);
     } catch {
-      message.error("Failed to download file");
+      message.error(i18n.t("audit.failed_to_download_file"));
     } finally {
       setDownloadingId(null);
     }
@@ -3007,14 +3009,14 @@ function CaseDataSection({
   const cards: DataCard[] = [
     {
       key: "customer",
-      title: "Customer Data",
+      title: i18n.t("audit.customer_data"),
       rows: [
-        { label: "First Name", value: dash(caseData.user?.firstName) },
-        { label: "Last Name", value: dash(caseData.user?.lastName) },
+        { label: i18n.t("settings.first_name"), value: dash(caseData.user?.firstName) },
+        { label: i18n.t("settings.last_name"), value: dash(caseData.user?.lastName) },
         {
           // On a business account this is the person signing for the company,
           // not the company — whose number is the VAT row below.
-          label: isBusinessCase ? "Tax Code (signatory)" : "Tax Code",
+          label: isBusinessCase ? i18n.t("audit.tax_code_signatory") : i18n.t("audit.tax_code"),
           value: dash(caseData.user?.codiceFiscale || bill.codiceFiscale),
         },
         // The account's own VAT number where there is one; the bill's OCR'd
@@ -3024,7 +3026,7 @@ function CaseDataSection({
         ...(caseData.user?.businessProfile?.partitaIva || bill.partitaIva
           ? [
               {
-                label: "VAT Number",
+                label: i18n.t("audit.vat_number"),
                 value: (caseData.user?.businessProfile?.partitaIva || bill.partitaIva) as string,
               },
             ]
@@ -3042,42 +3044,42 @@ function CaseDataSection({
               },
             ]
           : []),
-        { label: "Phone", value: dash(caseData.user?.phone) },
+        { label: i18n.t("client_management.phone"), value: dash(caseData.user?.phone) },
       ],
     },
     {
       key: "addresses",
-      title: "Addresses",
+      title: i18n.t("audit.addresses"),
       content: (
         <div className="space-y-4">
           <AddressBlock
             icon={<LuBuilding2 className="h-3.5 w-3.5" />}
-            label="Supply Address"
+            label={i18n.t("ocr.supply_address")}
             value={supplyDisplay}
           />
           <AddressBlock
             icon={<LuHouse className="h-3.5 w-3.5" />}
-            label={isBusinessCase ? "Registered Office" : "Residential Address"}
+            label={isBusinessCase ? i18n.t("audit.registered_office") : i18n.t("audit.residential_address")}
             value={residentialDisplay}
-            note={caseData.residentialSameAsSupply ? "Same as supply address" : undefined}
+            note={caseData.residentialSameAsSupply ? i18n.t("audit.same_as_supply_address") : undefined}
           />
           <AddressBlock
             icon={<LuMail className="h-3.5 w-3.5" />}
-            label="Billing / Shipping Address"
+            label={i18n.t("audit.billing_shipping_address")}
             // Only paper invoices are posted anywhere, so for a digital case
             // there is no shipping address to be missing.
             value={isPaper ? shippingDisplay : "Digital invoices — nothing is posted"}
-            note={isPaper && caseData.shippingSameAsSupply ? "Same as supply address" : undefined}
+            note={isPaper && caseData.shippingSameAsSupply ? i18n.t("audit.same_as_supply_address") : undefined}
           />
         </div>
       ),
     },
     {
       key: "utility",
-      title: "Utility & Consumption",
+      title: i18n.t("audit.utility_consumption"),
       rows: [
         {
-          label: "Utility Type",
+          label: i18n.t("service_types.utility_type"),
           value: (
             <Tag
               color={isElectricity ? "blue" : "orange"}
@@ -3085,29 +3087,29 @@ function CaseDataSection({
             >
               <span className="flex items-center gap-1">
                 {isElectricity ? <LuZap className="h-2.5 w-2.5" /> : <LuFlame className="h-2.5 w-2.5" />}
-                {isElectricity ? "Electricity" : "Gas"}
+                {i18n.t(isElectricity ? "home.electricity" : "home.gas")}
               </span>
             </Tag>
           ),
         },
         { label: "POD / PDR", value: dash(bill.podNumber || bill.pdrNumber) },
-        { label: "Current Supplier", value: fromSupplier },
-        { label: "Meter Number", value: dash(bill.meterNumber) },
-        { label: "Contract Number", value: dash(bill.contractNumber) },
+        { label: i18n.t("audit.current_supplier"), value: fromSupplier },
+        { label: i18n.t("audit.meter_number"), value: dash(bill.meterNumber) },
+        { label: i18n.t("audit.contract_number"), value: dash(bill.contractNumber) },
         {
-          label: "Annual Consumption (est.)",
+          label: i18n.t("audit.annual_consumption_est"),
           value: formatQuantity(annualConsumption(bill), unit),
         },
       ],
     },
     {
       key: "payment",
-      title: "Payment & Billing",
+      title: i18n.t("audit.payment_billing"),
       rows: [
         {
-          label: "Payment Method",
+          label: i18n.t("client_management.payment_method"),
           value: caseData.paymentMethod
-            ? paymentMethodLabel[caseData.paymentMethod] || caseData.paymentMethod
+            ? enumLabel(paymentMethodKey, caseData.paymentMethod)
             : "—",
         },
         // A postal order has no account behind it, so there is no holder to
@@ -3120,48 +3122,48 @@ function CaseDataSection({
               // long enough to need the width of the whole card.
               { label: "IBAN", value: dash(caseData.iban), stacked: true },
               {
-                label: "Account Holder",
+                label: i18n.t("audit.account_holder"),
                 // Cases filed before the app sent the holder for its own
                 // customer have the columns empty; the contract holder is who
                 // it was, so name them rather than showing a dash.
                 value: ibanHolder || customerName,
               },
               {
-                label: "Holder Tax Code / VAT",
+                label: i18n.t("audit.holder_tax_code_vat"),
                 value: dash(caseData.ibanHolderTaxCode || legacyHolderTaxCode),
               },
               {
-                label: "IBAN Holder Matches Contract Holder",
+                label: i18n.t("audit.iban_holder_matches_contract_holder"),
                 // Whether the mandate needs a second signature turns on this,
                 // so an unasked question is reported as unasked rather than
                 // answered "No".
                 value:
                   caseData.ibanSameAsContract == null ? (
                     <Tag className="m-0! rounded-md! border-0! bg-slate-100! px-2! py-0! text-xs! font-semibold! text-slate-500!">
-                      Not recorded
+                      {i18n.t("audit.not_recorded")}
                     </Tag>
                   ) : caseData.ibanSameAsContract ? (
                     <Tag color="green" className="m-0! rounded-md! border-0! px-2! py-0! text-xs! font-semibold!">
-                      Yes
+                      {i18n.t("common.yes")}
                     </Tag>
                   ) : (
                     <Tag color="orange" className="m-0! rounded-md! border-0! px-2! py-0! text-xs! font-semibold!">
-                      No — third party
+                      {i18n.t("audit.no_third_party")}
                     </Tag>
                   ),
               },
             ]
           : []),
         {
-          label: "Invoice Delivery Method",
+          label: i18n.t("audit.invoice_delivery_method"),
           value: caseData.invoiceDelivery
-            ? invoiceDeliveryLabel[caseData.invoiceDelivery] || caseData.invoiceDelivery
+            ? enumLabel(invoiceDeliveryKey, caseData.invoiceDelivery)
             : "—",
         },
         ...(caseData.invoiceDelivery === "digital"
           ? [
               {
-                label: "Invoice Email",
+                label: i18n.t("audit.invoice_email"),
                 value: dash(caseData.invoiceEmail || caseData.user?.email),
               },
             ]
@@ -3170,35 +3172,35 @@ function CaseDataSection({
     },
     {
       key: "bill_ocr",
-      title: "Bill Data / OCR",
+      title: i18n.t("audit.bill_data_ocr"),
       rows: [
         {
-          label: "Bill Period",
+          label: i18n.t("audit.bill_period"),
           value:
             bill.billingPeriodStart || bill.billingPeriodEnd
               ? `${fmtDateIt(bill.billingPeriodStart)} — ${fmtDateIt(bill.billingPeriodEnd)}`
               : "—",
         },
-        { label: "Upload Date", value: fmtDateTime(bill.createdAt) },
-        { label: "Total Bill Amount", value: formatMoney(bill.totalAmount) },
+        { label: i18n.t("audit.upload_date"), value: fmtDateTime(bill.createdAt) },
+        { label: i18n.t("audit.total_bill_amount"), value: formatMoney(bill.totalAmount) },
         {
-          label: "Period Consumption",
+          label: i18n.t("audit.period_consumption"),
           value: formatQuantity(isElectricity ? bill.consumptionKwh : bill.consumptionSmc, unit),
         },
-        { label: "Cost per Unit", value: formatUnitPrice(bill.costPerUnit, unit) },
-        { label: "Fixed Charges", value: formatMoney(bill.fixedCharges) },
-        { label: "Taxes", value: formatMoney(bill.taxes) },
+        { label: i18n.t("ocr.cost_per_unit"), value: formatUnitPrice(bill.costPerUnit, unit) },
+        { label: i18n.t("ocr.fixed_charges"), value: formatMoney(bill.fixedCharges) },
+        { label: i18n.t("ocr.taxes"), value: formatMoney(bill.taxes) },
         {
-          label: "Detected Supplier",
+          label: i18n.t("audit.detected_supplier"),
           value: dash(
             bill.supplierName ||
               bill.supplier?.name ||
               (bill.rawAnalysisData?.ocrSupplierName as string),
           ),
         },
-        { label: "Detected Supply Address", value: dash(bill.supplyAddress) },
+        { label: i18n.t("audit.detected_supply_address"), value: dash(bill.supplyAddress) },
         {
-          label: originalBillFiles.length > 1 ? "Original Uploaded Files" : "Original Uploaded File",
+          label: originalBillFiles.length > 1 ? i18n.t("audit.original_uploaded_files") : i18n.t("audit.original_uploaded_file"),
           stacked: true,
           value:
             originalBillFiles.length > 0 ? (
@@ -3221,7 +3223,7 @@ function CaseDataSection({
             ) : bill.fileUrl ? (
               // Bills stored before the files table existed carry the upload
               // on the bill row itself, where there is no endpoint to fetch it.
-              <span className="text-slate-400">1 file (legacy)</span>
+              <span className="text-slate-400">{i18n.t("audit.1_file_legacy")}</span>
             ) : (
               "—"
             ),
@@ -3230,46 +3232,41 @@ function CaseDataSection({
     },
     {
       key: "offer",
-      title: "Offer / Contract",
+      title: i18n.t("audit.offer_contract"),
       rows: [
         {
-          label: "Selected Supplier",
+          label: i18n.t("audit.selected_supplier"),
           value: dash(caseData.toSupplier?.name || offer?.supplier?.name),
         },
-        { label: "Offer Name", value: dash(offer?.name) },
+        { label: i18n.t("offers_market.offer_name"), value: dash(offer?.name) },
         // Supplier tariff codes run long and carry no spaces to break at.
-        { label: "Offer Code", value: dash(offer?.offerCode), stacked: true },
-        { label: "Price Type", value: dash(offer?.marketType), cap: true },
+        { label: i18n.t("offers_market.offer_code"), value: dash(offer?.offerCode), stacked: true },
+        { label: i18n.t("audit.price_type"), value: dash(offer?.marketType), cap: true },
         {
-          label: offer?.marketType === "fixed" ? "Energy Price" : "Spread",
+          label: offer?.marketType === "fixed" ? i18n.t("audit.energy_price") : i18n.t("offers_market.spread"),
           value: formatUnitPrice(offerPrice, unit),
         },
         {
-          label: "Fixed Energy Costs",
+          label: i18n.t("audit.fixed_energy_costs"),
           value:
             offer?.fixedMonthlyFee == null
               ? "—"
               : `${formatMoney(offer.fixedMonthlyFee)} / month`,
         },
         {
-          label: "Duration",
-          value:
-            offer?.contractDurationDays == null
-              ? "—"
-              : offer.contractDurationDays >= 30
-                ? `${Math.floor(offer.contractDurationDays / 30)} months`
-                : `${offer.contractDurationDays} days`,
+          label: i18n.t("audit.duration_2"),
+          value: formatContractDuration(offer),
         },
-        { label: "Estimated Annual Value", value: formatMoney(caseData.estimatedAnnualValue) },
-        { label: "Predicted Activation Date", value: fmtDateIt(caseData.activationDate) },
+        { label: i18n.t("home.estimated_annual_value"), value: formatMoney(caseData.estimatedAnnualValue) },
+        { label: i18n.t("audit.predicted_activation_date"), value: fmtDateIt(caseData.activationDate) },
       ],
     },
     {
       key: "documents",
-      title: "Documents",
+      title: i18n.t("faq_management.category_documents"),
       content:
         files.length === 0 ? (
-          <p className="text-xs text-slate-400">Nothing uploaded on this case yet.</p>
+          <p className="text-xs text-slate-400">{i18n.t("audit.nothing_uploaded_on_this_case_yet")}</p>
         ) : (
           <div className="space-y-3">
             {files.map((f) => (
@@ -3285,13 +3282,13 @@ function CaseDataSection({
     },
     {
       key: "case",
-      title: "Case Handling",
+      title: i18n.t("audit.case_handling"),
       rows: [
-        { label: "Case Number", value: dash(caseData.caseNumber) },
-        { label: "Case Type", value: dash(caseData.caseType?.replace("_", " ")), cap: true },
-        { label: "Priority", value: dash(caseData.priority), cap: true },
+        { label: i18n.t("audit.case_number"), value: dash(caseData.caseNumber) },
+        { label: i18n.t("audit.case_type"), value: dash(caseData.caseType?.replace("_", " ")), cap: true },
+        { label: i18n.t("support_ticket.priority"), value: dash(caseData.priority), cap: true },
         {
-          label: "Assigned Agent",
+          label: i18n.t("support_ticket.assigned_agent"),
           // Named rather than dashed when nobody holds it: an unassigned case
           // is a state someone has to act on, not a value that is missing.
           value: caseData.assignedAgent
@@ -3299,15 +3296,15 @@ function CaseDataSection({
               caseData.assignedAgent.email
             : "Unassigned",
         },
-        { label: "SLA Deadline", value: fmtDateIt(caseData.slaDeadline) },
+        { label: i18n.t("audit.sla_deadline"), value: fmtDateIt(caseData.slaDeadline) },
         {
-          label: "SLA Days",
-          value: caseData.slaDaysTotal == null ? "—" : `${caseData.slaDaysTotal} days`,
+          label: i18n.t("audit.sla_days"),
+          value: caseData.slaDaysTotal == null ? "—" : i18n.t("audit.days_count", { count: caseData.slaDaysTotal }),
         },
-        { label: "Contract Sent On", value: fmtDateIt(caseData.contractSentAt) },
-        { label: "Expiry Date", value: fmtDateIt(caseData.expiryDate) },
-        { label: "Created", value: fmtDateIt(caseData.createdAt) },
-        { label: "Last Updated", value: fmtDateIt(caseData.updatedAt) },
+        { label: i18n.t("audit.contract_sent_on"), value: fmtDateIt(caseData.contractSentAt) },
+        { label: i18n.t("audit.expiry_date_2"), value: fmtDateIt(caseData.expiryDate) },
+        { label: i18n.t("audit.created_at"), value: fmtDateIt(caseData.createdAt) },
+        { label: i18n.t("service_types.last_updated"), value: fmtDateIt(caseData.updatedAt) },
       ],
     },
   ];
@@ -3326,20 +3323,15 @@ function CaseDataSection({
           same modal, so the admin never has to guess which card owns one. */}
       <div className="flex items-center justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
-          <h3 className="text-sm font-bold text-slate-800">Case Overview</h3>
+          <h3 className="text-sm font-bold text-slate-800">{i18n.t("audit.case_overview")}</h3>
           <p className="mt-0.5 text-xs text-slate-400">
-            Everything the switch is filed against, and every field of it is corrected in one
-            modal — the supply point read off the bill and the customer's own record included,
-            saved back to the bill and the account behind the scenes. Only the offer's tariff
-            terms are read-only: they belong to the offer, and editing a copy of them here would
-            let the two drift apart. Drag a card by its handle to put it where you want it — the
-            arrangement is remembered on this browser.
+            {i18n.t("audit.everything_the_switch_is_filed_against_and_every_field_of_it_is_corrected_in_one_modal_the_supply_point_read_off_the_bill_and_the_customer_s_own_record_included_saved_back_to_the_bill_and_the_account_behind_the_scenes_only_the_offer_s_tariff_terms_are_read_only_they_belong_to_the_offer_and_editing_a_copy_of_them_here_would_let_the_two_drift_apart_drag_a_card_by_its_handle_to_put_it_where_you_want_it_the_arrangement_is_remembered_on_this_browser")}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {isCustomOrder && (
             <Button size="small" icon={<LuRotateCcw className="h-3 w-3" />} onClick={resetCardOrder}>
-              Reset layout
+              {i18n.t("audit.reset_layout")}
             </Button>
           )}
           <Button
@@ -3348,7 +3340,7 @@ function CaseDataSection({
             icon={<FiEdit2 className="h-3 w-3" />}
             onClick={() => setEditing(true)}
           >
-            Edit Case Data
+            {i18n.t("audit.edit_case_data")}
           </Button>
         </div>
       </div>
@@ -3395,6 +3387,7 @@ function CaseDataSection({
 }
 
 function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[]; caseId: string }) {
+  useTranslation();
   const token = useAppSelector((state) => state.auth.token);
   const [verifyDocument, { isLoading: isVerifying }] = useVerifyDocumentMutation();
   const [uploadCaseDocument] = useUploadCaseDocumentMutation();
@@ -3409,7 +3402,7 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
     const res = await fetch(url, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    if (!res.ok) throw new Error("Failed to fetch document");
+    if (!res.ok) throw new Error(String(res.status));
     return res.blob();
   }, [caseId, token]);
 
@@ -3422,7 +3415,7 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
       setPreviewDoc(doc);
       setPreviewOpen(true);
     } catch {
-      message.error("Failed to load document");
+      message.error(i18n.t("case_management.load_document_failed"));
     } finally {
       setLoadingId(null);
     }
@@ -3436,7 +3429,7 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
         doc.fileName,
       );
     } catch {
-      message.error("Failed to download document");
+      message.error(i18n.t("case_management.download_document_failed"));
     }
   };
 
@@ -3452,9 +3445,9 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
   const handleVerify = async (docId: string) => {
     try {
       await verifyDocument({ caseId, docId }).unwrap();
-      message.success("Document verified");
+      message.success(i18n.t("audit.document_verified"));
     } catch {
-      message.error("Failed to verify document");
+      message.error(i18n.t("audit.failed_to_verify_document"));
     }
   };
 
@@ -3487,9 +3480,9 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
     }
     setUploading(false);
     if (successCount > 0) {
-      message.success(`${successCount} document(s) uploaded successfully`);
+      message.success(i18n.t("audit.documents_uploaded", { count: successCount }));
     } else {
-      message.error("Failed to upload documents");
+      message.error(i18n.t("audit.failed_to_upload_documents"));
     }
   };
 
@@ -3511,7 +3504,7 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
           <p className="text-sm font-semibold text-slate-700 truncate">{doc.fileName}</p>
           {doc.verified && doc.verifiedAt && (
             <p className="text-[10px] text-emerald-500 mt-0.5">
-              Verified on {new Date(doc.verifiedAt).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })}
+              {i18n.t("audit.verified_on")} {new Date(doc.verifiedAt).toLocaleDateString(getLocale(), { month: "2-digit", day: "2-digit", year: "numeric" })}
             </p>
           )}
         </div>
@@ -3524,7 +3517,7 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
           className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors disabled:opacity-50"
         >
           <FiEye className="h-3.5 w-3.5" />
-          {loadingId === doc.id ? "..." : "View"}
+          {loadingId === doc.id ? "..." : i18n.t("audit.view")}
         </button>
         <button
           type="button"
@@ -3532,7 +3525,7 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
           className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-800 transition-colors"
         >
           <FiDownload className="h-3.5 w-3.5" />
-          Download
+          {i18n.t("case_management.download")}
         </button>
         {!doc.verified ? (
           <Button
@@ -3543,14 +3536,14 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
             className="h-7 rounded-lg bg-emerald-500! hover:bg-emerald-600! border-0! text-xs! font-semibold!"
             icon={<FiCheck className="h-3 w-3" />}
           >
-            Verify
+            {i18n.t("dashboard.verify")}
           </Button>
         ) : (
           <Tag
             color="green"
             className="m-0! rounded-full! border-0! text-xs!"
           >
-            Verified
+            {i18n.t("case_management.status.verified")}
           </Tag>
         )}
       </div>
@@ -3564,12 +3557,12 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
         <div>
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <h4 className="text-sm font-semibold text-slate-800">Identity Verification</h4>
+              <h4 className="text-sm font-semibold text-slate-800">{i18n.t("audit.identity_verification")}</h4>
               <Tag
                 color={documents.length === 0 ? "red" : allVerified ? "green" : "orange"}
                 className="m-0! rounded-full! border-0! text-xs! font-semibold!"
               >
-                {documents.length === 0 ? "Not Uploaded" : allVerified ? "Verified" : "Pending Review"}
+                {documents.length === 0 ? i18n.t("audit.identity_not_uploaded") : allVerified ? i18n.t("audit.identity_verified") : i18n.t("audit.identity_pending_review")}
               </Tag>
             </div>
             {documents.length > 0 && (
@@ -3602,10 +3595,10 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
                   loading={uploading}
                   className="h-8 rounded-lg text-xs!"
                 >
-                  Upload Identity Documents
+                  {i18n.t("audit.upload_identity_documents")}
                 </Button>
               </Upload>
-              <span className="text-xs text-slate-400">PDF, JPG, PNG, WebP — select multiple files</span>
+              <span className="text-xs text-slate-400">{i18n.t("audit.pdf_jpg_png_webp_select_multiple_files")}</span>
             </div>
           </div>
         </div>
@@ -3617,7 +3610,7 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
         onCancel={handleClosePreview}
         footer={
           <div className="flex justify-end gap-2">
-            <Button onClick={handleClosePreview}>Close</Button>
+            <Button onClick={handleClosePreview}>{i18n.t("case_management.close")}</Button>
             {previewDoc && (
               <Button
                 type="primary"
@@ -3625,7 +3618,7 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
                 onClick={() => handleDownload(previewDoc)}
                 className="bg-emerald-500! hover:bg-emerald-600! border-0!"
               >
-                Download
+                {i18n.t("case_management.download")}
               </Button>
             )}
           </div>
@@ -3633,7 +3626,7 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
         title={
           <span className="flex items-center gap-2">
             <FiFileText className="h-4 w-4 text-indigo-500" />
-            {previewDoc?.fileName || "Document"}
+            {previewDoc?.fileName || i18n.t("audit.document")}
           </span>
         }
         width={900}
@@ -3645,7 +3638,7 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
             {isPdf(previewDoc) ? (
               <iframe
                 src={previewUrl}
-                title="Document Preview"
+                title={i18n.t("case_management.document_preview")}
                 className="w-full border-0 rounded-lg"
                 style={{ height: 600 }}
               />
@@ -3659,7 +3652,7 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
               <div className="flex flex-col items-center gap-3 py-12">
                 <FiFileText className="h-12 w-12 text-slate-300" />
                 <p className="text-sm text-slate-500">
-                  Preview not available for this file type. Please download the file to view it.
+                  {i18n.t("audit.preview_not_available_for_this_file_type_please_download_the_file_to_view_it")}
                 </p>
               </div>
             )}
@@ -3687,6 +3680,7 @@ function CaseActivationSection({
   caseData: ICase;
   billStatus: string;
 }) {
+  useTranslation();
   const { message } = App.useApp();
   const [updateCase, { isLoading: isSaving }] = useUpdateCaseMutation();
   const [isEditing, setIsEditing] = useState(false);
@@ -3711,10 +3705,10 @@ function CaseActivationSection({
           expiryDate: expiryDate.format("YYYY-MM-DD"),
         },
       }).unwrap();
-      message.success("Activation dates updated");
+      message.success(i18n.t("audit.activation_dates_updated"));
       setIsEditing(false);
     } catch (err: any) {
-      message.error(err?.data?.message?.[0] || err?.data?.message || "Failed to save dates");
+      message.error(getApiErrorMessage(err, i18n.t("audit.dates_save_failed")));
     }
   };
 
@@ -3722,10 +3716,10 @@ function CaseActivationSection({
     <div className="space-y-6">
       <div className="rounded-xl border border-slate-200 p-5">
         <div className="flex items-center justify-between mb-4">
-          <h4 className="text-sm font-bold text-slate-800">Activation</h4>
+          <h4 className="text-sm font-bold text-slate-800">{i18n.t("case_management.steps.activation")}</h4>
           {isLiveUtility && !isEditing && (
             <Button size="small" icon={<FiEdit2 className="h-3 w-3" />} onClick={startEditing}>
-              Edit dates
+              {i18n.t("audit.edit_dates")}
             </Button>
           )}
         </div>
@@ -3734,7 +3728,7 @@ function CaseActivationSection({
           <div className="space-y-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className="text-xs text-slate-500 mb-1 block">Activation Date *</label>
+                <label className="text-xs text-slate-500 mb-1 block">{i18n.t("audit.activation_date")}</label>
                 <DatePicker
                   className="w-full"
                   value={activationDate}
@@ -3743,18 +3737,18 @@ function CaseActivationSection({
                     if (d && expiryDate && !expiryDate.isAfter(d, "day")) setExpiryDate(null);
                   }}
                   format="DD/MM/YYYY"
-                  placeholder="Select activation date"
+                  placeholder={i18n.t("audit.select_activation_date")}
                 />
               </div>
               <div>
-                <label className="text-xs text-slate-500 mb-1 block">Expiry Date *</label>
+                <label className="text-xs text-slate-500 mb-1 block">{i18n.t("audit.expiry_date")}</label>
                 <DatePicker
                   className="w-full"
                   value={expiryDate}
                   onChange={setExpiryDate}
                   disabledDate={(d) => !!activationDate && !d.isAfter(activationDate, "day")}
                   format="DD/MM/YYYY"
-                  placeholder="Select expiry date"
+                  placeholder={i18n.t("audit.select_expiry_date")}
                 />
               </div>
             </div>
@@ -3765,27 +3759,27 @@ function CaseActivationSection({
                 disabled={!activationDate || !expiryDate}
                 onClick={handleSave}
               >
-                Save
+                {i18n.t("common.save")}
               </Button>
-              <Button onClick={() => setIsEditing(false)}>Cancel</Button>
+              <Button onClick={() => setIsEditing(false)}>{i18n.t("common.cancel")}</Button>
             </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div>
-              <span className="text-xs text-slate-400">Contract Sent On</span>
+              <span className="text-xs text-slate-400">{i18n.t("audit.contract_sent_on")}</span>
               <p className="text-sm font-medium text-slate-700">
                 {fmtDateIt(caseData.contractSentAt)}
               </p>
             </div>
             <div>
-              <span className="text-xs text-slate-400">Activation Date</span>
+              <span className="text-xs text-slate-400">{i18n.t("audit.activation_date_2")}</span>
               <p className="text-sm font-medium text-slate-700">
                 {fmtDateIt(caseData.activationDate)}
               </p>
             </div>
             <div>
-              <span className="text-xs text-slate-400">Expiry Date</span>
+              <span className="text-xs text-slate-400">{i18n.t("audit.expiry_date_2")}</span>
               <p className="text-sm font-medium text-slate-700">
                 {fmtDateIt(caseData.expiryDate)}
               </p>
@@ -3796,21 +3790,18 @@ function CaseActivationSection({
 
       {billStatus === "contract_sent" && (
         <div className="rounded-xl bg-amber-50 border border-amber-200 p-4">
-          <h4 className="text-sm font-bold text-amber-800">Out for signature</h4>
+          <h4 className="text-sm font-bold text-amber-800">{i18n.t("audit.out_for_signature")}</h4>
           <p className="text-sm text-amber-600 mt-1">
-            The customer is signing with the supplier. Nothing happens in the app until the
-            supplier confirms — then move the case to In Activation with the two dates they gave
-            you.
+            {i18n.t("audit.the_customer_is_signing_with_the_supplier_nothing_happens_in_the_app_until_the_supplier_confirms_then_move_the_case_to_in_activation_with_the_two_dates_they_gave_you")}
           </p>
         </div>
       )}
 
       {billStatus === "awaiting_activation" && (
         <div className="rounded-xl bg-blue-50 border border-blue-200 p-4">
-          <h4 className="text-sm font-bold text-blue-800">Switch in progress</h4>
+          <h4 className="text-sm font-bold text-blue-800">{i18n.t("audit.switch_in_progress")}</h4>
           <p className="text-sm text-blue-600 mt-1">
-            The customer already sees this utility in My Utilities, with the activation date above.
-            Mark it activated once the supply is live.
+            {i18n.t("audit.the_customer_already_sees_this_utility_in_my_utilities_with_the_activation_date_above_mark_it_activated_once_the_supply_is_live")}
           </p>
         </div>
       )}
@@ -3819,10 +3810,10 @@ function CaseActivationSection({
         <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-4">
           <div className="flex items-center gap-2">
             <FiCheckCircle className="h-5 w-5 text-emerald-600" />
-            <h4 className="text-sm font-bold text-emerald-800">Utility Active</h4>
+            <h4 className="text-sm font-bold text-emerald-800">{i18n.t("audit.utility_active")}</h4>
           </div>
           <p className="text-sm text-emerald-600 mt-1">
-            The utility has been activated. The customer can see it in their My Utilities section.
+            {i18n.t("audit.the_utility_has_been_activated_the_customer_can_see_it_in_their_my_utilities_section")}
           </p>
         </div>
       )}
@@ -3833,6 +3824,7 @@ function CaseActivationSection({
 /* ── Notes Tab ─────────────────────────────────────────── */
 
 function NotesTab({ billId }: { billId: string }) {
+  useTranslation();
   const { message } = App.useApp();
   const { data: notes, isLoading } = useGetBillNotesQuery(billId);
   const [addNote, { isLoading: isAdding }] = useAddBillNoteMutation();
@@ -3846,10 +3838,10 @@ function NotesTab({ billId }: { billId: string }) {
     if (!content.trim()) return;
     try {
       await addNote({ billId, content: content.trim() }).unwrap();
-      message.success("Note added");
+      message.success(localizedDetail("note_added", "Note added"));
       setContent("");
     } catch {
-      message.error("Failed to add note");
+      message.error(localizedDetail("note_add_failed", "Failed to add note"));
     }
   };
 
@@ -3867,45 +3859,45 @@ function NotesTab({ billId }: { billId: string }) {
     if (!editingId || !editContent.trim()) return;
     try {
       await updateNote({ billId, noteId: editingId, content: editContent.trim() }).unwrap();
-      message.success("Note updated");
+      message.success(localizedDetail("note_updated", "Note updated"));
       setEditingId(null);
       setEditContent("");
     } catch {
-      message.error("Failed to update note");
+      message.error(localizedDetail("note_update_failed", "Failed to update note"));
     }
   };
 
   const handleDelete = async (noteId: string) => {
     try {
       await deleteNote({ billId, noteId }).unwrap();
-      message.success("Note deleted");
+      message.success(localizedDetail("note_deleted", "Note deleted"));
     } catch {
-      message.error("Failed to delete note");
+      message.error(localizedDetail("note_delete_failed", "Failed to delete note"));
     }
   };
 
   return (
     <div className="space-y-5">
       {/* Add note form */}
-      <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-3">
-        <h3 className="text-sm font-bold text-slate-700">Add Note</h3>
+      <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
+        <h3 className="text-sm font-bold text-slate-700">{localizedDetail("add_note", "Add note")}</h3>
         <Input.TextArea
           rows={3}
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          placeholder="Write a note about this bill..."
+          placeholder={localizedDetail("note_placeholder", "Write a note about this bill...")}
           className="resize-none rounded-xl! border-slate-200"
         />
-        <div className="flex justify-end">
+        <div className="flex justify-end pt-1">
           <Button
             type="primary"
             disabled={!content.trim()}
             onClick={handleAdd}
             loading={isAdding}
-            size="small"
-            className="rounded-lg bg-[#7061ED]! hover:bg-[#5f52d4]! font-semibold"
+            size="middle"
+            className="h-10 rounded-lg bg-[#7061ED]! px-5! font-semibold shadow-sm transition-colors hover:bg-[#5f52d4]! disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Add Note
+            {localizedDetail("add_note", "Add note")}
           </Button>
         </div>
       </div>
@@ -3916,7 +3908,7 @@ function NotesTab({ billId }: { billId: string }) {
           <Spin size="large" />
         </div>
       ) : !notes || notes.length === 0 ? (
-        <Empty description="No notes yet" />
+        <Empty description={localizedDetail("no_notes_yet", "No notes yet")} />
       ) : (
         <div className="space-y-3">
           {notes.map((note) => (
@@ -3932,7 +3924,7 @@ function NotesTab({ billId }: { billId: string }) {
                   />
                   <div className="flex justify-end gap-2">
                     <Button size="small" onClick={handleCancelEdit}>
-                      Cancel
+                      {i18n.t("common.cancel")}
                     </Button>
                     <Button
                       type="primary"
@@ -3941,7 +3933,7 @@ function NotesTab({ billId }: { billId: string }) {
                       onClick={handleSaveEdit}
                       className="rounded-lg bg-[#7061ED]! hover:bg-[#5f52d4]! font-semibold"
                     >
-                      Save
+                      {i18n.t("common.save")}
                     </Button>
                   </div>
                 </div>
@@ -3953,16 +3945,16 @@ function NotesTab({ billId }: { billId: string }) {
                       <span className="text-[#7061ED] font-medium">
                         {note.createdBy
                           ? `${note.createdBy.firstName} ${note.createdBy.lastName}`
-                          : "Admin"}
+                          : i18n.t("audit.admin_fallback")}
                       </span>
                       {" · "}
-                      {new Date(note.createdAt).toLocaleDateString("en-GB", {
+                      {new Date(note.createdAt).toLocaleDateString(getLocale(), {
                         day: "2-digit",
                         month: "short",
                         year: "numeric",
                       })}
                       {" "}
-                      {new Date(note.createdAt).toLocaleTimeString("en-US", {
+                      {new Date(note.createdAt).toLocaleTimeString(getLocale(), {
                         hour: "2-digit",
                         minute: "2-digit",
                         hour12: false,
@@ -3976,7 +3968,7 @@ function NotesTab({ billId }: { billId: string }) {
                       onClick={() => handleEdit(note.id, note.content)}
                       className="text-xs text-[#7061ED]"
                     >
-                      Edit
+                      {i18n.t("common.edit")}
                     </Button>
                     <Button
                       type="text"
@@ -3985,7 +3977,7 @@ function NotesTab({ billId }: { billId: string }) {
                       onClick={() => handleDelete(note.id)}
                       className="text-xs"
                     >
-                      Delete
+                      {i18n.t("common.delete")}
                     </Button>
                   </div>
                 </div>

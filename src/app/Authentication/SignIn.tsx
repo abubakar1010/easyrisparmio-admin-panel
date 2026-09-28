@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { usePostLoginMutation } from "../../redux/features/Auth/authApi";
 import { useAppDispatch } from "../../redux/hooks";
 import { setLogin } from "../../redux/features/Auth/authSlice";
-import { errorAlert } from "../../lib/helpers/alert";
+import { errorAlert, errorMessageAlert } from "../../lib/helpers/alert";
 
 const SignIn = () => {
   const { t } = useTranslation();
@@ -21,11 +21,7 @@ const SignIn = () => {
       }).unwrap();
 
       if (result.user.role !== "admin") {
-        errorAlert({
-          error: {
-            data: { message: t("auth.dashboard_admin_only") },
-          },
-        });
+        errorMessageAlert(t("auth.dashboard_admin_only"));
         return;
       }
 
@@ -57,16 +53,7 @@ const SignIn = () => {
         return;
       }
 
-      errorAlert({
-        error: {
-          data: {
-            message:
-              error?.status === 401
-                ? t("auth.invalid_email_password")
-                : t("auth.login_failed"),
-          },
-        },
-      });
+      errorAlert({ error: err, fallback: t("auth.login_failed") });
     }
   };
 

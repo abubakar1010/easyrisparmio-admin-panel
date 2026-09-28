@@ -1,3 +1,5 @@
+import { getApiErrorMessage } from "../../utils/apiError";
+import { getLocale } from "../../utils/format";
 import { useState } from "react";
 import { Button, Empty, Input, Modal, Select, Spin, Switch, Table, Tag, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
@@ -69,7 +71,7 @@ const NotificationTemplates = () => {
       // The server rejects a duplicate name and an unknown {{variable}}; both
       // messages are written for the admin, so show them rather than a generic.
       message.error(
-        err?.data?.message?.[0] || t("notification_templates.save_error"),
+        getApiErrorMessage(err, t("notification_templates.save_error")),
       );
     }
   };
@@ -88,7 +90,7 @@ const NotificationTemplates = () => {
           message.success(t("notification_templates.deleted"));
         } catch (err: any) {
           message.error(
-            err?.data?.message?.[0] || t("notification_templates.save_error"),
+            getApiErrorMessage(err, t("notification_templates.delete_error")),
           );
         }
       },
@@ -173,7 +175,7 @@ const NotificationTemplates = () => {
       title: t("notification_templates.updated_at").toUpperCase(),
       dataIndex: "updatedAt",
       key: "updatedAt",
-      render: (value: string) => new Date(value).toLocaleDateString("it-IT"),
+      render: (value: string) => new Date(value).toLocaleDateString(getLocale()),
     },
     {
       title: t("common.actions").toUpperCase(),

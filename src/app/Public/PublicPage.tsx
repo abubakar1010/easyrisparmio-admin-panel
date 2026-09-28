@@ -1,9 +1,12 @@
+import i18n from "../../i18n";
+import { getLocale } from "../../utils/format";
 import { useMemo } from "react";
 import { useParams } from "react-router";
 import { Spin, Result } from "antd";
 import DOMPurify from "dompurify";
 import { useGetPublicStaticPageQuery } from "../../redux/features/StaticPages/staticPagesApi";
 import { useTranslation } from "react-i18next";
+import { currentLanguage } from "../../i18n";
 
 const slugIcons: Record<string, string> = {
   "privacy-policy": "shield",
@@ -13,8 +16,8 @@ const slugIcons: Record<string, string> = {
 
 const PublicPage = () => {
   const { slug } = useParams<{ slug: string }>();
-  const { i18n } = useTranslation();
-  const locale = i18n.language?.startsWith("it") ? "it" : "en";
+  useTranslation(); // re-render when the language changes
+  const locale = currentLanguage();
 
   const { data, isLoading, isError } = useGetPublicStaticPageQuery(
     { slug: slug!, locale },
@@ -50,11 +53,7 @@ const PublicPage = () => {
       <Result
         status="404"
         title="404"
-        subTitle={
-          locale === "it"
-            ? "Pagina non trovata."
-            : "The page you're looking for doesn't exist."
-        }
+        subTitle={i18n.t("audit.public_page_missing")}
       />
     );
   }
@@ -97,14 +96,14 @@ const PublicPage = () => {
           {data.requiresAcceptance && (
             <>
               <span className="font-semibold text-[#7061ED]">
-                {locale === "it" ? "Versione" : "Version"} {data.version}
+                {i18n.t("audit.public_version")} {data.version}
               </span>
               <span className="mx-2">·</span>
             </>
           )}
-          {locale === "it" ? "Ultimo aggiornamento" : "Last updated"}:{" "}
+          {i18n.t("audit.public_last_updated")}:{" "}
           {new Date(data.publishedAt || data.updatedAt).toLocaleDateString(
-            locale === "it" ? "it-IT" : "en-US",
+            getLocale(),
             { year: "numeric", month: "long", day: "numeric" },
           )}
         </p>

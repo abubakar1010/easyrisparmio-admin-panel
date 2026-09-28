@@ -208,19 +208,6 @@ export interface IPaginatedResponse<T> {
   };
 }
 
-// Label maps for preference display
-export const paymentMethodLabels: Record<string, string> = {
-  rid_bancario: "RID Bancario",
-  credit_card: "Carta di Credito",
-  postal_order: "Bollettino Postale",
-  bank_transfer: "Bonifico Bancario",
-};
-
-export const invoiceDeliveryLabels: Record<string, string> = {
-  digital: "Digitale",
-  paper: "Cartaceo",
-};
-
 export const languageLabels: Record<string, string> = {
   italiano: "Italiano",
   english: "English",

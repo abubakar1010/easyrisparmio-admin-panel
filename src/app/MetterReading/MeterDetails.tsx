@@ -1,8 +1,10 @@
+import { getLocale } from "../../utils/format";
 import { Button, Spin, Tag, message } from "antd";
 import { FiArrowLeft } from "react-icons/fi";
 import { LuZap, LuDroplets, LuWifi, LuFlame, LuActivity } from "react-icons/lu";
 import { useNavigate, useParams } from "react-router";
 import { useGetMeterByIdQuery } from "../../redux/features/Meters/metersApi";
+import { useTranslation } from "react-i18next";
 
 const getTypeIcon = (type: string) => {
   switch (type) {
@@ -35,6 +37,7 @@ const getTypeColors = (type: string) => {
 };
 
 const MeterDetails = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { meterId } = useParams();
 
@@ -51,7 +54,7 @@ const MeterDetails = () => {
   }
 
   if (error || !meter) {
-    message.error("Failed to load service type details");
+    message.error(t("service_types.load_failed"));
     return (
       <div className="space-y-6 pb-12">
         <Button
@@ -60,10 +63,10 @@ const MeterDetails = () => {
           icon={<FiArrowLeft />}
           onClick={() => navigate("/meter-reading")}
         >
-          Back to Service Types
+          {t("service_types.back")}
         </Button>
         <div className="text-center py-20 text-slate-500">
-          Service type not found or failed to load.
+          {t("service_types.not_found")}
         </div>
       </div>
     );
@@ -79,7 +82,7 @@ const MeterDetails = () => {
           icon={<FiArrowLeft />}
           onClick={() => navigate("/meter-reading")}
         >
-          Back to Service Types
+          {t("service_types.back")}
         </Button>
       </div>
 
@@ -94,7 +97,7 @@ const MeterDetails = () => {
               {meter.name}
             </h1>
             <p className="text-sm font-medium text-slate-400 mt-1 capitalize">
-              {meter.utilityType}
+              {t(`service_types.${meter.utilityType}`)}
             </p>
           </div>
           <Tag
@@ -104,7 +107,7 @@ const MeterDetails = () => {
                 : "bg-slate-50 text-slate-500 border-slate-200"
             }`}
           >
-            {meter.isActive ? "Active" : "Inactive"}
+            {meter.isActive ? t("common.active") : t("common.inactive")}
           </Tag>
         </div>
       </div>
@@ -112,26 +115,26 @@ const MeterDetails = () => {
       {/* Details Card */}
       <div className="bg-white rounded-xl border border-slate-200/60 shadow-sm">
         <div className="px-6 py-4 border-b border-slate-100">
-          <h2 className="text-base font-bold text-slate-900">Details</h2>
+          <h2 className="text-base font-bold text-slate-900">{t("service_types.details")}</h2>
         </div>
         <div className="p-6 space-y-5">
           <div>
-            <p className="text-xs font-medium text-slate-400 mb-1">Description</p>
+            <p className="text-xs font-medium text-slate-400 mb-1">{t("support_topics.description")}</p>
             <p className="text-sm font-medium text-slate-700">
-              {meter.description || "No description provided"}
+              {meter.description || t("service_types.no_description_provided")}
             </p>
           </div>
           <div className="grid grid-cols-2 gap-6">
             <div>
-              <p className="text-xs font-medium text-slate-400 mb-1">Created</p>
+              <p className="text-xs font-medium text-slate-400 mb-1">{t("service_types.created")}</p>
               <p className="text-sm font-medium text-slate-700">
-                {new Date(meter.createdAt).toLocaleDateString()}
+                {new Date(meter.createdAt).toLocaleDateString(getLocale())}
               </p>
             </div>
             <div>
-              <p className="text-xs font-medium text-slate-400 mb-1">Last Updated</p>
+              <p className="text-xs font-medium text-slate-400 mb-1">{t("service_types.last_updated")}</p>
               <p className="text-sm font-medium text-slate-700">
-                {new Date(meter.updatedAt).toLocaleDateString()}
+                {new Date(meter.updatedAt).toLocaleDateString(getLocale())}
               </p>
             </div>
           </div>

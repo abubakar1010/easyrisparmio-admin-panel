@@ -1,3 +1,4 @@
+import { getLocale } from "../../utils/format";
 import { useState } from "react";
 import { Button, Card, Dropdown, Empty, Input, InputNumber, Modal, Select, Spin, Table, Tag, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
@@ -23,16 +24,16 @@ const statusColor: Record<string, string> = {
 
 const statusTransitions: Record<string, { label: string; value: string; danger?: boolean }[]> = {
   pending: [
-    { label: "Mark Registered", value: "registered" },
-    { label: "Expire", value: "expired", danger: true },
+    { label: "mark_registered", value: "registered" },
+    { label: "expire", value: "expired", danger: true },
   ],
   registered: [
-    { label: "Mark Qualified", value: "qualified" },
-    { label: "Expire", value: "expired", danger: true },
+    { label: "mark_qualified", value: "qualified" },
+    { label: "expire", value: "expired", danger: true },
   ],
   qualified: [
-    { label: "Mark as Paid", value: "rewarded" },
-    { label: "Expire", value: "expired", danger: true },
+    { label: "mark_paid", value: "rewarded" },
+    { label: "expire", value: "expired", danger: true },
   ],
 };
 
@@ -76,7 +77,7 @@ const Referrals = () => {
 
   const handleExportCSV = () => {
     if (!referrals.length) return;
-    const headers = ["Referrer", "Referrer Email", "Invited", "Invited Email", "Status", "Reward (EUR)", "Date"];
+    const headers = ["csv_referrer", "csv_referrer_email", "csv_invited", "csv_invited_email", "csv_status", "csv_reward", "csv_date"].map((key) => t(`referrals.${key}`));
     const rows = referrals.map((r) => [
       r.referrer ? `${r.referrer.firstName} ${r.referrer.lastName}` : "",
       r.referrer?.email || "",
@@ -84,7 +85,7 @@ const Referrals = () => {
       r.referredUser?.email || r.referredEmail || "",
       r.status,
       r.rewardAmount?.toString() || "",
-      new Date(r.createdAt).toLocaleDateString("it-IT"),
+      new Date(r.createdAt).toLocaleDateString(getLocale()),
     ]);
     const csv = [headers, ...rows].map((row) => row.map((cell) => `"${cell}"`).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -110,7 +111,7 @@ const Referrals = () => {
       ),
     },
     {
-      title: "CODE",
+      title: t("referrals.code"),
       dataIndex: "referralCode",
       key: "referralCode",
       render: (code: string) => (
@@ -132,12 +133,12 @@ const Referrals = () => {
       ),
     },
     {
-      title: "DATE",
+      title: t("referrals.date"),
       key: "date",
       render: (_, record) => (
         <span className="inline-flex items-center gap-1 text-slate-500">
           <FiClock className="h-3.5 w-3.5" />
-          {new Date(record.createdAt).toLocaleDateString("it-IT")}
+          {new Date(record.createdAt).toLocaleDateString(getLocale())}
         </span>
       ),
     },
@@ -152,14 +153,14 @@ const Referrals = () => {
       ),
     },
     {
-      title: "STATUS",
+      title: t("common.status"),
       dataIndex: "status",
       key: "status",
       render: (status: string) => (
         <Tag
           className={`rounded-full border-0 px-2.5 py-0 text-[10px] font-semibold text-white capitalize ${statusColor[status] || "bg-slate-400"}`}
         >
-          {status}
+          {t(`referrals.${status}`)}
         </Tag>
       ),
     },
@@ -172,7 +173,7 @@ const Referrals = () => {
 
         const items = transitions.map((tr) => ({
           key: tr.value,
-          label: tr.label,
+          label: t(`referrals.${tr.label}`),
           danger: tr.danger,
           onClick: () => {
             if (tr.value === "rewarded") {
@@ -184,7 +185,7 @@ const Referrals = () => {
                 func: () => handleStatusUpdate(record.id, "expired"),
                 title: t("referrals.confirm_expire_title"),
                 object: t("referrals.confirm_expire_text"),
-                okay: "Confirm",
+                okay: t("referrals.confirm"),
               });
             } else {
               handleStatusUpdate(record.id, tr.value);
@@ -228,7 +229,7 @@ const Referrals = () => {
           </div>
         ) : isStatsError ? (
           <div className="col-span-full rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-            Failed to load referral statistics. Please try refreshing the page.
+            {t("referrals.statistics_load_failed")}
           </div>
         ) : (
           [
@@ -272,7 +273,7 @@ const Referrals = () => {
             />
             <span className="text-sm text-slate-400">{t("referrals.eur_per_activation")}</span>
           </div>
-          <p className="mt-2 text-xs text-slate-400">Pre-fills the reward amount in the payment modal for this session.</p>
+          <p className="mt-2 text-xs text-slate-400">{t("referrals.reward_prefill_hint")}</p>
         </div>
       </Card>
 
@@ -280,7 +281,7 @@ const Referrals = () => {
       <div className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-sm">
         <div className="border-b border-slate-100 px-4 py-3 sm:px-5">
           <h3 className="text-xl font-semibold text-slate-700">{t("referrals.all_referrals")}</h3>
-          <p className="mt-0.5 text-sm text-slate-400">Track referral invitations and rewards</p>
+          <p className="mt-0.5 text-sm text-slate-400">{t("referrals.tracking_description")}</p>
         </div>
 
         {/* Search & Filter Bar */}
@@ -305,11 +306,11 @@ const Referrals = () => {
             style={{ height: "44px", minWidth: "160px" }}
             className="[&_.ant-select-selector]:!h-11 [&_.ant-select-selector]:!rounded-xl"
             options={[
-              { value: "pending", label: "Pending" },
-              { value: "registered", label: "Registered" },
-              { value: "qualified", label: "Qualified" },
-              { value: "rewarded", label: "Rewarded" },
-              { value: "expired", label: "Expired" },
+              { value: "pending", label: t("referrals.pending") },
+              { value: "registered", label: t("referrals.registered") },
+              { value: "qualified", label: t("referrals.qualified") },
+              { value: "rewarded", label: t("referrals.rewarded") },
+              { value: "expired", label: t("referrals.expired") },
             ]}
           />
         </div>
@@ -320,7 +321,7 @@ const Referrals = () => {
           </div>
         ) : referrals.length === 0 ? (
           <div className="py-16">
-            <Empty description="No referrals yet" />
+            <Empty description={t("referrals.no_referrals")} />
           </div>
         ) : (
           <Table<IReferral>

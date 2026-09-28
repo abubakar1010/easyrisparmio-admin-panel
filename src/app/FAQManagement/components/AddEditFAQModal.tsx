@@ -1,5 +1,6 @@
 import { Modal, Button, Form, Input, InputNumber, Select, Switch } from "antd";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { IFaq } from "../../../redux/features/Support/supportApi";
 
 interface AddEditFAQModalProps {
@@ -27,6 +28,7 @@ const AddEditFAQModal = ({
   isLoading,
   categories = [],
 }: AddEditFAQModalProps) => {
+  const { t } = useTranslation();
   const [form] = Form.useForm();
   const [questionCount, setQuestionCount] = useState(0);
   const [answerCount, setAnswerCount] = useState(0);
@@ -62,11 +64,17 @@ const AddEditFAQModal = ({
 
   // Keep the FAQ's own category selectable even if it predates the current set,
   // so editing an old entry doesn't silently blank the field.
+  const categoryLabelKey: Record<string, string> = {
+    "Cambio Fornitore": "faq_management.category_switch_supplier",
+    Bollette: "faq_management.category_bills",
+    Documenti: "faq_management.category_documents",
+  };
+
   const categoryOptions = (
     initialValues?.category && !categories.includes(initialValues.category)
       ? [...categories, initialValues.category]
       : categories
-  ).map((c) => ({ label: c, value: c }));
+  ).map((c) => ({ label: categoryLabelKey[c] ? t(categoryLabelKey[c]) : c, value: c }));
 
   return (
     <Modal
@@ -80,7 +88,7 @@ const AddEditFAQModal = ({
       title={
         <div className="text-center mb-6">
           <h3 className="text-[24px] font-bold text-slate-800">
-            {initialValues ? "Edit FAQ" : "Add FAQ"}
+            {initialValues ? t("faq_management.edit") : t("faq_management.add")}
           </h3>
         </div>
       }
@@ -89,13 +97,13 @@ const AddEditFAQModal = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Form.Item
             name="category"
-            label={<span className="text-sm font-medium text-slate-500">Category <span className="text-red-500">*</span></span>}
-            rules={[{ required: true, message: "Please select a category" }]}
+            label={<span className="text-sm font-medium text-slate-500">{t("faq_management.category")} <span className="text-red-500">*</span></span>}
+            rules={[{ required: true, message: t("faq_management.category_required") }]}
             className="mb-0"
           >
             <Select
               showSearch
-              placeholder="Select a category"
+              placeholder={t("faq_management.select_category")}
               options={categoryOptions}
               className="[&_.ant-select-selector]:rounded-xl [&_.ant-select-selector]:border-slate-200 [&_.ant-select-selector]:h-11"
               filterOption={(input, option) =>
@@ -106,7 +114,7 @@ const AddEditFAQModal = ({
 
           <Form.Item
             name="sortOrder"
-            label={<span className="text-sm font-medium text-slate-500">Sort Order</span>}
+            label={<span className="text-sm font-medium text-slate-500">{t("faq_management.sort_order")}</span>}
             className="mb-0"
           >
             <InputNumber
@@ -121,16 +129,16 @@ const AddEditFAQModal = ({
           name="question"
           label={
             <div className="flex justify-between w-full">
-              <span className="text-sm font-medium text-slate-500">Question <span className="text-red-500">*</span></span>
+              <span className="text-sm font-medium text-slate-500">{t("faq_management.question")} <span className="text-red-500">*</span></span>
               <span className="text-[11px] text-slate-300">{questionCount}/500</span>
             </div>
           }
-          rules={[{ required: true, message: "Please enter a question" }]}
+          rules={[{ required: true, message: t("faq_management.question_required") }]}
           className="mb-0"
         >
           <Input.TextArea
             rows={3}
-            placeholder="Enter the question users will see..."
+            placeholder={t("faq_management.question_hint")}
             className="rounded-xl border-slate-200"
             maxLength={500}
             onChange={(e) => setQuestionCount(e.target.value.length)}
@@ -141,16 +149,16 @@ const AddEditFAQModal = ({
           name="answer"
           label={
             <div className="flex justify-between w-full">
-              <span className="text-sm font-medium text-slate-500">Answer <span className="text-red-500">*</span></span>
+              <span className="text-sm font-medium text-slate-500">{t("faq_management.answer")} <span className="text-red-500">*</span></span>
               <span className="text-[11px] text-slate-300">{answerCount}/2000</span>
             </div>
           }
-          rules={[{ required: true, message: "Please enter an answer" }]}
+          rules={[{ required: true, message: t("faq_management.answer_required") }]}
           className="mb-0"
         >
           <Input.TextArea
             rows={6}
-            placeholder="Enter the detailed answer..."
+            placeholder={t("faq_management.answer_hint")}
             className="rounded-xl border-slate-200"
             maxLength={2000}
             onChange={(e) => setAnswerCount(e.target.value.length)}
@@ -160,38 +168,38 @@ const AddEditFAQModal = ({
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Form.Item
             name="targetAudience"
-            label={<span className="text-sm font-medium text-slate-500">Target Audience</span>}
+            label={<span className="text-sm font-medium text-slate-500">{t("faq_management.audience")}</span>}
             className="mb-0"
           >
             <Select
-              placeholder="Select audience"
+              placeholder={t("faq_management.select_audience")}
               className="[&_.ant-select-selector]:rounded-xl [&_.ant-select-selector]:border-slate-200 [&_.ant-select-selector]:h-11"
               options={[
-                { label: "Both", value: "both" },
-                { label: "Personal", value: "personal" },
-                { label: "Business", value: "business" },
+                { label: t("faq_management.both"), value: "both" },
+                { label: t("faq_management.personal"), value: "personal" },
+                { label: t("faq_management.business"), value: "business" },
               ]}
             />
           </Form.Item>
 
           <Form.Item
             name="locale"
-            label={<span className="text-sm font-medium text-slate-500">Locale</span>}
+            label={<span className="text-sm font-medium text-slate-500">{t("faq_management.locale")}</span>}
             className="mb-0"
           >
             <Select
-              placeholder="Select locale"
+              placeholder={t("faq_management.select_locale")}
               className="[&_.ant-select-selector]:rounded-xl [&_.ant-select-selector]:border-slate-200 [&_.ant-select-selector]:h-11"
               options={[
-                { label: "Italian (it)", value: "it" },
-                { label: "English (en)", value: "en" },
+                { label: t("faq_management.italian"), value: "it" },
+                { label: t("faq_management.english"), value: "en" },
               ]}
             />
           </Form.Item>
 
           <Form.Item
             name="isActive"
-            label={<span className="text-sm font-medium text-slate-500">Active</span>}
+            label={<span className="text-sm font-medium text-slate-500">{t("common.active")}</span>}
             valuePropName="checked"
             className="mb-0"
           >
@@ -204,7 +212,7 @@ const AddEditFAQModal = ({
             onClick={onCancel}
             className="flex-1 h-14 rounded-2xl bg-[#FFF1F1] border-none text-[#FF4D4F] font-bold text-lg hover:bg-[#FFE4E4]! order-2 sm:order-1"
           >
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button
             type="primary"
@@ -212,7 +220,7 @@ const AddEditFAQModal = ({
             loading={isLoading}
             className="flex-1 h-14 rounded-2xl bg-[#8b85f6] border-none text-white font-bold text-lg hover:bg-[#7a74e5]! order-1 sm:order-2"
           >
-            Save
+            {t("common.save")}
           </Button>
         </div>
       </Form>

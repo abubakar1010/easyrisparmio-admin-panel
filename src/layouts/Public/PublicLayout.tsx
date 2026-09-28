@@ -1,30 +1,17 @@
+import i18n from "../../i18n";
 import { Outlet, Link, useLocation } from "react-router";
 import { useTranslation } from "react-i18next";
 
+// The page names share the admin's keys, so the public site follows the same catalogue.
 const navLinks = [
-  { slug: "about-us", labelKey: "aboutUs" },
-  { slug: "privacy-policy", labelKey: "privacyPolicy" },
-  { slug: "terms-conditions", labelKey: "termsConditions" },
+  { slug: "about-us", labelKey: "audit.slug_about_us" },
+  { slug: "privacy-policy", labelKey: "audit.slug_privacy_policy" },
+  { slug: "terms-conditions", labelKey: "audit.slug_terms_conditions" },
 ] as const;
-
-const navLabels: Record<string, Record<string, string>> = {
-  en: {
-    aboutUs: "About Us",
-    privacyPolicy: "Privacy Policy",
-    termsConditions: "Terms & Conditions",
-  },
-  it: {
-    aboutUs: "Chi Siamo",
-    privacyPolicy: "Informativa Privacy",
-    termsConditions: "Termini e Condizioni",
-  },
-};
 
 const PublicLayout = () => {
   const { pathname } = useLocation();
-  const { i18n } = useTranslation();
-  const lang = i18n.language?.startsWith("it") ? "it" : "en";
-  const labels = navLabels[lang] || navLabels.en;
+  useTranslation(); // re-render when the language changes
   const currentYear = new Date().getFullYear();
 
   return (
@@ -40,11 +27,11 @@ const PublicLayout = () => {
             >
               <img
                 src="/statics/logo.svg"
-                alt="EasyRisparmio"
+                alt="VYZI"
                 className="h-8 sm:h-9 w-auto"
               />
               <span className="text-lg sm:text-xl font-bold bg-gradient-to-r from-[#7061ED] to-[#5B4FCF] bg-clip-text text-transparent group-hover:from-[#5B4FCF] group-hover:to-[#7061ED] transition-all">
-                EasyRisparmio
+                VYZI
               </span>
             </Link>
 
@@ -65,7 +52,7 @@ const PublicLayout = () => {
                       }
                     `}
                   >
-                    {labels[labelKey]}
+                    {i18n.t(labelKey)}
                   </Link>
                 );
               })}
@@ -90,24 +77,22 @@ const PublicLayout = () => {
               <div className="flex items-center gap-2.5 mb-3">
                 <img
                   src="/statics/logo.svg"
-                  alt="EasyRisparmio"
+                  alt="VYZI"
                   className="h-7 w-auto brightness-0 invert opacity-90"
                 />
                 <span className="text-lg font-bold text-white">
-                  EasyRisparmio
+                  VYZI
                 </span>
               </div>
               <p className="text-sm text-gray-400 leading-relaxed max-w-xs">
-                {lang === "it"
-                  ? "La piattaforma italiana per il confronto e il cambio di fornitore energetico."
-                  : "The Italian platform for energy supplier comparison and switching."}
+                {i18n.t("audit.public_tagline")}
               </p>
             </div>
 
             {/* Quick Links */}
             <div>
               <h4 className="text-sm font-semibold text-white uppercase tracking-wider mb-3">
-                {lang === "it" ? "Link Utili" : "Quick Links"}
+                {i18n.t("audit.public_quick_links")}
               </h4>
               <ul className="space-y-2">
                 {navLinks.map(({ slug, labelKey }) => (
@@ -116,7 +101,7 @@ const PublicLayout = () => {
                       to={`/pages/${slug}`}
                       className="text-sm text-gray-400 hover:text-white no-underline transition-colors"
                     >
-                      {labels[labelKey]}
+                      {i18n.t(labelKey)}
                     </Link>
                   </li>
                 ))}
@@ -126,7 +111,7 @@ const PublicLayout = () => {
             {/* Contact */}
             <div>
               <h4 className="text-sm font-semibold text-white uppercase tracking-wider mb-3">
-                {lang === "it" ? "Contatti" : "Contact"}
+                {i18n.t("audit.public_contact")}
               </h4>
               <ul className="space-y-2 text-sm text-gray-400">
                 <li>info@easyresparmio.it</li>
@@ -135,7 +120,7 @@ const PublicLayout = () => {
           </div>
 
           <div className="mt-8 pt-6 border-t border-gray-700/50 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500">
-            <p>&copy; {currentYear} EasyRisparmio S.r.l. {lang === "it" ? "Tutti i diritti riservati." : "All rights reserved."}</p>
+            <p>&copy; {currentYear} VYZI S.r.l. {i18n.t("audit.public_rights")}</p>
           </div>
         </div>
       </footer>

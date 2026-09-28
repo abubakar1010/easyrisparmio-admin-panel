@@ -1,7 +1,9 @@
+import { getApiErrorMessage } from "../../utils/apiError";
 import { Button, Input, Select, Spin, Empty, Table, Tag, Switch, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { FiEdit3, FiPlus, FiSearch, FiTrash2 } from "react-icons/fi";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   useGetAdminTopicsQuery,
   useCreateTopicMutation,
@@ -13,6 +15,7 @@ import { debounce } from "../../utils/debounce";
 import AddEditTopicModal from "./components/AddEditTopicModal";
 
 const SupportTopics = () => {
+  const { t } = useTranslation();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<boolean | undefined>();
@@ -63,14 +66,14 @@ const SupportTopics = () => {
     try {
       if (selectedTopic) {
         await updateTopic({ id: selectedTopic.id, data: values }).unwrap();
-        message.success("Topic updated successfully");
+        message.success(t("support_topics.updated"));
       } else {
         await createTopic(values).unwrap();
-        message.success("Topic created successfully");
+        message.success(t("support_topics.created"));
       }
       closeModal();
     } catch (err: any) {
-      message.error(err?.data?.message?.[0] || "Failed to save topic");
+      message.error(getApiErrorMessage(err, t("support_topics.save_failed")));
     }
   };
 
@@ -80,19 +83,19 @@ const SupportTopics = () => {
         id: topic.id,
         data: { isActive: !topic.isActive },
       }).unwrap();
-      message.success(`Topic ${!topic.isActive ? "activated" : "deactivated"}`);
+      message.success(t("support_topics.status_updated", { status: t(!topic.isActive ? "common.active" : "common.inactive") }));
     } catch {
-      message.error("Failed to update topic status");
+      message.error(t("support_topics.status_update_failed"));
     }
   };
 
   const handleDelete = async (topic: ISupportTopic) => {
     try {
       await deleteTopic(topic.id).unwrap();
-      message.success("Topic deleted successfully");
+      message.success(t("support_topics.deleted"));
     } catch (err: any) {
       message.error(
-        err?.data?.message?.[0] || "Failed to delete topic"
+        getApiErrorMessage(err, t("support_topics.delete_failed"))
       );
     }
   };
@@ -107,7 +110,7 @@ const SupportTopics = () => {
       ),
     },
     {
-      title: "NAME",
+      title: t("support_topics.name").toUpperCase(),
       dataIndex: "name",
       key: "name",
       width: 200,
@@ -116,7 +119,7 @@ const SupportTopics = () => {
       ),
     },
     {
-      title: "DESCRIPTION",
+      title: t("support_topics.description").toUpperCase(),
       dataIndex: "description",
       key: "description",
       width: 250,
@@ -127,7 +130,7 @@ const SupportTopics = () => {
       ),
     },
     {
-      title: "STATUS",
+      title: t("common.status").toUpperCase(),
       dataIndex: "isActive",
       key: "isActive",
       width: 100,
@@ -141,7 +144,7 @@ const SupportTopics = () => {
       align: "center",
     },
     {
-      title: "TICKETS",
+      title: t("support_topics.tickets").toUpperCase(),
       dataIndex: "ticketCount",
       key: "ticketCount",
       width: 100,
@@ -153,7 +156,7 @@ const SupportTopics = () => {
       align: "center",
     },
     {
-      title: "ORDER",
+      title: t("support_topics.sort_order").toUpperCase(),
       dataIndex: "sortOrder",
       key: "sortOrder",
       width: 80,
@@ -163,7 +166,7 @@ const SupportTopics = () => {
       align: "center",
     },
     {
-      title: "ACTIONS",
+      title: t("common.actions").toUpperCase(),
       key: "actions",
       width: 120,
       render: (_: any, record: ISupportTopic) => (
@@ -192,8 +195,8 @@ const SupportTopics = () => {
       {/* Header */}
       <div className="mb-4 flex flex-col gap-3 border-b border-cborder/45 pb-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Support Topics</h2>
-          <p className="text-sm text-slate-400 font-medium">Manage topics users can select when creating support requests</p>
+          <h2 className="text-2xl font-bold text-slate-800 tracking-tight">{t("support_topics.title")}</h2>
+          <p className="text-sm text-slate-400 font-medium">{t("support_topics.subtitle")}</p>
         </div>
         <Button
           type="primary"
@@ -201,7 +204,7 @@ const SupportTopics = () => {
           className="h-10 rounded-lg border-0 bg-[#8b85f6] px-5 font-semibold hover:bg-[#7a74e5]"
           onClick={openCreateModal}
         >
-          Add Topic
+          {t("support_topics.add")}
         </Button>
       </div>
 
@@ -212,21 +215,21 @@ const SupportTopics = () => {
             <Input
               className="h-11 rounded-xl border-slate-100 bg-slate-50/30 text-[15px]"
               prefix={<FiSearch className="mr-2 text-slate-300 h-5 w-5" />}
-              placeholder="Search topics by name..."
+              placeholder={t("support_topics.search")}
               onChange={(e) => handleSearch(e.target.value)}
             />
           </div>
           <Select
             allowClear
-            placeholder="Status"
+            placeholder={t("common.status")}
             onChange={(v) => {
               setStatusFilter(v);
               setPage(1);
             }}
             className="w-40 [&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-xl"
           >
-            <Select.Option value={true}>Active</Select.Option>
-            <Select.Option value={false}>Inactive</Select.Option>
+            <Select.Option value={true}>{t("common.active")}</Select.Option>
+            <Select.Option value={false}>{t("common.inactive")}</Select.Option>
           </Select>
         </div>
       </div>
@@ -239,7 +242,7 @@ const SupportTopics = () => {
           </div>
         ) : topics.length === 0 ? (
           <div className="py-24">
-            <Empty description="No topics found" />
+            <Empty description={t("support_topics.no_topics")} />
           </div>
         ) : (
           <Table<ISupportTopic>

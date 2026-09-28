@@ -6,9 +6,9 @@ import "react-quill-new/dist/quill.snow.css";
 import type {
   IStaticPage,
   IStaticPagePayload,
-  LegalAudience,
 } from "../../../redux/features/StaticPages/staticPagesApi";
 import { LEGAL_SLUGS, nextVersion, slugOptions } from "../constants";
+import { useTranslation } from "react-i18next";
 
 interface AddEditStaticPageModalProps {
   visible: boolean;
@@ -17,12 +17,6 @@ interface AddEditStaticPageModalProps {
   initialValues?: IStaticPage | null;
   isLoading?: boolean;
 }
-
-const audienceOptions: { label: string; value: LegalAudience; hint: string }[] = [
-  { label: "All accounts", value: "all", hint: "Every user must accept this document" },
-  { label: "Personal only", value: "personal", hint: "Only personal accounts are asked" },
-  { label: "Business only", value: "business", hint: "Only business accounts are asked" },
-];
 
 const quillModules = {
   toolbar: [
@@ -48,6 +42,7 @@ const AddEditStaticPageModal = ({
   initialValues,
   isLoading,
 }: AddEditStaticPageModalProps) => {
+  const { t } = useTranslation();
   const [form] = Form.useForm();
 
   // Editing an existing agreement leaves the version alone unless the admin
@@ -150,7 +145,7 @@ const AddEditStaticPageModal = ({
       title={
         <div className="text-center mb-4">
           <h3 className="text-[20px] sm:text-[24px] font-bold text-slate-800">
-            {isEditing ? "Edit Static Page" : "Add Static Page"}
+            {isEditing ? t("static_pages.edit_static_page") : t("static_pages.add_static_page")}
           </h3>
           {isEditing && initialValues?.requiresAcceptance && (
             <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
@@ -158,8 +153,7 @@ const AddEditStaticPageModal = ({
                 v{currentVersion}
               </Tag>
               <span className="text-xs font-medium text-slate-400">
-                {initialValues.acceptedCount ?? 0} user
-                {(initialValues.acceptedCount ?? 0) === 1 ? "" : "s"} accepted this version
+                {t((initialValues.acceptedCount ?? 0) === 1 ? "static_pages.users_accepted" : "static_pages.users_accepted_plural", { count: initialValues.acceptedCount ?? 0 })}
               </span>
             </div>
           )}
@@ -173,13 +167,13 @@ const AddEditStaticPageModal = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-5">
             <Form.Item
               name="slug"
-              label={<span className={labelClass}>Page Type</span>}
-              rules={[{ required: true, message: "Please select a page type" }]}
+              label={<span className={labelClass}>{t("static_pages.page_type")}</span>}
+              rules={[{ required: true, message: t("static_pages.page_type_required") }]}
               className="mb-0"
             >
               <Select
-                placeholder="Select page type"
-                options={slugOptions}
+                placeholder={t("static_pages.select_page_type")}
+                options={slugOptions()}
                 disabled={isEditing}
                 onChange={handleSlugChange}
                 className={selectClass}
@@ -188,15 +182,15 @@ const AddEditStaticPageModal = ({
 
             <Form.Item
               name="locale"
-              label={<span className={labelClass}>Language</span>}
+              label={<span className={labelClass}>{t("static_pages.language")}</span>}
               className="mb-0"
             >
               <Select
-                placeholder="Select language"
+                placeholder={t("faq_management.select_locale")}
                 className={selectClass}
                 options={[
-                  { label: "Italian (it)", value: "it" },
-                  { label: "English (en)", value: "en" },
+                  { label: t("faq_management.italian"), value: "it" },
+                  { label: t("faq_management.english"), value: "en" },
                 ]}
               />
             </Form.Item>
@@ -204,22 +198,22 @@ const AddEditStaticPageModal = ({
 
           <Form.Item
             name="title"
-            label={<span className={labelClass}>Title</span>}
-            rules={[{ required: true, message: "Please enter a title" }]}
+            label={<span className={labelClass}>{t("static_pages.title_label")}</span>}
+            rules={[{ required: true, message: t("static_pages.title_required") }]}
             className="mb-0"
           >
-            <Input placeholder="Enter page title" className={inputClass} maxLength={255} />
+            <Input placeholder={t("static_pages.title_placeholder")} className={inputClass} maxLength={255} />
           </Form.Item>
 
           <Form.Item
             name="content"
-            label={<span className={labelClass}>Content</span>}
+            label={<span className={labelClass}>{t("static_pages.content_label")}</span>}
             rules={[
               {
                 required: true,
                 validator: (_, value) => {
                   if (!value || value === "<p><br></p>" || value.trim() === "") {
-                    return Promise.reject("Please enter content");
+                    return Promise.reject(t("static_pages.content_required"));
                   }
                   return Promise.resolve();
                 },
@@ -230,7 +224,7 @@ const AddEditStaticPageModal = ({
             <ReactQuill
               theme="snow"
               modules={quillModules}
-              placeholder="Write page content here..."
+              placeholder={t("static_pages.content_placeholder")}
               className="[&_.ql-toolbar]:rounded-t-xl [&_.ql-toolbar]:border-slate-200 [&_.ql-container]:rounded-b-xl [&_.ql-container]:border-slate-200 [&_.ql-container]:max-h-[280px] [&_.ql-container]:overflow-y-auto [&_.ql-editor]:min-h-[180px]"
             />
           </Form.Item>
@@ -239,15 +233,15 @@ const AddEditStaticPageModal = ({
           <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4 sm:p-5 space-y-5">
             <div className="flex items-center gap-2">
               <FiInfo className="h-4 w-4 shrink-0 text-slate-400" />
-              <span className="text-sm font-bold text-slate-600">Consent & Versioning</span>
+              <span className="text-sm font-bold text-slate-600">{t("static_pages.consent_versioning")}</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-5">
               <Form.Item
                 name="requiresAcceptance"
                 label={
-                  <Tooltip title="Users must actively accept this document before they can use the app">
-                    <span className={labelClass}>Requires acceptance</span>
+                  <Tooltip title={t("static_pages.acceptance_hint")}>
+                    <span className={labelClass}>{t("static_pages.requires_acceptance")}</span>
                   </Tooltip>
                 }
                 valuePropName="checked"
@@ -259,23 +253,20 @@ const AddEditStaticPageModal = ({
               {showLegalSettings && (
                 <Form.Item
                   name="audience"
-                  label={<span className={labelClass}>Applies to</span>}
+                  label={<span className={labelClass}>{t("static_pages.applies_to")}</span>}
                   className="mb-0"
                   extra={
-                    <span className="text-xs text-slate-400">
-                      {audienceOptions.find((o) => o.value === audience)?.hint}
-                    </span>
+                    <span className="text-xs text-slate-400">{t(`static_pages.${audience === "all" ? "all_accounts_hint" : audience === "personal" ? "personal_only_hint" : "business_only_hint"}`)}</span>
                   }
                 >
                   {/* The hint lives in the dropdown and below the field — a
                       two-line label inside the selector overflows its box. */}
                   <Select
                     className={selectClass}
-                    options={audienceOptions}
+                    options={[{ label: t("static_pages.all_accounts"), value: "all" }, { label: t("static_pages.personal_only"), value: "personal" }, { label: t("static_pages.business_only"), value: "business" }]}
                     optionRender={(option) => (
                       <div className="flex flex-col py-0.5">
                         <span className="text-sm text-slate-700">{option.data.label}</span>
-                        <span className="text-[11px] text-slate-400">{option.data.hint}</span>
                       </div>
                     )}
                   />
@@ -291,12 +282,11 @@ const AddEditStaticPageModal = ({
                   className="mt-0.5 shrink-0"
                 />
                 <div>
-                  <p className="text-sm font-semibold text-slate-600 m-0">
-                    Publish as a new version
+                    <p className="text-sm font-semibold text-slate-600 m-0">
+                    {t("static_pages.publish_new_version")}
                   </p>
                   <p className="text-xs text-slate-400 m-0 mt-0.5">
-                    Leave off for typo fixes and formatting. Turn on only when the
-                    agreement itself has materially changed.
+                    {t("static_pages.publish_new_version_hint")}
                   </p>
                 </div>
               </div>
@@ -306,18 +296,18 @@ const AddEditStaticPageModal = ({
               <>
                 <Form.Item
                   name="version"
-                  label={<span className={labelClass}>Version</span>}
+                  label={<span className={labelClass}>{t("static_pages.version")}</span>}
                   rules={[
-                    { required: true, message: "Please enter a version" },
+                    { required: true, message: t("static_pages.version_required") },
                     {
                       pattern: /^\d{1,3}(\.\d{1,3}){0,2}$/,
-                      message: "Use a dotted number such as 2.1",
+                      message: t("static_pages.version_format"),
                     },
                   ]}
                   extra={
                     isEditing ? (
                       <span className="text-xs text-slate-400">
-                        Currently published: v{currentVersion}
+                        {t("static_pages.currently_published", { version: currentVersion })}
                       </span>
                     ) : undefined
                   }
@@ -332,11 +322,10 @@ const AddEditStaticPageModal = ({
 
                 <Form.Item
                   name="changeSummary"
-                  label={<span className={labelClass}>What changed</span>}
+                  label={<span className={labelClass}>{t("static_pages.what_changed")}</span>}
                   extra={
                     <span className="block text-xs leading-relaxed text-slate-400">
-                      Shown at the top of the re-acceptance prompt in the app. A short,
-                      plain-language summary gets read; the full document usually does not.
+                      {t("static_pages.change_summary_hint")}
                     </span>
                   }
                   // showCount hangs its counter below the field, where the
@@ -347,7 +336,7 @@ const AddEditStaticPageModal = ({
                     rows={3}
                     maxLength={2000}
                     showCount
-                    placeholder="e.g. Updated the withdrawal notice period from 30 to 14 days."
+                    placeholder={t("static_pages.change_summary_placeholder")}
                     className="rounded-xl border-slate-200"
                   />
                 </Form.Item>
@@ -362,14 +351,12 @@ const AddEditStaticPageModal = ({
                 className="rounded-xl border-amber-100 bg-amber-50"
                 message={
                   <span className="text-xs font-semibold text-amber-700">
-                    Every user will be asked to accept again
+                    {t("static_pages.republish_warning_title")}
                   </span>
                 }
                 description={
                   <span className="text-xs text-amber-600">
-                    Publishing a new version applies it to all languages of this document
-                    and blocks the app until each user reviews and accepts it. Their
-                    previous acceptance stays on record.
+                    {t("static_pages.republish_warning_description")}
                   </span>
                 }
               />
@@ -378,7 +365,7 @@ const AddEditStaticPageModal = ({
 
           <Form.Item
             name="isActive"
-            label={<span className={labelClass}>Active</span>}
+            label={<span className={labelClass}>{t("static_pages.active_label")}</span>}
             valuePropName="checked"
             className="mb-0"
           >
@@ -391,7 +378,7 @@ const AddEditStaticPageModal = ({
             onClick={onCancel}
             className="flex-1 h-12 rounded-2xl bg-[#FFF1F1] border-none text-[#FF4D4F] font-bold text-base hover:bg-[#FFE4E4]! order-2 sm:order-1"
           >
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button
             type="primary"
@@ -399,7 +386,7 @@ const AddEditStaticPageModal = ({
             loading={isLoading}
             className="flex-1 h-12 rounded-2xl bg-[#8b85f6] border-none text-white font-bold text-base hover:bg-[#7a74e5]! order-1 sm:order-2"
           >
-            {publishNewVersion ? "Publish new version" : "Save"}
+            {publishNewVersion ? t("static_pages.publish_new_version_button") : t("common.save")}
           </Button>
         </div>
       </Form>

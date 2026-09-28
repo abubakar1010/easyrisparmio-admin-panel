@@ -1,3 +1,5 @@
+import { getApiErrorMessage } from "../../utils/apiError";
+import i18n from '../../i18n';
 import { useEffect } from "react";
 import { Modal, Form, Input, InputNumber, Select, DatePicker, Switch, Button, message } from "antd";
 import { FiX, FiPlus, FiTrash2 } from "react-icons/fi";
@@ -6,6 +8,7 @@ import {
   useCreateAgreementMutation,
   useUpdateAgreementMutation,
 } from "../../redux/features/Agreements/agreementApi";
+import { useTranslation } from "react-i18next";
 
 interface AgreementFormModalProps {
   isOpen: boolean;
@@ -23,6 +26,7 @@ const MAX_HOW_TO_USE_STEPS = 10;
 const AgreementFormModal = ({ isOpen, onClose, mode = "add", agreementId, initialValues }: AgreementFormModalProps) => {
   const [form] = Form.useForm();
   const isEdit = mode === "edit";
+  const { t } = useTranslation();
 
   const [createAgreement, { isLoading: isCreating }] = useCreateAgreementMutation();
   const [updateAgreement, { isLoading: isUpdating }] = useUpdateAgreementMutation();
@@ -78,15 +82,15 @@ const AgreementFormModal = ({ isOpen, onClose, mode = "add", agreementId, initia
     try {
       if (isEdit && agreementId) {
         await updateAgreement({ id: agreementId, data: payload }).unwrap();
-        message.success("Agreement updated");
+        message.success(t("agreements.agreement_updated"));
       } else {
         await createAgreement(payload as any).unwrap();
-        message.success("Agreement created");
+        message.success(t("agreements.agreement_created"));
       }
       onClose();
       if (!isEdit) form.resetFields();
     } catch (err: any) {
-      message.error(err?.data?.message?.[0] || err?.data?.message || "Something went wrong");
+      message.error(getApiErrorMessage(err, t("common.generic_error")));
     }
   };
 
@@ -96,8 +100,8 @@ const AgreementFormModal = ({ isOpen, onClose, mode = "add", agreementId, initia
     <Modal
       title={
         <div className="py-2">
-          <h2 className="text-xl font-bold text-slate-800">{isEdit ? "Edit Agreement" : "Add New Agreement"}</h2>
-          <p className="text-xs font-medium text-slate-400">Partner agreement and discount management</p>
+          <h2 className="text-xl font-bold text-slate-800">{isEdit ? t("agreements.edit_agreement") : t("agreements.add_agreement")}</h2>
+          <p className="text-xs font-medium text-slate-400">{t("agreements.form_description")}</p>
         </div>
       }
       open={isOpen}
@@ -118,84 +122,84 @@ const AgreementFormModal = ({ isOpen, onClose, mode = "add", agreementId, initia
       >
         {/* Agreement Info */}
         <section>
-          <h3 className="mb-4 px-1 text-[15px] font-bold text-slate-800">Agreement Information</h3>
+          <h3 className="mb-4 px-1 text-[15px] font-bold text-slate-800">{t("agreements.form_information")}</h3>
           <div className="grid grid-cols-1 gap-x-4 gap-y-1 rounded-xl border border-slate-100 bg-slate-50/50 p-4 md:grid-cols-2">
             <Form.Item
-              label={<span className={labelClass}>Agreement Title</span>}
+              label={<span className={labelClass}>{t("agreements.agreement_title")}</span>}
               name="title"
-              rules={[{ required: true, message: "Title is required" }]}
+              rules={[{ required: true, message: t("agreements.title_required") }]}
             >
-              <Input placeholder="E.g.: 20% Off on Smart Home Kit" className="h-10 rounded-lg border-slate-200" />
+              <Input placeholder={i18n.t("audit.e_g_20_off_on_smart_home_kit")} className="h-10 rounded-lg border-slate-200" />
             </Form.Item>
             <Form.Item
-              label={<span className={labelClass}>Partner Name</span>}
+              label={<span className={labelClass}>{t("agreements.partner_name")}</span>}
               name="partnerName"
-              rules={[{ required: true, message: "Partner name is required" }]}
+              rules={[{ required: true, message: t("agreements.partner_name_required") }]}
             >
-              <Input placeholder="E.g.: Enel X" className="h-10 rounded-lg border-slate-200" />
+              <Input placeholder={i18n.t("audit.e_g_enel_x")} className="h-10 rounded-lg border-slate-200" />
             </Form.Item>
             <Form.Item
-              label={<span className={labelClass}>Partner Image URL</span>}
+              label={<span className={labelClass}>{t("agreements.partner_image_url")}</span>}
               name="partnerLogoUrl"
-              rules={[{ type: "url", message: "Enter a valid URL" }]}
-              extra={<span className="text-[11px] text-slate-400">Shown as the banner on the app detail screen — landscape images work best.</span>}
+              rules={[{ type: "url", message: t("agreements.valid_url") }]}
+              extra={<span className="text-[11px] text-slate-400">{t("agreements.banner_hint")}</span>}
             >
               <Input placeholder="https://..." className="h-10 rounded-lg border-slate-200" />
             </Form.Item>
             <Form.Item
-              label={<span className={labelClass}>Terms & Conditions URL</span>}
+              label={<span className={labelClass}>{t("agreements.terms_url")}</span>}
               name="termsUrl"
-              rules={[{ type: "url", message: "Enter a valid URL" }]}
+              rules={[{ type: "url", message: t("agreements.valid_url") }]}
             >
               <Input placeholder="https://..." className="h-10 rounded-lg border-slate-200" />
             </Form.Item>
             <Form.Item
-              label={<span className={labelClass}>Address</span>}
+              label={<span className={labelClass}>{t("agreements.address")}</span>}
               name="address"
               className="md:col-span-2"
-              extra={<span className="text-[11px] text-slate-400">Opened in Google Maps from the app — write a complete, searchable address.</span>}
+              extra={<span className="text-[11px] text-slate-400">{t("agreements.address_hint")}</span>}
             >
-              <Input placeholder="E.g.: Via Cesare Sersale 1, 80139 Napoli NA, Italia" className="h-10 rounded-lg border-slate-200" />
+              <Input placeholder={i18n.t("audit.e_g_via_cesare_sersale_1_80139_napoli_na_italia")} className="h-10 rounded-lg border-slate-200" />
             </Form.Item>
           </div>
         </section>
 
         {/* Discount & Description */}
         <section>
-          <h3 className="mb-4 px-1 text-[15px] font-bold text-slate-800">Discount & Description</h3>
+          <h3 className="mb-4 px-1 text-[15px] font-bold text-slate-800">{t("agreements.discount_description")}</h3>
           <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4 space-y-1">
             <div className="grid grid-cols-1 gap-x-4 gap-y-1 md:grid-cols-2">
               <Form.Item
-                label={<span className={labelClass}>Discount Headline</span>}
+                label={<span className={labelClass}>{t("agreements.discount_headline")}</span>}
                 name="discountHeadline"
-                rules={[{ max: 60, message: "Keep it under 60 characters" }]}
-                extra={<span className="text-[11px] text-slate-400">The large figure in the app. Keep it short: "20%", "5 cent/litro".</span>}
+                rules={[{ max: 60, message: t("agreements.max_characters", { count: 60 }) }]}
+                extra={<span className="text-[11px] text-slate-400">{t("agreements.discount_headline_hint")}</span>}
               >
-                <Input placeholder="E.g.: 20%" className="h-10 rounded-lg border-slate-200" />
+                <Input placeholder={i18n.t("audit.e_g_20")} className="h-10 rounded-lg border-slate-200" />
               </Form.Item>
               <Form.Item
-                label={<span className={labelClass}>Discount Code</span>}
+                label={<span className={labelClass}>{t("agreements.discount_code")}</span>}
                 name="discountCode"
-                rules={[{ max: 50, message: "Keep it under 50 characters" }]}
-                extra={<span className="text-[11px] text-slate-400">Copied by the user with one tap. Leave empty if no code is needed.</span>}
+                rules={[{ max: 50, message: t("agreements.max_characters", { count: 50 }) }]}
+                extra={<span className="text-[11px] text-slate-400">{t("agreements.discount_code_hint")}</span>}
               >
-                <Input placeholder="E.g.: EASY20" className="h-10 rounded-lg border-slate-200" />
+                <Input placeholder={i18n.t("audit.e_g_easy20")} className="h-10 rounded-lg border-slate-200" />
               </Form.Item>
             </div>
-            <Form.Item label={<span className={labelClass}>Discount Description</span>} name="discountDescription">
-              <Input placeholder="E.g.: 15% off the entire menu. Code: EASY15" className="h-10 rounded-lg border-slate-200" />
+            <Form.Item label={<span className={labelClass}>{t("agreements.discount_description_field")}</span>} name="discountDescription">
+              <Input placeholder={i18n.t("audit.e_g_15_off_the_entire_menu_code_easy15")} className="h-10 rounded-lg border-slate-200" />
             </Form.Item>
-            <Form.Item label={<span className={labelClass}>Description</span>} name="description" className="mb-0">
-              <TextArea rows={3} placeholder="Describe the agreement details and conditions..." className="rounded-lg border-slate-200 p-3" />
+            <Form.Item label={<span className={labelClass}>{t("agreements.description_field")}</span>} name="description" className="mb-0">
+              <TextArea rows={3} placeholder={t("agreements.description_placeholder")} className="rounded-lg border-slate-200 p-3" />
             </Form.Item>
           </div>
         </section>
 
         {/* How to Use */}
         <section>
-          <h3 className="mb-1 px-1 text-[15px] font-bold text-slate-800">How to Use</h3>
+          <h3 className="mb-1 px-1 text-[15px] font-bold text-slate-800">{t("agreements.how_to_use")}</h3>
           <p className="mb-4 px-1 text-xs font-medium text-slate-400">
-            Numbered steps shown to the customer. Leave empty to use the app's generic steps.
+            {t("agreements.how_to_use_hint")}
           </p>
           <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4">
             <Form.List name="howToUse">
@@ -210,9 +214,9 @@ const AgreementFormModal = ({ isOpen, onClose, mode = "add", agreementId, initia
                         {...restField}
                         name={name}
                         className="mb-0 flex-1"
-                        rules={[{ max: 300, message: "Keep each step under 300 characters" }]}
+                        rules={[{ max: 300, message: t("agreements.max_characters", { count: 300 }) }]}
                       >
-                        <Input placeholder="E.g.: Show the code to the staff before ordering" className="h-10 rounded-lg border-slate-200" />
+                        <Input placeholder={t("agreements.step_placeholder")} className="h-10 rounded-lg border-slate-200" />
                       </Form.Item>
                       <Button
                         type="text"
@@ -230,7 +234,7 @@ const AgreementFormModal = ({ isOpen, onClose, mode = "add", agreementId, initia
                     onClick={() => add("")}
                     className="h-10 rounded-lg border-slate-300 font-medium text-slate-600"
                   >
-                    {fields.length >= MAX_HOW_TO_USE_STEPS ? `Maximum ${MAX_HOW_TO_USE_STEPS} steps` : "Add step"}
+                    {fields.length >= MAX_HOW_TO_USE_STEPS ? t("agreements.max_steps", { count: MAX_HOW_TO_USE_STEPS }) : t("agreements.add_step")}
                   </Button>
                 </div>
               )}
@@ -240,17 +244,17 @@ const AgreementFormModal = ({ isOpen, onClose, mode = "add", agreementId, initia
 
         {/* Validity & Settings */}
         <section>
-          <h3 className="mb-4 px-1 text-[15px] font-bold text-slate-800">Validity & Settings</h3>
+          <h3 className="mb-4 px-1 text-[15px] font-bold text-slate-800">{t("agreements.validity_settings")}</h3>
           <div className="grid grid-cols-1 gap-x-4 gap-y-1 rounded-xl border border-slate-100 bg-slate-50/50 p-4 md:grid-cols-2">
             <Form.Item
-              label={<span className={labelClass}>Valid From</span>}
+              label={<span className={labelClass}>{t("agreements.valid_from")}</span>}
               name="validFrom"
-              rules={[{ required: true, message: "Start date is required" }]}
+              rules={[{ required: true, message: t("agreements.start_date_required") }]}
             >
               <DatePicker className="h-10! w-full rounded-lg border-slate-200" format="DD/MM/YYYY" />
             </Form.Item>
             <Form.Item
-              label={<span className={labelClass}>Valid Until</span>}
+              label={<span className={labelClass}>{t("agreements.valid_until")}</span>}
               name="validUntil"
               dependencies={["validFrom"]}
               rules={[
@@ -260,24 +264,24 @@ const AgreementFormModal = ({ isOpen, onClose, mode = "add", agreementId, initia
                     if (!value || !from || !dayjs(value).isBefore(dayjs(from), "day")) {
                       return Promise.resolve();
                     }
-                    return Promise.reject(new Error("End date cannot be before the start date"));
+                    return Promise.reject(new Error(t("agreements.end_date_before_start")));
                   },
                 }),
               ]}
             >
               <DatePicker className="h-10! w-full rounded-lg border-slate-200" format="DD/MM/YYYY" />
             </Form.Item>
-            <Form.Item label={<span className={labelClass}>Target Audience</span>} name="targetAudience">
-              <Select placeholder="Select audience" className="h-10 rounded-lg border-slate-200" popupClassName="rounded-xl">
-                <Option value="personal">Personal</Option>
-                <Option value="business">Business</Option>
-                <Option value="both">Both</Option>
+            <Form.Item label={<span className={labelClass}>{t("agreements.audience")}</span>} name="targetAudience">
+              <Select placeholder={t("agreements.select_audience")} className="h-10 rounded-lg border-slate-200" popupClassName="rounded-xl">
+                <Option value="personal">{t("client_management.private")}</Option>
+                <Option value="business">{t("client_management.business")}</Option>
+                <Option value="both">{t("agreements.both")}</Option>
               </Select>
             </Form.Item>
-            <Form.Item label={<span className={labelClass}>Sort Order</span>} name="sortOrder">
+            <Form.Item label={<span className={labelClass}>{t("agreements.sort_order")}</span>} name="sortOrder">
               <InputNumber min={0} controls={false} placeholder="0" className="w-full! rounded-lg [&_.ant-input-number-input]:h-10 border-slate-200" />
             </Form.Item>
-            <Form.Item label={<span className={labelClass}>Active</span>} name="isActive" valuePropName="checked">
+            <Form.Item label={<span className={labelClass}>{t("common.active")}</span>} name="isActive" valuePropName="checked">
               <Switch />
             </Form.Item>
           </div>
@@ -291,7 +295,7 @@ const AgreementFormModal = ({ isOpen, onClose, mode = "add", agreementId, initia
             loading={isCreating || isUpdating}
             className="h-12 rounded-xl border-0 bg-[#8b85f6] text-base font-bold shadow-lg shadow-indigo-100 hover:bg-[#7a74e5]"
           >
-            {isEdit ? "Save Changes" : "Save Agreement"}
+            {isEdit ? t("common.save_changes") : t("agreements.save_agreement")}
           </Button>
         </div>
       </Form>

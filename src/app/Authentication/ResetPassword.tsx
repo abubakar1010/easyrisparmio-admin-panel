@@ -32,7 +32,7 @@ const ResetPassword = () => {
       }).unwrap();
       setIsModalVisible(true);
     } catch (err) {
-      errorAlert({ error: err as { data?: { message?: string | string[] } } });
+      errorAlert({ error: err });
     }
   };
 

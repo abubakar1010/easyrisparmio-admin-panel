@@ -1,7 +1,9 @@
+import { getLocale } from "../../utils/format";
 import { Button, Card, Form, Input, Modal, Select, Spin, Empty, Table, Tag, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { FiClock, FiEye, FiPlus, FiSearch, FiUser } from "react-icons/fi";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 import {
   useGetTicketsQuery,
@@ -20,13 +22,6 @@ const statusStyles: Record<string, string> = {
   closed: "bg-slate-500! text-white!",
 };
 
-const statusLabel: Record<string, string> = {
-  open: "Open",
-  in_progress: "In Progress",
-  resolved: "Resolved",
-  closed: "Closed",
-};
-
 const priorityStyles: Record<string, string> = {
   low: "bg-green-100! text-green-700!",
   medium: "bg-blue-100! text-blue-700!",
@@ -34,14 +29,8 @@ const priorityStyles: Record<string, string> = {
   urgent: "bg-red-100! text-red-700!",
 };
 
-const priorityLabel: Record<string, string> = {
-  low: "Low",
-  medium: "Medium",
-  high: "High",
-  urgent: "Urgent",
-};
-
 const SupportTicket = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [newTicketOpen, setNewTicketOpen] = useState(false);
   const [ticketForm] = Form.useForm();
@@ -75,12 +64,12 @@ const SupportTicket = () => {
   const kpiStats = useMemo(() => {
     const all = tickets;
     return [
-      { label: "Open", value: all.filter((t) => t.status === "open").length, dot: "bg-blue-500" },
-      { label: "In Progress", value: all.filter((t) => t.status === "in_progress").length, dot: "bg-amber-500" },
-      { label: "Resolved", value: all.filter((t) => t.status === "resolved").length, dot: "bg-emerald-500" },
-      { label: "Closed", value: all.filter((t) => t.status === "closed").length, dot: "bg-slate-500" },
+      { label: t("support_ticket.open"), value: all.filter((t) => t.status === "open").length, dot: "bg-blue-500" },
+      { label: t("support_ticket.in_progress"), value: all.filter((t) => t.status === "in_progress").length, dot: "bg-amber-500" },
+      { label: t("support_ticket.resolved"), value: all.filter((t) => t.status === "resolved").length, dot: "bg-emerald-500" },
+      { label: t("support_ticket.closed"), value: all.filter((t) => t.status === "closed").length, dot: "bg-slate-500" },
     ];
-  }, [tickets]);
+  }, [tickets, t]);
 
   const handleSearch = debounce((value: string) => {
     setSearch(value);
@@ -99,9 +88,9 @@ const SupportTicket = () => {
   const handleUpdateTicketStatus = async (id: string, status: TicketStatus) => {
     try {
       await updateTicket({ id, data: { status } }).unwrap();
-      message.success("Ticket status updated");
+      message.success(t("support_ticket.status_updated"));
     } catch {
-      message.error("Failed to update ticket status");
+      message.error(t("support_ticket.status_update_failed"));
     }
   };
 
@@ -114,13 +103,13 @@ const SupportTicket = () => {
       render: (value: string) => <span className="font-bold text-slate-700">#{value.slice(0, 6)}</span>,
     },
     {
-      title: "CUSTOMER",
+      title: t("support_ticket.customer"),
       key: "customer",
       width: 200,
       render: (_: any, record: ISupportTicket) => {
         const name = record.user
           ? `${record.user.firstName} ${record.user.lastName}`
-          : "Unknown";
+          : t("common.unknown");
         return (
           <span className="inline-flex items-center gap-2 text-slate-700">
             <FiUser className="h-4 w-4 text-slate-400" />
@@ -130,14 +119,14 @@ const SupportTicket = () => {
       },
     },
     {
-      title: "SUBJECT",
+      title: t("support_ticket.subject"),
       dataIndex: "subject",
       key: "subject",
       width: 200,
       render: (value: string) => <span className="text-slate-600 truncate block max-w-[200px]">{value}</span>,
     },
     {
-      title: "TOPIC",
+      title: t("support_ticket.topic").toUpperCase(),
       key: "topic",
       width: 160,
       render: (_: any, record: ISupportTicket) => (
@@ -147,19 +136,19 @@ const SupportTicket = () => {
       ),
     },
     {
-      title: "PRIORITY",
+      title: t("support_ticket.priority").toUpperCase(),
       dataIndex: "priority",
       key: "priority",
       width: 110,
       render: (value: string) => (
         <Tag className={`m-0! rounded-full! border-0! px-2.5! py-0.5! text-[10px]! font-bold! ${priorityStyles[value] || ""}`}>
-          {priorityLabel[value] || value}
+          {t(`support_ticket.${value}`) === `support_ticket.${value}` ? value : t(`support_ticket.${value}`)}
         </Tag>
       ),
       align: "center",
     },
     {
-      title: "STATUS",
+      title: t("common.status").toUpperCase(),
       dataIndex: "status",
       key: "status",
       width: 140,
@@ -172,10 +161,10 @@ const SupportTicket = () => {
           className="w-[130px] [&_.ant-select-selector]:rounded-full! [&_.ant-select-selector]:border-0! [&_.ant-select-selector]:h-6!"
           popupClassName="rounded-lg"
           options={[
-            { value: "open", label: "Open" },
-            { value: "in_progress", label: "In Progress" },
-            { value: "resolved", label: "Resolved" },
-            { value: "closed", label: "Closed" },
+            { value: "open", label: t("support_ticket.open") },
+            { value: "in_progress", label: t("support_ticket.in_progress") },
+            { value: "resolved", label: t("support_ticket.resolved") },
+            { value: "closed", label: t("support_ticket.closed") },
           ]}
           optionRender={(option) => (
             <Tag className={`rounded-full! border-0 px-3 pb-0.5! text-[10px] font-bold ${statusStyles[option.value as string] || ""}`}>
@@ -184,7 +173,7 @@ const SupportTicket = () => {
           )}
           labelRender={(props) => (
             <Tag className={`rounded-full! border-0 px-3 pb-0.5! text-[10px] font-bold ${statusStyles[props.value as string] || ""}`}>
-              {statusLabel[props.value as string] || props.label}
+              {t(`support_ticket.${props.value as string}`) === `support_ticket.${props.value as string}` ? props.label : t(`support_ticket.${props.value as string}`)}
             </Tag>
           )}
         />
@@ -193,19 +182,19 @@ const SupportTicket = () => {
       align: "center",
     },
     {
-      title: "LAST UPDATE",
+      title: t("support_ticket.last_update"),
       dataIndex: "updatedAt",
       key: "updatedAt",
       width: 180,
       render: (value: string) => (
         <span className="inline-flex items-center gap-1.5 text-xs text-slate-400">
           <FiClock className="h-3.5 w-3.5" />
-          {value ? new Date(value).toLocaleString("it-IT", { dateStyle: "short", timeStyle: "short" }) : "—"}
+          {value ? new Date(value).toLocaleString(getLocale(), { dateStyle: "short", timeStyle: "short" }) : "—"}
         </span>
       ),
     },
     {
-      title: "ACTIONS",
+      title: t("common.actions").toUpperCase(),
       key: "actions",
       width: 100,
       render: (_: any, record: ISupportTicket) => (
@@ -218,7 +207,7 @@ const SupportTicket = () => {
           }}
         >
           <FiEye className="h-4 w-4" />
-          View
+          {t("support_ticket.view")}
         </button>
       ),
     },
@@ -228,8 +217,8 @@ const SupportTicket = () => {
     <div className="space-y-6 pb-8">
       <div className="mb-4 flex flex-col gap-3 border-b border-cborder/45 pb-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Support Ticket</h2>
-          <p className="text-sm text-slate-400 font-medium">Managing Support Requests</p>
+          <h2 className="text-2xl font-bold text-slate-800 tracking-tight">{t("support_ticket.title")}</h2>
+          <p className="text-sm text-slate-400 font-medium">{t("support_ticket.description")}</p>
         </div>
         <Button
           type="primary"
@@ -237,7 +226,7 @@ const SupportTicket = () => {
           className="h-10 rounded-lg border-0 bg-[#8b85f6] px-5 font-semibold hover:bg-[#7a74e5]"
           onClick={() => setNewTicketOpen(true)}
         >
-          New Ticket
+          {t("support_ticket.new_ticket")}
         </Button>
       </div>
 
@@ -263,35 +252,35 @@ const SupportTicket = () => {
             <Input
               className="h-11 rounded-xl border-slate-100 bg-slate-50/30 text-[15px]"
               prefix={<FiSearch className="mr-2 text-slate-300 h-5 w-5" />}
-              placeholder="Search tickets by ID, customer, subject..."
+              placeholder={t("support_ticket.search")}
               onChange={(e) => handleSearch(e.target.value)}
             />
           </div>
           <Select
             allowClear
-            placeholder="Status"
+            placeholder={t("common.status")}
             onChange={(v) => { setStatusFilter(v); setPage(1); }}
             className="w-40 [&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-xl"
           >
-            <Select.Option value="open">Open</Select.Option>
-            <Select.Option value="in_progress">In Progress</Select.Option>
-            <Select.Option value="resolved">Resolved</Select.Option>
-            <Select.Option value="closed">Closed</Select.Option>
+            <Select.Option value="open">{t("support_ticket.open")}</Select.Option>
+            <Select.Option value="in_progress">{t("support_ticket.in_progress")}</Select.Option>
+            <Select.Option value="resolved">{t("support_ticket.resolved")}</Select.Option>
+            <Select.Option value="closed">{t("support_ticket.closed")}</Select.Option>
           </Select>
           <Select
             allowClear
-            placeholder="Priority"
+            placeholder={t("support_ticket.priority")}
             onChange={(v) => { setPriorityFilter(v); setPage(1); }}
             className="w-40 [&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-xl"
           >
-            <Select.Option value="low">Low</Select.Option>
-            <Select.Option value="medium">Medium</Select.Option>
-            <Select.Option value="high">High</Select.Option>
-            <Select.Option value="urgent">Urgent</Select.Option>
+            <Select.Option value="low">{t("support_ticket.low")}</Select.Option>
+            <Select.Option value="medium">{t("support_ticket.medium")}</Select.Option>
+            <Select.Option value="high">{t("support_ticket.high")}</Select.Option>
+            <Select.Option value="urgent">{t("support_ticket.urgent")}</Select.Option>
           </Select>
           <Select
             allowClear
-            placeholder="Topic"
+            placeholder={t("support_ticket.topic")}
             onChange={(v) => { setTopicFilter(v); setPage(1); }}
             className="w-48 [&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-xl"
             options={
@@ -309,7 +298,7 @@ const SupportTicket = () => {
           </div>
         ) : tickets.length === 0 ? (
           <div className="py-24">
-            <Empty description="No tickets found" />
+            <Empty description={t("support_ticket.no_tickets")} />
           </div>
         ) : (
           <Table<ISupportTicket>
@@ -343,25 +332,25 @@ const SupportTicket = () => {
         width={780}
         className="[&_.ant-modal-content]:rounded-2xl [&_.ant-modal-content]:p-4 sm:[&_.ant-modal-content]:p-6"
       >
-        <h3 className="mb-4 text-2xl font-semibold text-slate-800">Add New Ticket</h3>
+        <h3 className="mb-4 text-2xl font-semibold text-slate-800">{t("support_ticket.add_new_ticket")}</h3>
 
         <Form form={ticketForm} layout="vertical" onFinish={submitTicketForm}>
           <Form.Item
             name="subject"
-            label="Subject"
-            rules={[{ required: true, message: "Please enter subject" }]}
+            label={t("support_ticket.subject")}
+            rules={[{ required: true, message: t("support_ticket.subject_required") }]}
           >
-            <Input className="h-11 rounded-lg border-slate-300" placeholder="E.g: Restaurant Da Mario" />
+            <Input className="h-11 rounded-lg border-slate-300" placeholder={t("support_ticket.subject_example")} />
           </Form.Item>
 
           <Form.Item
             name="topicId"
-            label="Topic"
-            rules={[{ required: true, message: "Please select a topic" }]}
+            label={t("support_ticket.topic")}
+            rules={[{ required: true, message: t("support_ticket.topic_required") }]}
           >
             <Select
               className="[&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-lg [&_.ant-select-selector]:border-slate-300 [&_.ant-select-selection-item]:leading-[42px] [&_.ant-select-selection-placeholder]:leading-[42px]"
-              placeholder="Select topic"
+              placeholder={t("support_ticket.select_topic")}
               options={
                 activeTopics?.map((t) => ({ value: t.id, label: t.name })) || []
               }
@@ -370,10 +359,10 @@ const SupportTicket = () => {
 
           <Form.Item
             name="messageDetails"
-            label="Message Details"
-            rules={[{ required: true, message: "Please enter message details" }]}
+            label={t("support_ticket.message_details")}
+            rules={[{ required: true, message: t("support_ticket.details_required")}]}
           >
-            <Input.TextArea rows={4} className="rounded-lg border-slate-300" placeholder="Type ticket details..." />
+            <Input.TextArea rows={4} className="rounded-lg border-slate-300" placeholder={t("support_ticket.details_placeholder")} />
           </Form.Item>
 
           <Button
@@ -381,7 +370,7 @@ const SupportTicket = () => {
             type="primary"
             className="h-11 w-full rounded-xl border-0 bg-[#8b85f6] text-base font-semibold hover:bg-[#7a74e5]"
           >
-            Save Ticket
+            {t("support_ticket.save_ticket")}
           </Button>
         </Form>
       </Modal>

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { DashboardCard } from "./DashboardCard";
 import { FiChevronRight } from "react-icons/fi";
 import type { AdminDashboardData } from "../../redux/features/Dashboard/dashboardApi";
+import { translateActivityAction, translateEntityType } from "../../utils/activityLabels";
 
 type Activity = AdminDashboardData["recentActivity"][number];
 type Props = { data?: AdminDashboardData["recentActivity"] };
@@ -83,10 +84,10 @@ export function RecentActivityCard({ data }: Props) {
                 className={`relative z-[1] mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ring-3 ring-white ${getDotColor(item.entityType)}`}
               />
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-brand">{item.action}</p>
+                <p className="text-sm font-semibold text-brand">{translateActivityAction(item.action)}</p>
                 <p className="text-xs text-gray-600">
                   {userName && `${userName} · `}
-                  {item.entityType}
+                  {translateEntityType(item.entityType)}
                 </p>
                 <p className="mt-1 text-[11px] text-gray-400">{timeAgo(item.createdAt, t)}</p>
               </div>

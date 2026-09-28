@@ -136,7 +136,7 @@ export function ClientFormModal({ open, onClose, mode, client = null }: ClientFo
       }
       onClose();
     } catch (err) {
-      errorAlert({ error: err as { data?: { message?: string } } });
+      errorAlert({ error: err });
     }
   };
 

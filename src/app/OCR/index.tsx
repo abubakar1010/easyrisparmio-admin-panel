@@ -1,4 +1,6 @@
+import i18n from "../../i18n";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button, Select, Spin, Tag, Upload, message } from "antd";
 import {
   FiCheckCircle,
@@ -34,6 +36,7 @@ const confidenceTagColor: Record<string, string> = {
 };
 
 const OCRBills = () => {
+  const { t } = useTranslation();
   // Email bill upload state
   const [emailBillType, setEmailBillType] = useState<"electricity" | "gas">("electricity");
   const [emailUserSearch, setEmailUserSearch] = useState("");
@@ -66,7 +69,7 @@ const OCRBills = () => {
   // Phase A: Extract OCR data and show preview
   const handleExtract = async (file: File) => {
     if (!selectedUserId) {
-      message.warning("Please select a user first");
+      message.warning(t("ocr.select_user_warning"));
       return;
     }
     setPendingFile(file);
@@ -78,7 +81,7 @@ const OCRBills = () => {
       const result = await extractBillData(formData).unwrap();
       setExtractedData(result);
     } catch {
-      message.error("OCR extraction failed. Please try again.");
+      message.error(t("ocr.extraction_failed"));
       setPendingFile(null);
     } finally {
       setIsExtracting(false);
@@ -97,13 +100,13 @@ const OCRBills = () => {
     }
     try {
       await adminUploadEmailBill(formData).unwrap();
-      message.success("Bill uploaded with OCR data successfully");
+      message.success(t("ocr.upload_success"));
       setExtractedData(null);
       setPendingFile(null);
       setSelectedUserId(undefined);
       setEmailUserSearch("");
     } catch {
-      message.error("Failed to upload bill");
+      message.error(t("ocr.upload_failed"));
     }
   };
 
@@ -118,41 +121,39 @@ const OCRBills = () => {
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-800">OCR Bills</h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Upload, analyze and manage scanned bills
-        </p>
+        <h1 className="text-2xl font-bold text-slate-800">{t("ocr.title")}</h1>
+        <p className="text-sm text-slate-500 mt-1">{t("ocr.description")}</p>
       </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         {[
           {
-            label: "Uploaded",
+            label: t("ocr.uploaded"),
             value: kpis.uploaded,
             icon: <HiOutlineDocumentText className="h-5 w-5" />,
             bg: "bg-amber-100 text-amber-600",
           },
           {
-            label: "Pending Email",
+            label: t("ocr.pending_email"),
             value: kpis.pendingEmail,
             icon: <FiMail className="h-5 w-5" />,
             bg: "bg-purple-100 text-purple-600",
           },
           {
-            label: "Offer Sent",
+            label: t("ocr.offer_sent"),
             value: kpis.offerSent,
             icon: <FiSend className="h-5 w-5" />,
             bg: "bg-cyan-100 text-cyan-600",
           },
           {
-            label: "Analyzed",
+            label: t("ocr.analyzed"),
             value: kpis.analyzed,
             icon: <FiCheckCircle className="h-5 w-5" />,
             bg: "bg-emerald-100 text-emerald-600",
           },
           {
-            label: "Errors",
+            label: t("ocr.errors"),
             value: kpis.errors,
             icon: <FiAlertCircle className="h-5 w-5" />,
             bg: "bg-rose-100 text-rose-600",
@@ -179,13 +180,13 @@ const OCRBills = () => {
       <div className="bg-white rounded-xl border border-purple-200 shadow-sm p-6">
         <div className="flex items-center gap-2 mb-4">
           <FiMail className="h-5 w-5 text-purple-600" />
-          <h3 className="text-base font-bold text-slate-800">Upload Email Bill</h3>
-          <span className="text-xs text-slate-400">— For bills received via email from users</span>
+          <h3 className="text-base font-bold text-slate-800">{t("ocr.upload_email_bill")}</h3>
+          <span className="text-xs text-slate-400">{i18n.t("audit.for_bills_received_via_email_from_users")}</span>
         </div>
         <div className="flex flex-col sm:flex-row sm:items-end gap-4 mb-4">
           <div>
             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-              Bill Type
+              {t("ocr.bill_type")}
             </p>
             <Select
               value={emailBillType}
@@ -193,19 +194,19 @@ const OCRBills = () => {
               disabled={!!extractedData || isExtracting}
               className="w-44 [&_.ant-select-selector]:rounded-lg"
               options={[
-                { value: "electricity", label: "Electricity" },
-                { value: "gas", label: "Gas" },
+                { value: "electricity", label: t("home.electricity") },
+                { value: "gas", label: t("home.gas") },
               ]}
             />
           </div>
           <div className="flex-1">
             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-              Associate with User
+              {t("ocr.associate_user")}
             </p>
             <Select
               showSearch
               allowClear
-              placeholder="Search user by email..."
+              placeholder={t("ocr.search_user_email")}
               value={selectedUserId}
               onSearch={(v) => setEmailUserSearch(v)}
               onChange={(v) => setSelectedUserId(v)}
@@ -218,8 +219,8 @@ const OCRBills = () => {
               }))}
               notFoundContent={
                 emailUserSearch.length < 2
-                  ? <span className="text-slate-400 text-xs">Type at least 2 characters...</span>
-                  : <span className="text-slate-400 text-xs">No users found</span>
+                  ? <span className="text-slate-400 text-xs">{t("ocr.type_two_characters")}</span>
+                  : <span className="text-slate-400 text-xs">{t("ocr.no_users_found")}</span>
               }
             />
           </div>
@@ -244,8 +245,8 @@ const OCRBills = () => {
               {isExtracting ? (
                 <div className="flex flex-col items-center gap-3">
                   <Spin size="large" />
-                  <p className="text-sm font-semibold text-indigo-600">Extracting OCR data...</p>
-                  <p className="text-xs text-slate-400">Analyzing bill with AI Vision. This may take a moment.</p>
+                  <p className="text-sm font-semibold text-indigo-600">{t("ocr.extracting")}</p>
+                  <p className="text-xs text-slate-400">{t("ocr.extracting_hint")}</p>
                 </div>
               ) : (
                 <>
@@ -253,10 +254,10 @@ const OCRBills = () => {
                     <FiMail className="h-6 w-6" />
                   </div>
                   <h3 className="text-base font-bold text-slate-700 mb-1">
-                    {selectedUserId ? "Drop email bill here" : "Select a user first"}
+                    {selectedUserId ? t("ocr.drop_email_bill") : t("ocr.select_user_first")}
                   </h3>
                   <p className="text-xs text-slate-400">
-                    PDF, JPG, PNG — bill received via email from user
+                    {i18n.t("audit.pdf_jpg_png_bill_received_via_email_from_user")}
                   </p>
                 </>
               )}
@@ -270,7 +271,7 @@ const OCRBills = () => {
             <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
               <div className="flex items-center gap-2">
                 <FiFileText className="h-5 w-5 text-indigo-600" />
-                <h4 className="text-sm font-bold text-slate-800">OCR Extraction Preview</h4>
+                <h4 className="text-sm font-bold text-slate-800">{t("ocr.extraction_preview")}</h4>
                 <Tag color={confidenceTagColor[extractedData.overallConfidence] || "default"} className="rounded-full border-0 text-xs font-semibold">
                   {extractedData.overallConfidence} confidence
                 </Tag>
@@ -280,7 +281,7 @@ const OCRBills = () => {
               </div>
               <div className="flex gap-2">
                 <Button icon={<FiX className="h-3.5 w-3.5" />} onClick={handleCancelExtraction} disabled={isUploadingEmail}>
-                  Cancel
+                  {t("common.cancel")}
                 </Button>
                 <Button
                   type="primary"
@@ -289,26 +290,26 @@ const OCRBills = () => {
                   loading={isUploadingEmail}
                   className="!bg-[#7061ED] hover:!bg-[#5a4ed4]"
                 >
-                  Confirm Upload
+                  {t("ocr.confirm_upload")}
                 </Button>
               </div>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-              <PreviewField label="Supplier" value={extractedData.supplierName} confidence={extractedData.confidence?.supplierName} />
+              <PreviewField label={t("ocr.supplier")} value={extractedData.supplierName} confidence={extractedData.confidence?.supplierName} />
               <PreviewField
-                label={isElectricity ? "POD Number" : "PDR Number"}
+                label={isElectricity ? t("ocr.pod_number") : t("ocr.pdr_number")}
                 value={isElectricity ? extractedData.podNumber : extractedData.pdrNumber}
                 confidence={isElectricity ? extractedData.confidence?.podNumber : extractedData.confidence?.pdrNumber}
                 mono
               />
               <PreviewField
-                label="Total Amount"
+                label={t("ocr.total_amount")}
                 value={formatMoney(extractedData.totalAmount, { fallback: null })}
                 confidence={extractedData.confidence?.totalAmount}
               />
               <PreviewField
-                label={isElectricity ? "Consumption (kWh)" : "Consumption (Smc)"}
+                label={isElectricity ? t("ocr.consumption_kwh") : t("ocr.consumption_smc")}
                 value={
                   isElectricity
                     ? formatQuantity(extractedData.consumptionKwh, "kWh", { fallback: null })
@@ -317,22 +318,22 @@ const OCRBills = () => {
                 confidence={isElectricity ? extractedData.confidence?.consumptionKwh : extractedData.confidence?.consumptionSmc}
               />
               <PreviewField
-                label="Cost per Unit"
+                label={t("ocr.cost_per_unit")}
                 value={formatUnitPrice(extractedData.costPerUnit, undefined, { fallback: null })}
                 confidence={extractedData.confidence?.costPerUnit}
               />
               <PreviewField
-                label="Fixed Charges"
+                label={t("ocr.fixed_charges")}
                 value={formatMoney(extractedData.fixedCharges, { fallback: null })}
                 confidence={extractedData.confidence?.fixedCharges}
               />
               <PreviewField
-                label="Taxes"
+                label={t("ocr.taxes")}
                 value={formatMoney(extractedData.taxes, { fallback: null })}
                 confidence={extractedData.confidence?.taxes}
               />
               <PreviewField
-                label="Billing Period"
+                label={t("ocr.billing_period")}
                 value={
                   extractedData.billingPeriodStart
                     ? `${extractedData.billingPeriodStart} — ${extractedData.billingPeriodEnd || "?"}`
@@ -340,11 +341,11 @@ const OCRBills = () => {
                 }
                 confidence={extractedData.confidence?.billingPeriodStart}
               />
-              <PreviewField label="Customer Name" value={extractedData.customerName} confidence={extractedData.confidence?.customerName} />
-              <PreviewField label="Contract No." value={extractedData.contractNumber} confidence={extractedData.confidence?.contractNumber} mono />
-              <PreviewField label="Meter No." value={extractedData.meterNumber} confidence={extractedData.confidence?.meterNumber} mono />
-              <PreviewField label="Codice Fiscale" value={extractedData.codiceFiscale} confidence={extractedData.confidence?.codiceFiscale} mono />
-              <PreviewField label="Partita IVA" value={extractedData.partitaIva} confidence={extractedData.confidence?.partitaIva} mono />
+              <PreviewField label={t("ocr.customer_name")} value={extractedData.customerName} confidence={extractedData.confidence?.customerName} />
+              <PreviewField label={t("ocr.contract_number")} value={extractedData.contractNumber} confidence={extractedData.confidence?.contractNumber} mono />
+              <PreviewField label={t("ocr.meter_number")} value={extractedData.meterNumber} confidence={extractedData.confidence?.meterNumber} mono />
+              <PreviewField label={i18n.t("case_management.detail.codice_fiscale")} value={extractedData.codiceFiscale} confidence={extractedData.confidence?.codiceFiscale} mono />
+              <PreviewField label={i18n.t("case_management.detail.partita_iva")} value={extractedData.partitaIva} confidence={extractedData.confidence?.partitaIva} mono />
             </div>
 
             {/* The address is stored as these five fields, so this is what has
@@ -352,17 +353,17 @@ const OCRBills = () => {
                 and a plausible-looking line can still have split badly. */}
             <div className="mt-4">
               <div className="flex items-baseline gap-2 mb-2">
-                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Supply Address</span>
+                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">{t("ocr.supply_address")}</span>
                 {extractedData.supplyAddress && (
-                  <span className="text-xs text-slate-400 truncate">as printed: {extractedData.supplyAddress}</span>
+                  <span className="text-xs text-slate-400 truncate">{t("ocr.as_printed")} {extractedData.supplyAddress}</span>
                 )}
               </div>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-                <PreviewField label="Street" value={extractedData.supplyStreet} confidence={extractedData.confidence?.supplyStreet} />
-                <PreviewField label="No." value={extractedData.supplyStreetNumber} confidence={extractedData.confidence?.supplyStreetNumber} />
-                <PreviewField label="City" value={extractedData.supplyCity} confidence={extractedData.confidence?.supplyCity} />
+                <PreviewField label={t("ocr.street")} value={extractedData.supplyStreet} confidence={extractedData.confidence?.supplyStreet} />
+                <PreviewField label={t("ocr.number")} value={extractedData.supplyStreetNumber} confidence={extractedData.confidence?.supplyStreetNumber} />
+                <PreviewField label={t("ocr.city")} value={extractedData.supplyCity} confidence={extractedData.confidence?.supplyCity} />
                 <PreviewField label="CAP" value={extractedData.supplyPostalCode} confidence={extractedData.confidence?.supplyPostalCode} mono />
-                <PreviewField label="Province" value={extractedData.supplyProvince} confidence={extractedData.confidence?.supplyProvince} />
+                <PreviewField label={t("ocr.province")} value={extractedData.supplyProvince} confidence={extractedData.confidence?.supplyProvince} />
               </div>
             </div>
           </div>

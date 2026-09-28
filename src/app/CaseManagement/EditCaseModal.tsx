@@ -1,3 +1,6 @@
+import i18n from "../../i18n";
+import { useTranslation } from "react-i18next";
+import { getApiErrorMessage } from "../../utils/apiError";
 import { useEffect, useMemo, useState } from "react";
 import {
   App,
@@ -44,11 +47,11 @@ const DATE_FORMAT = "YYYY-MM-DD";
 
 /** The five fields, in the order they read on an Italian address. */
 const ADDRESS_FIELDS = [
-  { key: "Street", label: "Street", span: "col-span-4", max: 255, placeholder: "Via Roma" },
-  { key: "StreetNumber", label: "No.", span: "col-span-2", max: 20, placeholder: "42" },
-  { key: "City", label: "City", span: "col-span-2", max: 100, placeholder: "Milano" },
-  { key: "PostalCode", label: "Postal Code (CAP)", span: "col-span-2", max: 5, placeholder: "20121" },
-  { key: "Province", label: "Province", span: "col-span-2", max: 100, placeholder: "MI" },
+  { key: "Street", get label() { return i18n.t("ocr.street"); }, span: "col-span-4", max: 255, placeholder: "Via Roma" },
+  { key: "StreetNumber", get label() { return i18n.t("ocr.number"); }, span: "col-span-2", max: 20, placeholder: "42" },
+  { key: "City", get label() { return i18n.t("ocr.city"); }, span: "col-span-2", max: 100, placeholder: "Milano" },
+  { key: "PostalCode", get label() { return i18n.t("audit.postal_code_cap"); }, span: "col-span-2", max: 5, placeholder: "20121" },
+  { key: "Province", get label() { return i18n.t("ocr.province"); }, span: "col-span-2", max: 100, placeholder: "MI" },
 ] as const;
 
 type Block = "supply" | "residential" | "shipping";
@@ -136,37 +139,33 @@ const CUSTOMER_REQUIRED = new Set<string>([
 ]);
 
 const CASE_TYPE_OPTIONS = [
-  { value: "switch", label: "Switch" },
-  { value: "transfer", label: "Transfer" },
-  { value: "takeover", label: "Takeover" },
-  { value: "new_activation", label: "New activation" },
+  { value: "switch", get label() { return i18n.t("audit.switch"); } },
+  { value: "transfer", get label() { return i18n.t("audit.transfer"); } },
+  { value: "takeover", get label() { return i18n.t("audit.takeover"); } },
+  { value: "new_activation", get label() { return i18n.t("audit.new_activation"); } },
 ];
 
 const PRIORITY_OPTIONS = [
-  { value: "low", label: "Low" },
-  { value: "medium", label: "Medium" },
-  { value: "high", label: "High" },
-  { value: "urgent", label: "Urgent" },
+  { value: "low", get label() { return i18n.t("support_ticket.low"); } },
+  { value: "medium", get label() { return i18n.t("support_ticket.medium"); } },
+  { value: "high", get label() { return i18n.t("support_ticket.high"); } },
+  { value: "urgent", get label() { return i18n.t("support_ticket.urgent"); } },
 ];
 
 const PAYMENT_METHOD_OPTIONS = [
-  { value: "rid_bancario", label: "Direct debit (SDD)" },
-  { value: "postal_order", label: "Postal order" },
-  { value: "credit_card", label: "Credit card" },
-  { value: "bank_transfer", label: "Bank transfer" },
+  { value: "rid_bancario", get label() { return i18n.t("audit.direct_debit_sdd"); } },
+  { value: "postal_order", get label() { return i18n.t("offers_market.postal_order"); } },
+  { value: "credit_card", get label() { return i18n.t("client_management.payment_credit_card"); } },
+  { value: "bank_transfer", get label() { return i18n.t("client_management.payment_bank_transfer"); } },
 ];
 
 const INVOICE_DELIVERY_OPTIONS = [
-  { value: "digital", label: "Digital (by email)" },
-  { value: "paper", label: "Paper (by post)" },
+  { value: "digital", get label() { return i18n.t("audit.digital_by_email"); } },
+  { value: "paper", get label() { return i18n.t("audit.paper_by_post"); } },
 ];
 
-/** The message an RTK Query rejection carries, or a fallback. */
-const errorMessage = (err: unknown, fallback: string): string => {
-  const e = err as { data?: { message?: string | string[] } };
-  const msg = e?.data?.message;
-  return (Array.isArray(msg) ? msg[0] : msg) || fallback;
-};
+/** The rejection's message in the admin's language, or the fallback. */
+const errorMessage = (err: unknown, fallback: string): string => getApiErrorMessage(err, fallback);
 
 /**
  * Corrects everything the Case Overview shows, in one form.
@@ -190,6 +189,7 @@ const errorMessage = (err: unknown, fallback: string): string => {
  * editable and silently overwritten on save.
  */
 export default function EditCaseModal({ caseData, bill, open, onClose }: EditCaseModalProps) {
+  useTranslation();
   const { message } = App.useApp();
   const dispatch = useAppDispatch();
   const [form] = Form.useForm();
@@ -244,9 +244,9 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
     if (current && !options.some((o) => o.value === current.id)) {
       options.unshift({
         value: current.id,
-        label: current.supplier?.name
-          ? `${current.name} — ${current.supplier.name} (current)`
-          : `${current.name} (current)`,
+        label: i18n.t("audit.option_current", {
+          label: current.supplier?.name ? `${current.name} — ${current.supplier.name}` : current.name,
+        }),
       });
     }
     return options;
@@ -260,7 +260,7 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
     }));
     const current = caseData?.fromSupplier;
     if (current && !options.some((o) => o.value === current.id)) {
-      options.unshift({ value: current.id, label: `${current.name} (current)` });
+      options.unshift({ value: current.id, label: i18n.t("audit.option_current", { label: current.name }) });
     }
     return options;
   }, [supplierPage, caseData]);
@@ -279,7 +279,7 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
     if (current && !options.some((o) => o.value === current.id)) {
       options.unshift({
         value: current.id,
-        label: `${`${current.firstName} ${current.lastName}`.trim() || current.email} (inactive)`,
+        label: i18n.t("audit.option_inactive", { label: `${current.firstName} ${current.lastName}`.trim() || current.email }),
       });
     }
     return options;
@@ -441,19 +441,19 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
     const saves: { label: string; run: () => Promise<unknown> }[] = [];
     if (Object.keys(caseChanges).length > 0) {
       saves.push({
-        label: "case",
+        label: i18n.t("audit.save_part_case"),
         run: () => updateCase({ id: caseData.id, data: caseChanges as IUpdateCase }).unwrap(),
       });
     }
     if (bill && Object.keys(billChanges).length > 0) {
       saves.push({
-        label: "bill data",
+        label: i18n.t("audit.bill_data_2"),
         run: () => updateBill({ billId: bill.id, data: billChanges }).unwrap(),
       });
     }
     if (caseData.user && Object.keys(customerChanges).length > 0) {
       saves.push({
-        label: "customer",
+        label: i18n.t("audit.save_part_customer"),
         // The account save invalidates `user`, which the case detail does not
         // subscribe to — it reads the customer through its own `case` entry.
         // Without this the corrected name sits in the database while the card
@@ -469,7 +469,7 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
     }
 
     if (saves.length === 0) {
-      message.info("No changes detected");
+      message.info(i18n.t("case_management.no_changes"));
       return;
     }
 
@@ -479,17 +479,15 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
         await save.run();
         done.push(save.label);
       } catch (err) {
-        const detail = errorMessage(err, `Failed to update ${save.label}`);
+        const detail = errorMessage(err, i18n.t("audit.save_part_failed", { part: save.label }));
         message.error(
-          done.length > 0
-            ? `${detail} — the ${done.join(" and ")} ${done.length > 1 ? "were" : "was"} saved.`
-            : detail,
+          done.length > 0 ? i18n.t("audit.save_partial", { detail, parts: done.join(", ") }) : detail,
         );
         return;
       }
     }
 
-    message.success("Case updated");
+    message.success(i18n.t("audit.case_updated"));
     onClose();
   };
 
@@ -503,7 +501,7 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
           className={f.span}
           rules={
             f.key === "PostalCode"
-              ? [{ pattern: CAP_PATTERN, message: "CAP must be 5 digits" }]
+              ? [{ pattern: CAP_PATTERN, message: i18n.t("audit.cap_must_be_5_digits") }]
               : undefined
           }
         >
@@ -538,11 +536,11 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
 
   return (
     <Modal
-      title="Edit Case Data"
+      title={i18n.t("audit.edit_case_data")}
       open={open}
       onCancel={onClose}
       onOk={handleSubmit}
-      okText="Save Changes"
+      okText={i18n.t("common.save_changes")}
       confirmLoading={savingCase || savingBill || savingCustomer}
       width={820}
       destroyOnClose
@@ -551,8 +549,7 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
           the admin can tell at a glance which case the form is open on. */}
       {caseData?.caseNumber && (
         <p className="mt-1 text-xs text-slate-400">
-          Case <span className="font-semibold text-slate-600">{caseData.caseNumber}</span> — the case
-          number is generated and cannot be changed.
+          {i18n.t("notifications.context_case")} <span className="font-semibold text-slate-600">{caseData.caseNumber}</span> {i18n.t("audit.the_case_number_is_generated_and_cannot_be_changed")}
         </p>
       )}
 
@@ -563,14 +560,14 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
           "How the case is classified, queued and staffed. The pipeline status is changed from the case header.",
           <>
             <div className="grid grid-cols-2 gap-x-4">
-              <Form.Item name="caseType" label="Case Type">
-                <Select options={CASE_TYPE_OPTIONS} placeholder="Select case type" />
+              <Form.Item name="caseType" label={i18n.t("audit.case_type")}>
+                <Select options={CASE_TYPE_OPTIONS} placeholder={i18n.t("audit.select_case_type")} />
               </Form.Item>
-              <Form.Item name="priority" label="Priority">
-                <Select options={PRIORITY_OPTIONS} placeholder="Select priority" />
+              <Form.Item name="priority" label={i18n.t("support_ticket.priority")}>
+                <Select options={PRIORITY_OPTIONS} placeholder={i18n.t("audit.select_priority")} />
               </Form.Item>
             </div>
-            <Form.Item name="assignedAgentId" label="Assigned Agent">
+            <Form.Item name="assignedAgentId" label={i18n.t("support_ticket.assigned_agent")}>
               <Select
                 allowClear
                 showSearch
@@ -578,7 +575,7 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
                 options={agentOptions}
                 loading={agentsLoading}
                 notFoundContent={agentsLoading ? <Spin size="small" /> : "No agents found"}
-                placeholder="Unassigned"
+                placeholder={i18n.t("support_ticket.unassigned")}
               />
             </Form.Item>
           </>,
@@ -593,15 +590,15 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
               <div className="grid grid-cols-2 gap-x-4">
                 <Form.Item
                   name={["customer", "firstName"]}
-                  label="First Name"
-                  rules={[{ required: true, message: "A first name is required" }]}
+                  label={i18n.t("settings.first_name")}
+                  rules={[{ required: true, message: i18n.t("audit.a_first_name_is_required") }]}
                 >
                   <Input maxLength={100} placeholder="Mario" />
                 </Form.Item>
                 <Form.Item
                   name={["customer", "lastName"]}
-                  label="Last Name"
-                  rules={[{ required: true, message: "A last name is required" }]}
+                  label={i18n.t("settings.last_name")}
+                  rules={[{ required: true, message: i18n.t("audit.a_last_name_is_required") }]}
                 >
                   <Input maxLength={100} placeholder="Rossi" />
                 </Form.Item>
@@ -613,13 +610,13 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
                   name={["customer", "email"]}
                   label="Email"
                   rules={[
-                    { required: true, message: "An email address is required" },
-                    { type: "email", message: "Enter a valid email address" },
+                    { required: true, message: i18n.t("audit.an_email_address_is_required") },
+                    { type: "email", message: i18n.t("audit.enter_a_valid_email_address") },
                   ]}
                 >
                   <Input maxLength={255} placeholder="mario.rossi@email.com" />
                 </Form.Item>
-                <Form.Item name={["customer", "phone"]} label="Phone">
+                <Form.Item name={["customer", "phone"]} label={i18n.t("client_management.phone")}>
                   <Input maxLength={20} placeholder="+393331234567" />
                 </Form.Item>
               </div>
@@ -629,7 +626,7 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
                   // On a business account this is the owner's code, not the
                   // company's — the company is identified by the Partita IVA
                   // beside it, and the supplier asks for both.
-                  label={isBusiness ? "Codice Fiscale (owner)" : "Codice Fiscale"}
+                  label={isBusiness ? i18n.t("audit.codice_fiscale_owner") : i18n.t("case_management.detail.codice_fiscale")}
                   // Checked against its own check character, not just its
                   // shape — the account is allowed to hold only a code the
                   // direct debit step will also accept.
@@ -638,7 +635,7 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
                       validator: (_, value: string) =>
                         !value || isValidCodiceFiscale(value)
                           ? Promise.resolve()
-                          : Promise.reject(new Error("Enter a valid Codice Fiscale")),
+                          : Promise.reject(new Error(i18n.t("audit.codice_fiscale_invalid"))),
                     },
                   ]}
                 >
@@ -647,13 +644,13 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
                 {isBusiness && (
                   <Form.Item
                     name={["customer", "partitaIva"]}
-                    label="Partita IVA"
+                    label={i18n.t("case_management.detail.partita_iva")}
                     rules={[
                       {
                         validator: (_, value: string) =>
                           !value || isValidPartitaIva(value)
                             ? Promise.resolve()
-                            : Promise.reject(new Error("Enter a valid 11-digit Partita IVA")),
+                            : Promise.reject(new Error(i18n.t("audit.partita_iva_invalid"))),
                       },
                     ]}
                   >
@@ -667,8 +664,8 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
                       column is NOT NULL, so the field is required here too. */}
                   <Form.Item
                     name={["customer", "companyName"]}
-                    label="Ragione Sociale"
-                    rules={[{ required: true, message: "A company name is required" }]}
+                    label={i18n.t("audit.ragione_sociale")}
+                    rules={[{ required: true, message: i18n.t("audit.a_company_name_is_required") }]}
                   >
                     <Input maxLength={255} placeholder="Rossi S.r.l." />
                   </Form.Item>
@@ -677,8 +674,8 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
                       Optional: cleared, it falls back to the sign-in email. */}
                   <Form.Item
                     name={["customer", "pecEmail"]}
-                    label="PEC (certified email)"
-                    rules={[{ type: "email", message: "Enter a valid PEC address" }]}
+                    label={i18n.t("client_management.pec")}
+                    rules={[{ type: "email", message: i18n.t("audit.enter_a_valid_pec_address") }]}
                   >
                     <Input maxLength={255} placeholder="rossi@pec.it" />
                   </Form.Item>
@@ -695,8 +692,8 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
             <>
               <Form.Item
                 name="fromSupplierId"
-                label="Current Supplier (matched record)"
-                extra="The supplier the customer is leaving. The bill's own printed name is below; this is the company record the switch is filed against."
+                label={i18n.t("audit.current_supplier_matched_record")}
+                extra={i18n.t("audit.the_supplier_the_customer_is_leaving_the_bill_s_own_printed_name_is_below_this_is_the_company_record_the_switch_is_filed_against")}
               >
                 <Select
                   allowClear
@@ -705,7 +702,7 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
                   options={supplierOptions}
                   loading={suppliersLoading}
                   notFoundContent={suppliersLoading ? <Spin size="small" /> : "No suppliers found"}
-                  placeholder="Not matched to a supplier record"
+                  placeholder={i18n.t("audit.not_matched_to_a_supplier_record")}
                 />
               </Form.Item>
               <BillFields isElectricity={isElectricity} prefix={["bill"]} />
@@ -716,14 +713,14 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
         {section(
           "Offer",
           "The offer the switch is filed against. Changing it moves the destination supplier with it.",
-          <Form.Item name="selectedOfferId" label="Selected Offer">
+          <Form.Item name="selectedOfferId" label={i18n.t("audit.selected_offer")}>
             <Select
               showSearch
               optionFilterProp="label"
               options={offerOptions}
               loading={offersLoading}
               notFoundContent={offersLoading ? <Spin size="small" /> : "No offers found"}
-              placeholder="Select an offer"
+              placeholder={i18n.t("audit.select_an_offer")}
             />
           </Form.Item>,
         )}
@@ -733,8 +730,8 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
           "Payment",
           "How the customer pays the new supplier. The offer may only accept one method.",
           <>
-            <Form.Item name="paymentMethod" label="Payment Method">
-              <Select allowClear options={PAYMENT_METHOD_OPTIONS} placeholder="Select payment method" />
+            <Form.Item name="paymentMethod" label={i18n.t("client_management.payment_method")}>
+              <Select allowClear options={PAYMENT_METHOD_OPTIONS} placeholder={i18n.t("offers_market.select_payment_method")} />
             </Form.Item>
             {/* Kept mounted while hidden so switching method back does not wipe
                 the account details the customer gave. */}
@@ -747,18 +744,18 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
                 checked={ibanSame === true}
                 onChange={(e) => setIbanSame(e.target.checked)}
               >
-                The account belongs to the contract holder
+                {i18n.t("audit.the_account_belongs_to_the_contract_holder")}
               </Checkbox>
               <div className="grid grid-cols-3 gap-x-4">
-                <Form.Item name="ibanHolderFirstName" label="Holder First Name">
+                <Form.Item name="ibanHolderFirstName" label={i18n.t("audit.holder_first_name")}>
                   <Input maxLength={100} placeholder="Mario" />
                 </Form.Item>
-                <Form.Item name="ibanHolderLastName" label="Holder Last Name">
+                <Form.Item name="ibanHolderLastName" label={i18n.t("audit.holder_last_name")}>
                   <Input maxLength={100} placeholder="Rossi" />
                 </Form.Item>
                 <Form.Item
                   name="ibanHolderTaxCode"
-                  label="Holder Tax Code / VAT"
+                  label={i18n.t("audit.holder_tax_code_vat")}
                   // Either form on either kind of account, whoever holds the
                   // IBAN — matching the app and the API, which only check
                   // formal validity.
@@ -780,8 +777,7 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
                 </Form.Item>
               </div>
               <p className="-mt-2 mb-2 text-xs text-slate-400">
-                The app records the holder on every direct debit, including the customer's own
-                account. Blank holder fields mean the case predates that.
+                {i18n.t("audit.the_app_records_the_holder_on_every_direct_debit_including_the_customer_s_own_account_blank_holder_fields_mean_the_case_predates_that")}
               </p>
             </div>
           </>,
@@ -792,20 +788,20 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
           "Invoicing",
           "Where the supplier sends the invoices.",
           <>
-            <Form.Item name="invoiceDelivery" label="Invoice Delivery">
+            <Form.Item name="invoiceDelivery" label={i18n.t("audit.invoice_delivery")}>
               <Select
                 allowClear
                 options={INVOICE_DELIVERY_OPTIONS}
-                placeholder="Select invoice delivery"
+                placeholder={i18n.t("audit.select_invoice_delivery")}
               />
             </Form.Item>
             <div className={isPaper ? "hidden" : undefined}>
               <Form.Item
                 name="invoiceEmail"
-                label="Invoice Email"
-                rules={[{ type: "email", message: "Enter a valid email address" }]}
+                label={i18n.t("audit.invoice_email")}
+                rules={[{ type: "email", message: i18n.t("audit.enter_a_valid_email_address") }]}
               >
-                <Input maxLength={255} placeholder="Defaults to the account email" />
+                <Input maxLength={255} placeholder={i18n.t("audit.defaults_to_the_account_email")} />
               </Form.Item>
             </div>
           </>,
@@ -821,12 +817,10 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
         {/* ── Residence, or the registered office on a business case ── */}
         <div className="mb-5">
           <h4 className="text-sm font-semibold text-slate-700 mb-1">
-            {isBusiness ? "Registered Office" : "Residential Address"}
+            {isBusiness ? i18n.t("audit.registered_office") : i18n.t("audit.residential_address")}
           </h4>
           <p className="text-xs text-slate-400 mb-2">
-            {isBusiness
-              ? "The company's sede legale, as the contract is headed."
-              : "Where the customer lives."}
+            {isBusiness ? i18n.t("audit.registered_office_help") : i18n.t("audit.residential_address_help")}
           </p>
           <Checkbox
             checked={residentialSame}
@@ -836,21 +830,21 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
             }}
             className="mb-3"
           >
-            Same as supply address
+            {i18n.t("audit.same_as_supply_address")}
           </Checkbox>
           {addressBlock("residential", residentialSame)}
         </div>
 
         {/* ── Shipping ── */}
         <div className="mb-5">
-          <h4 className="text-sm font-semibold text-slate-700 mb-1">Shipping Address</h4>
-          <p className="text-xs text-slate-400 mb-2">Where paper invoices are posted.</p>
+          <h4 className="text-sm font-semibold text-slate-700 mb-1">{i18n.t("audit.shipping_address")}</h4>
+          <p className="text-xs text-slate-400 mb-2">{i18n.t("audit.where_paper_invoices_are_posted")}</p>
           {!isPaper && (
             <Alert
               type="info"
               showIcon
               className="mb-3"
-              message="This case receives digital invoices, so no shipping address is used. Anything entered here is stored but not shown on the case."
+              message={i18n.t("audit.this_case_receives_digital_invoices_so_no_shipping_address_is_used_anything_entered_here_is_stored_but_not_shown_on_the_case")}
             />
           )}
           <Checkbox
@@ -861,7 +855,7 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
             }}
             className="mb-3"
           >
-            Ships to supply address
+            {i18n.t("audit.ships_to_supply_address")}
           </Checkbox>
           {addressBlock("shipping", shippingSame)}
         </div>
@@ -871,10 +865,10 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
           "Contract Dates",
           "Contract signing happens outside the app, so every date here is entered by hand. Both activation dates are required before a case can be put in activation, and the supply must expire after it goes live.",
           <div className="grid grid-cols-3 gap-x-4">
-            <Form.Item name="contractSentAt" label="Contract Sent On">
+            <Form.Item name="contractSentAt" label={i18n.t("audit.contract_sent_on")}>
               <DatePicker className="w-full!" format={DATE_FORMAT} allowClear />
             </Form.Item>
-            <Form.Item name="activationDate" label="Activation Date">
+            <Form.Item name="activationDate" label={i18n.t("audit.activation_date_2")}>
               <DatePicker
                 className="w-full!"
                 format={DATE_FORMAT}
@@ -888,7 +882,7 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
                 }}
               />
             </Form.Item>
-            <Form.Item name="expiryDate" label="Expiry Date">
+            <Form.Item name="expiryDate" label={i18n.t("audit.expiry_date_2")}>
               <DatePicker
                 className="w-full!"
                 format={DATE_FORMAT}
@@ -904,13 +898,13 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
           "Commercial & SLA",
           "What the switch is booked at and how long it is allowed to take. Nothing derives these — they are the figures the board and the commission reconciliation report against.",
           <div className="grid grid-cols-3 gap-x-4">
-            <Form.Item name="estimatedAnnualValue" label="Estimated Annual Value (€)">
+            <Form.Item name="estimatedAnnualValue" label={i18n.t("audit.estimated_annual_value")}>
               <InputNumber className="w-full!" min={0} precision={2} placeholder="1140.00" />
             </Form.Item>
-            <Form.Item name="slaDaysTotal" label="SLA Days">
+            <Form.Item name="slaDaysTotal" label={i18n.t("audit.sla_days")}>
               <InputNumber className="w-full!" min={0} precision={0} placeholder="30" />
             </Form.Item>
-            <Form.Item name="slaDeadline" label="SLA Deadline">
+            <Form.Item name="slaDeadline" label={i18n.t("audit.sla_deadline")}>
               <DatePicker className="w-full!" format={DATE_FORMAT} allowClear />
             </Form.Item>
           </div>,
@@ -921,11 +915,11 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
           "Notes",
           "The first is shown to the customer on their case; the second never leaves the CRM.",
           <>
-            <Form.Item name="notes" label="Customer-visible Notes">
-              <Input.TextArea rows={3} placeholder="Your documents have been received and are under review." />
+            <Form.Item name="notes" label={i18n.t("audit.customer_visible_notes")}>
+              <Input.TextArea rows={3} placeholder={i18n.t("audit.your_documents_have_been_received_and_are_under_review")} />
             </Form.Item>
-            <Form.Item name="internalNotes" label="Internal Notes">
-              <Input.TextArea rows={3} placeholder="Verified POD via supplier portal" />
+            <Form.Item name="internalNotes" label={i18n.t("audit.internal_notes")}>
+              <Input.TextArea rows={3} placeholder={i18n.t("audit.verified_pod_via_supplier_portal")} />
             </Form.Item>
           </>,
         )}

@@ -1,3 +1,5 @@
+import { getLocale } from '../../utils/format';
+import i18n from '../../i18n';
 import { useState } from "react";
 import { Button, Descriptions, Input, Modal, Select, Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
@@ -9,6 +11,9 @@ import {
   type IActivityLog,
 } from "../../redux/features/ActivityLog/activityLogApi";
 import { debounce } from "../../utils/debounce";
+import { translateActivityAction, translateEntityType } from "../../utils/activityLabels";
+
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 const entityTypeColors: Record<string, string> = {
   user: "blue",
@@ -21,13 +26,13 @@ const entityTypeColors: Record<string, string> = {
 };
 
 const ENTITY_TYPE_OPTIONS = [
-  { label: "All", value: "" },
-  { label: "User", value: "user" },
-  { label: "Bill", value: "bill" },
-  { label: "Contract", value: "contract" },
-  { label: "Case", value: "case" },
-  { label: "Offer", value: "offer" },
-  { label: "Supplier", value: "supplier" },
+  { get label() { return i18n.t("notifications.tab_all"); }, value: "" },
+  { get label() { return i18n.t("static_pages.user"); }, value: "user" },
+  { get label() { return i18n.t("notifications.type_admin_bill"); }, value: "bill" },
+  { get label() { return i18n.t("case_management.steps.contract"); }, value: "contract" },
+  { get label() { return i18n.t("notifications.context_case"); }, value: "case" },
+  { get label() { return i18n.t("notifications.type_admin_offer"); }, value: "offer" },
+  { get label() { return i18n.t("ocr.supplier"); }, value: "supplier" },
 ];
 
 function getEntityRoute(entityType: string, entityId: string): string | null {
@@ -83,7 +88,7 @@ const ActivityHistory = () => {
       dataIndex: "action",
       key: "action",
       render: (action: string) => (
-        <span className="font-semibold text-gray-800">{action}</span>
+        <span className="font-semibold text-gray-800">{translateActivityAction(action)}</span>
       ),
     },
     {
@@ -93,7 +98,7 @@ const ActivityHistory = () => {
       width: 130,
       render: (type: string) => (
         <Tag color={entityTypeColors[type] || "default"}>
-          {type.charAt(0).toUpperCase() + type.slice(1)}
+          {capitalize(translateEntityType(type))}
         </Tag>
       ),
     },
@@ -129,7 +134,7 @@ const ActivityHistory = () => {
         const d = new Date(date);
         return (
           <span className="text-sm text-gray-500">
-            {d.toLocaleDateString()} {d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            {d.toLocaleDateString(getLocale())} {d.toLocaleTimeString(getLocale(), { hour: "2-digit", minute: "2-digit" })}
           </span>
         );
       },
@@ -245,12 +250,11 @@ const ActivityHistory = () => {
           <div className="space-y-4">
             <Descriptions column={1} bordered size="small">
               <Descriptions.Item label={t("activity_history.action")}>
-                <span className="font-semibold">{selectedActivity.action}</span>
+                <span className="font-semibold">{translateActivityAction(selectedActivity.action)}</span>
               </Descriptions.Item>
               <Descriptions.Item label={t("activity_history.entity_type")}>
                 <Tag color={entityTypeColors[selectedActivity.entityType] || "default"}>
-                  {selectedActivity.entityType.charAt(0).toUpperCase() +
-                    selectedActivity.entityType.slice(1)}
+                  {capitalize(translateEntityType(selectedActivity.entityType))}
                 </Tag>
               </Descriptions.Item>
               <Descriptions.Item label={t("activity_history.entity_id")}>
@@ -266,7 +270,7 @@ const ActivityHistory = () => {
                   : "—"}
               </Descriptions.Item>
               <Descriptions.Item label={t("activity_history.time")}>
-                {new Date(selectedActivity.createdAt).toLocaleString()}
+                {new Date(selectedActivity.createdAt).toLocaleString(getLocale())}
               </Descriptions.Item>
             </Descriptions>
 

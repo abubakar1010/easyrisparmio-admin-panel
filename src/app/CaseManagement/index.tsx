@@ -1,9 +1,12 @@
+import { getLocale } from "../../utils/format";
 import { Avatar, Input, Select, Spin, Empty, Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { FiEye, FiSearch } from "react-icons/fi";
 import { LuZap, LuFlame } from "react-icons/lu";
 import { useNavigate } from "react-router";
 import { useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
+import i18n from "../../i18n";
 import {
   useGetBillsAdminQuery,
   type IBill,
@@ -14,11 +17,12 @@ import { formatMoney } from "../../utils/format";
 import { getBillStatusConfig } from "../../constants/billStatus";
 
 /** Uniform placeholder for a field OCR could not read off the bill. */
-const Missing = ({ label = "Not detected" }: { label?: string }) => (
-  <span className="text-slate-400 italic text-xs">{label}</span>
+const Missing = ({ label }: { label?: string }) => (
+  <span className="text-slate-400 italic text-xs">{label || i18n.t("common.not_detected")}</span>
 );
 
 const CaseManagement = () => {
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [queryParams, setQueryParams] = useState<IBillQuery>({ page: 1, limit: 20 });
   const [search, setSearch] = useState("");
@@ -56,7 +60,7 @@ const CaseManagement = () => {
 
   const columns: ColumnsType<IBill> = [
     {
-      title: "TYPE",
+      title: t("case_management.type"),
       key: "billType",
       width: 100,
       render: (_, record) =>
@@ -75,15 +79,15 @@ const CaseManagement = () => {
               )
             }
           >
-            {record.billType}
+            {record.billType === "electricity" ? t("home.electricity") : t("home.gas")}
           </Tag>
         ) : (
-          <Missing label="Unknown" />
+          <Missing label={i18n.t("common.unknown")} />
         ),
       align: "center",
     },
     {
-      title: "CUSTOMER",
+      title: t("case_management.customer"),
       key: "customer",
       width: 180,
       render: (_, record) => {
@@ -91,7 +95,7 @@ const CaseManagement = () => {
         const name = [record.user?.firstName, record.user?.lastName]
           .filter(Boolean)
           .join(" ");
-        if (!name) return <Missing label="Not linked" />;
+        if (!name) return <Missing label={i18n.t("common.not_linked")} />;
         return (
           <div className="flex items-center gap-2.5">
             <Avatar
@@ -107,7 +111,7 @@ const CaseManagement = () => {
       },
     },
     {
-      title: "POD / PDR",
+      title: t("case_management.pod_pdr"),
       key: "pod_pdr",
       width: 170,
       render: (_, record) => {
@@ -120,7 +124,7 @@ const CaseManagement = () => {
       },
     },
     {
-      title: "SUPPLIER",
+      title: t("case_management.supplier"),
       key: "supplier",
       width: 130,
       render: (_, record) => {
@@ -138,7 +142,7 @@ const CaseManagement = () => {
       },
     },
     {
-      title: "AMOUNT",
+      title: t("client_management.bill_amount"),
       key: "totalAmount",
       width: 110,
       render: (_, record) =>
@@ -150,16 +154,16 @@ const CaseManagement = () => {
       align: "right",
     },
     {
-      title: "PERIOD",
+      title: t("client_management.bill_period"),
       key: "period",
       width: 150,
       responsive: ["lg"],
       render: (_, record) => {
         if (!record.billingPeriodStart) return <Missing />;
-        const start = new Date(record.billingPeriodStart).toLocaleDateString("it-IT");
+        const start = new Date(record.billingPeriodStart).toLocaleDateString(getLocale());
         // Half-read periods are common — show the one date rather than a stray dash.
         const end = record.billingPeriodEnd
-          ? new Date(record.billingPeriodEnd).toLocaleDateString("it-IT")
+          ? new Date(record.billingPeriodEnd).toLocaleDateString(getLocale())
           : null;
         return (
           <span className="text-slate-500 text-xs">{end ? `${start} - ${end}` : start}</span>
@@ -167,24 +171,24 @@ const CaseManagement = () => {
       },
     },
     {
-      title: "STATUS",
+      title: t("common.status"),
       key: "status",
       width: 130,
       render: (_: unknown, record: IBill) => {
-        if (!record.status) return <Missing label="Unknown" />;
+        if (!record.status) return <Missing label={i18n.t("common.unknown")} />;
         const cfg = getBillStatusConfig(record.status);
         return (
           <Tag
             color={cfg.color}
             className="rounded-full! px-3! py-0.5! text-xs! font-semibold! border-0!"
           >
-            {cfg.label}
+            {t(`case_management.status.${record.status}`, { defaultValue: cfg.label })}
           </Tag>
         );
       },
     },
     {
-      title: "ACTIONS",
+      title: t("common.actions"),
       key: "actions",
       width: 80,
       align: "center",
@@ -195,7 +199,7 @@ const CaseManagement = () => {
           className="flex items-center gap-1 text-rose-500 hover:text-rose-600 font-medium text-sm"
         >
           <FiEye className="h-4 w-4" />
-          Details
+          {t("case_management.details")}
         </button>
       ),
     },
@@ -205,9 +209,9 @@ const CaseManagement = () => {
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
       {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-800">Case Management</h1>
+        <h1 className="text-2xl font-bold text-slate-800">{t("case_management.title")}</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Manage bill requests and case workflow
+          {t("case_management.description")}
         </p>
       </div>
 
@@ -220,44 +224,44 @@ const CaseManagement = () => {
               allowClear
               value={search}
               onChange={handleSearchChange}
-              placeholder="Search by POD, PDR, user, supplier..."
+              placeholder={t("case_management.search_placeholder")}
               prefix={<FiSearch className="text-slate-400 mr-2" />}
               className="h-11 rounded-xl border-slate-200"
             />
           </div>
           <Select
             allowClear
-            placeholder="Bill type"
+            placeholder={t("home.bill_type")}
             value={billTypeFilter}
             onChange={handleBillTypeFilter}
             style={{ height: "44px" }}
             className="w-36 [&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-xl [&_.ant-select-selector]:border-slate-200"
             options={[
-              { value: "electricity", label: "Electricity" },
-              { value: "gas", label: "Gas" },
+              { value: "electricity", label: t("home.electricity") },
+              { value: "gas", label: t("home.gas") },
             ]}
           />
           <Select
             allowClear
-            placeholder="Status"
+            placeholder={t("common.status")}
             value={statusFilter}
             onChange={handleStatusFilter}
             style={{ height: "44px" }}
             className="w-48 [&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-xl [&_.ant-select-selector]:border-slate-200"
             options={[
-              { value: "uploaded", label: "Uploaded" },
-              { value: "analyzing", label: "Analyzing" },
-              { value: "analyzed", label: "Analyzed" },
-              { value: "verification_review", label: "Verification Review" },
-              { value: "verification_required", label: "Verification Required" },
-              { value: "verified", label: "Verified" },
-              { value: "offer_sent", label: "Offer Sent" },
-              { value: "offer_accepted", label: "Offer Accepted" },
-              { value: "contract_sent", label: "Contract Sent" },
-              { value: "awaiting_activation", label: "In Activation" },
-              { value: "activated", label: "Activated" },
-              { value: "cancelled", label: "Cancelled" },
-              { value: "error", label: "Error" },
+              { value: "uploaded", label: t("case_management.status.uploaded") },
+              { value: "analyzing", label: t("case_management.status.analyzing") },
+              { value: "analyzed", label: t("case_management.status.analyzed") },
+              { value: "verification_review", label: t("case_management.status.verification_review") },
+              { value: "verification_required", label: t("case_management.status.verification_required") },
+              { value: "verified", label: t("case_management.status.verified") },
+              { value: "offer_sent", label: t("case_management.status.offer_sent") },
+              { value: "offer_accepted", label: t("case_management.status.offer_accepted") },
+              { value: "contract_sent", label: t("case_management.status.contract_sent") },
+              { value: "awaiting_activation", label: t("case_management.status.awaiting_activation") },
+              { value: "activated", label: t("case_management.status.activated") },
+              { value: "cancelled", label: t("case_management.status.cancelled") },
+              { value: "error", label: t("case_management.status.error") },
             ]}
           />
         </div>
@@ -269,7 +273,7 @@ const CaseManagement = () => {
           </div>
         ) : bills.length === 0 ? (
           <div className="py-24">
-            <Empty description="No bill requests found" />
+            <Empty description={t("common.no_data")} />
           </div>
         ) : (
           <Table<IBill>

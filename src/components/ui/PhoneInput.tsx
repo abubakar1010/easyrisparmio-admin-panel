@@ -1,3 +1,5 @@
+import i18n from "../../i18n";
+import { useTranslation } from "react-i18next";
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { parsePhoneNumberFromString, AsYouType, type CountryCode } from "libphonenumber-js";
 import { countries, findCountryByCode, type Country } from "../../constants/countries";
@@ -17,6 +19,7 @@ export function PhoneInput({
   disabled = false,
   placeholder,
 }: PhoneInputProps) {
+  useTranslation();
   const [selectedCountry, setSelectedCountry] = useState<Country>(
     () => findCountryByCode(defaultCountry) ?? countries[0]
   );
@@ -158,7 +161,7 @@ export function PhoneInput({
           onChange={handleNationalChange}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
-          placeholder={placeholder ?? "Phone number"}
+          placeholder={placeholder ?? i18n.t("audit.phone_number")}
           className="flex-1 h-[42px] px-3 text-sm text-slate-900 bg-transparent outline-none placeholder:text-slate-400 disabled:cursor-not-allowed rounded-r-lg"
         />
       </div>
@@ -173,7 +176,7 @@ export function PhoneInput({
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search countries..."
+              placeholder={i18n.t("audit.search_countries")}
               className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md outline-none focus:border-[#7061ED] focus:ring-1 focus:ring-[#7061ED]/20 placeholder:text-slate-400"
             />
           </div>
@@ -181,7 +184,7 @@ export function PhoneInput({
           {/* Country list */}
           <ul className="max-h-[220px] overflow-y-auto">
             {filteredCountries.length === 0 ? (
-              <li className="px-4 py-3 text-sm text-slate-400 text-center">No countries found</li>
+              <li className="px-4 py-3 text-sm text-slate-400 text-center">{i18n.t("audit.no_countries_found")}</li>
             ) : (
               filteredCountries.map((country) => (
                 <li key={country.code}>

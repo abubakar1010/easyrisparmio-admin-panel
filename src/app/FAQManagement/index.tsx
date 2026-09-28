@@ -1,7 +1,10 @@
+import { getApiErrorMessage } from "../../utils/apiError";
+import { getLocale } from "../../utils/format";
 import { Button, Empty, Input, Modal, Select, Spin, Switch, Table, Tag, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { FiEdit3, FiPlus, FiSearch, FiTrash2 } from "react-icons/fi";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import AddEditFAQModal from "./components/AddEditFAQModal";
 import {
   useGetAdminFaqsQuery,
@@ -17,19 +20,20 @@ import { debounce } from "../../utils/debounce";
 // request fails — the picker must never be empty, or no FAQ can be created.
 const FALLBACK_CATEGORIES = ["Cambio Fornitore", "Bollette", "Documenti"];
 
-const audienceLabel: Record<string, string> = {
-  both: "Both",
-  personal: "Personal",
-  business: "Business",
-};
-
 const audienceColor: Record<string, string> = {
   both: "blue",
   personal: "green",
   business: "purple",
 };
 
+const categoryTranslationKey: Record<string, string> = {
+  "Cambio Fornitore": "faq_management.category_switch_supplier",
+  Bollette: "faq_management.category_bills",
+  Documenti: "faq_management.category_documents",
+};
+
 const FAQManagement = () => {
+  const { t } = useTranslation();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string | undefined>();
@@ -91,39 +95,39 @@ const FAQManagement = () => {
     try {
       if (selectedFAQ) {
         await updateFaq({ id: selectedFAQ.id, data: values }).unwrap();
-        message.success("FAQ updated successfully");
+        message.success(t("faq_management.updated"));
       } else {
         await createFaq(values).unwrap();
-        message.success("FAQ created successfully");
+        message.success(t("faq_management.created"));
       }
       setModalVisible(false);
     } catch (err: any) {
-      message.error(err?.data?.message?.[0] || "Failed to save FAQ");
+      message.error(getApiErrorMessage(err, t("faq_management.save_failed")));
     }
   };
 
   const handleToggleActive = async (faq: IFaq) => {
     try {
       await updateFaq({ id: faq.id, data: { isActive: !faq.isActive } }).unwrap();
-      message.success(`FAQ ${faq.isActive ? "deactivated" : "activated"}`);
+      message.success(t("faq_management.status_updated", { status: t(faq.isActive ? "common.inactive" : "common.active") }));
     } catch {
-      message.error("Failed to update FAQ status");
+      message.error(t("faq_management.status_update_failed"));
     }
   };
 
   const handleDeleteFAQ = (faqId: string) => {
     Modal.confirm({
-      title: "Delete this FAQ?",
-      content: "This action cannot be undone.",
-      okText: "Delete",
+      title: t("faq_management.delete_confirm"),
+      content: t("faq_management.delete_warning"),
+      okText: t("common.delete"),
       okButtonProps: { danger: true },
       centered: true,
       onOk: async () => {
         try {
           await deleteFaq(faqId).unwrap();
-          message.success("FAQ deleted");
+          message.success(t("faq_management.deleted"));
         } catch {
-          message.error("Failed to delete FAQ");
+          message.error(t("faq_management.delete_failed"));
         }
       },
     });
@@ -139,7 +143,7 @@ const FAQManagement = () => {
       ),
     },
     {
-      title: "QUESTION",
+      title: t("faq_management.question").toUpperCase(),
       dataIndex: "question",
       key: "question",
       width: 280,
@@ -148,18 +152,18 @@ const FAQManagement = () => {
       ),
     },
     {
-      title: "CATEGORY",
+      title: t("faq_management.category").toUpperCase(),
       dataIndex: "category",
       key: "category",
       width: 150,
       render: (value: string) => (
         <Tag className="rounded-full border-0 bg-slate-50 px-3 py-0.5 text-xs text-slate-600 font-semibold capitalize">
-          {value}
+          {categoryTranslationKey[value] ? t(categoryTranslationKey[value]) : value}
         </Tag>
       ),
     },
     {
-      title: "STATUS",
+      title: t("common.status").toUpperCase(),
       dataIndex: "isActive",
       key: "isActive",
       width: 120,
@@ -174,19 +178,19 @@ const FAQManagement = () => {
       align: "center",
     },
     {
-      title: "AUDIENCE",
+      title: t("faq_management.audience").toUpperCase(),
       dataIndex: "targetAudience",
       key: "targetAudience",
       width: 120,
       render: (value: string) => (
         <Tag color={audienceColor[value] || "default"} className="rounded-full border-0 px-3 py-0.5 text-xs font-semibold capitalize">
-          {audienceLabel[value] || value}
+          {t(`faq_management.${value}`) === `faq_management.${value}` ? value : t(`faq_management.${value}`)}
         </Tag>
       ),
       align: "center",
     },
     {
-      title: "ORDER",
+      title: t("faq_management.sort_order").toUpperCase(),
       dataIndex: "sortOrder",
       key: "sortOrder",
       width: 80,
@@ -194,18 +198,18 @@ const FAQManagement = () => {
       align: "center",
     },
     {
-      title: "UPDATED",
+      title: t("notification_templates.updated_at").toUpperCase(),
       dataIndex: "updatedAt",
       key: "updatedAt",
       width: 130,
       render: (value: string) => (
         <span className="text-xs text-slate-400">
-          {value ? new Date(value).toLocaleDateString("it-IT") : "—"}
+          {value ? new Date(value).toLocaleDateString(getLocale()) : "—"}
         </span>
       ),
     },
     {
-      title: "ACTIONS",
+      title: t("common.actions").toUpperCase(),
       key: "actions",
       width: 100,
       render: (_: any, record: IFaq) => (
@@ -233,8 +237,8 @@ const FAQManagement = () => {
       {/* Header */}
       <div className="mb-4 flex flex-col gap-3 border-b border-cborder/45 pb-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800 tracking-tight">FAQ Management</h2>
-          <p className="text-sm text-slate-400 font-medium">Create, edit, and manage frequently asked questions</p>
+          <h2 className="text-2xl font-bold text-slate-800 tracking-tight">{t("faq_management.title")}</h2>
+          <p className="text-sm text-slate-400 font-medium">{t("faq_management.subtitle")}</p>
         </div>
         <Button
           type="primary"
@@ -242,7 +246,7 @@ const FAQManagement = () => {
           className="h-10 rounded-lg border-0 bg-[#8b85f6] px-5 font-semibold hover:bg-[#7a74e5]"
           onClick={handleAddFAQ}
         >
-          Add FAQ
+          {t("faq_management.add")}
         </Button>
       </div>
 
@@ -253,40 +257,40 @@ const FAQManagement = () => {
             <Input
               className="h-11 rounded-xl border-slate-100 bg-slate-50/30 text-[15px]"
               prefix={<FiSearch className="mr-2 text-slate-300 h-5 w-5" />}
-              placeholder="Search FAQs by question..."
+              placeholder={t("faq_management.search_by_question")}
               onChange={(e) => handleSearch(e.target.value)}
             />
           </div>
           <Select
             allowClear
-            placeholder="Category"
+            placeholder={t("faq_management.category")}
             onChange={(v) => { setCategoryFilter(v); setPage(1); }}
             className="w-44 [&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-xl"
           >
             {categories.map((cat) => (
               <Select.Option key={cat} value={cat}>
-                <span className="capitalize">{cat}</span>
+                <span className="capitalize">{categoryTranslationKey[cat] ? t(categoryTranslationKey[cat]) : cat}</span>
               </Select.Option>
             ))}
           </Select>
           <Select
             allowClear
-            placeholder="Status"
+            placeholder={t("common.status")}
             onChange={(v) => { setStatusFilter(v === "active" ? true : v === "inactive" ? false : undefined); setPage(1); }}
             className="w-36 [&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-xl"
           >
-            <Select.Option value="active">Active</Select.Option>
-            <Select.Option value="inactive">Inactive</Select.Option>
+            <Select.Option value="active">{t("common.active")}</Select.Option>
+            <Select.Option value="inactive">{t("common.inactive")}</Select.Option>
           </Select>
           <Select
             allowClear
-            placeholder="Audience"
+            placeholder={t("faq_management.audience")}
             onChange={(v) => { setAudienceFilter(v); setPage(1); }}
             className="w-40 [&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-xl"
           >
-            <Select.Option value="both">Both</Select.Option>
-            <Select.Option value="personal">Personal</Select.Option>
-            <Select.Option value="business">Business</Select.Option>
+            <Select.Option value="both">{t("faq_management.both")}</Select.Option>
+            <Select.Option value="personal">{t("faq_management.personal")}</Select.Option>
+            <Select.Option value="business">{t("faq_management.business")}</Select.Option>
           </Select>
         </div>
       </div>
@@ -299,7 +303,7 @@ const FAQManagement = () => {
           </div>
         ) : faqs.length === 0 ? (
           <div className="py-24">
-            <Empty description="No FAQs found" />
+            <Empty description={t("faq_management.no_faqs")} />
           </div>
         ) : (
           <Table<IFaq>

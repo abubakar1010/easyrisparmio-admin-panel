@@ -107,7 +107,7 @@ const ClientManagement = () => {
               : t("client_management.user_unblocked_successfully"),
           });
         } catch (err) {
-          errorAlert({ error: err as { data?: { message?: string } } });
+          errorAlert({ error: err });
         }
       },
     });
@@ -127,7 +127,7 @@ const ClientManagement = () => {
       setResetClient(null);
       resetForm.resetFields();
     } catch (err) {
-      errorAlert({ error: err as { data?: { message?: string } } });
+      errorAlert({ error: err });
     }
   };
 

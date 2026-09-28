@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+import i18n from '../../i18n';
 import { Form, Input, InputNumber, Select, DatePicker } from "antd";
 
 /**
@@ -29,6 +31,7 @@ interface BillFieldsProps {
 }
 
 export default function BillFields({ isElectricity, prefix = [] }: BillFieldsProps) {
+  useTranslation();
   const path = (key: string) => (prefix.length ? [...prefix, key] : key);
 
   const heading = (text: string) => (
@@ -40,11 +43,11 @@ export default function BillFields({ isElectricity, prefix = [] }: BillFieldsPro
       {/* ── Supply point — the identifiers the switch is filed against ── */}
       <div className="mb-4">
         {heading("Supply Point")}
-        <Form.Item name={path("billType")} label="Utility Type" rules={[{ required: true }]}>
+        <Form.Item name={path("billType")} label={i18n.t("service_types.utility_type")} rules={[{ required: true }]}>
           <Select
             options={[
-              { label: "Electricity", value: "electricity" },
-              { label: "Gas", value: "gas" },
+              { label: i18n.t("service_types.electricity"), value: "electricity" },
+              { label: i18n.t("service_types.gas"), value: "gas" },
             ]}
           />
         </Form.Item>
@@ -53,21 +56,21 @@ export default function BillFields({ isElectricity, prefix = [] }: BillFieldsPro
               only one of the pair is ever filled — but both stay visible, since
               a bill filed under the wrong utility is corrected by moving the
               number from one to the other. */}
-          <Form.Item name={path("podNumber")} label="POD Number (electricity)">
+          <Form.Item name={path("podNumber")} label={i18n.t("audit.pod_number_electricity")}>
             <Input maxLength={50} placeholder="IT001E12345678" />
           </Form.Item>
-          <Form.Item name={path("pdrNumber")} label="PDR Number (gas)">
+          <Form.Item name={path("pdrNumber")} label={i18n.t("audit.pdr_number_gas")}>
             <Input maxLength={50} placeholder="12345678901234" />
           </Form.Item>
-          <Form.Item name={path("meterNumber")} label="Meter Number">
+          <Form.Item name={path("meterNumber")} label={i18n.t("audit.meter_number")}>
             <Input maxLength={50} />
           </Form.Item>
-          <Form.Item name={path("contractNumber")} label="Contract Number">
+          <Form.Item name={path("contractNumber")} label={i18n.t("audit.contract_number")}>
             <Input maxLength={50} />
           </Form.Item>
           <Form.Item
             name={path("supplierName")}
-            label="Supplier (as printed on the bill)"
+            label={i18n.t("audit.supplier_as_printed_on_the_bill")}
             className="col-span-2"
           >
             <Input maxLength={200} placeholder="Enel Energia" />
@@ -79,28 +82,28 @@ export default function BillFields({ isElectricity, prefix = [] }: BillFieldsPro
       <div className="mb-4">
         {heading("Financial Breakdown")}
         <div className="grid grid-cols-2 gap-x-4">
-          <Form.Item name={path("totalAmount")} label="Total Amount (€)">
+          <Form.Item name={path("totalAmount")} label={i18n.t("audit.total_amount")}>
             <InputNumber className="w-full!" min={0} precision={2} />
           </Form.Item>
-          <Form.Item name={path("costPerUnit")} label="Cost per Unit (€)">
+          <Form.Item name={path("costPerUnit")} label={i18n.t("audit.cost_per_unit")}>
             <InputNumber className="w-full!" min={0} precision={6} step={0.001} />
           </Form.Item>
-          <Form.Item name={path("fixedCharges")} label="Fixed Charges (€)">
+          <Form.Item name={path("fixedCharges")} label={i18n.t("audit.fixed_charges")}>
             <InputNumber className="w-full!" min={0} precision={2} />
           </Form.Item>
-          <Form.Item name={path("taxes")} label="Taxes (€)">
+          <Form.Item name={path("taxes")} label={i18n.t("audit.taxes")}>
             <InputNumber className="w-full!" min={0} precision={2} />
           </Form.Item>
-          <Form.Item name={path("consumptionKwh")} label="Consumption (kWh)" hidden={!isElectricity}>
+          <Form.Item name={path("consumptionKwh")} label={i18n.t("ocr.consumption_kwh")} hidden={!isElectricity}>
             <InputNumber className="w-full!" min={0} precision={2} />
           </Form.Item>
-          <Form.Item name={path("consumptionSmc")} label="Consumption (Smc)" hidden={isElectricity}>
+          <Form.Item name={path("consumptionSmc")} label={i18n.t("ocr.consumption_smc")} hidden={isElectricity}>
             <InputNumber className="w-full!" min={0} precision={2} />
           </Form.Item>
-          <Form.Item name={path("billingPeriodStart")} label="Period Start">
+          <Form.Item name={path("billingPeriodStart")} label={i18n.t("audit.period_start")}>
             <DatePicker className="w-full!" format={DATE_FORMAT} />
           </Form.Item>
-          <Form.Item name={path("billingPeriodEnd")} label="Period End">
+          <Form.Item name={path("billingPeriodEnd")} label={i18n.t("audit.period_end")}>
             <DatePicker className="w-full!" format={DATE_FORMAT} />
           </Form.Item>
         </div>
@@ -113,13 +116,13 @@ export default function BillFields({ isElectricity, prefix = [] }: BillFieldsPro
             uploaded it — a switch is refused when the two disagree, so both are
             recorded rather than reconciled silently. */}
         <div className="grid grid-cols-3 gap-x-4">
-          <Form.Item name={path("customerName")} label="Account Holder">
+          <Form.Item name={path("customerName")} label={i18n.t("audit.account_holder")}>
             <Input maxLength={200} />
           </Form.Item>
-          <Form.Item name={path("codiceFiscale")} label="Codice Fiscale">
+          <Form.Item name={path("codiceFiscale")} label={i18n.t("client_management.codice_fiscale_label")}>
             <Input maxLength={16} />
           </Form.Item>
-          <Form.Item name={path("partitaIva")} label="Partita IVA">
+          <Form.Item name={path("partitaIva")} label={i18n.t("client_management.partita_iva")}>
             <Input maxLength={11} />
           </Form.Item>
         </div>
@@ -132,24 +135,24 @@ export default function BillFields({ isElectricity, prefix = [] }: BillFieldsPro
             shows elsewhere is rendered from these by the server, so it is not
             edited here — editing both would let them disagree. */}
         <div className="grid grid-cols-6 gap-x-4">
-          <Form.Item name={path("supplyStreet")} label="Street" className="col-span-4">
+          <Form.Item name={path("supplyStreet")} label={i18n.t("ocr.street")} className="col-span-4">
             <Input maxLength={255} placeholder="Via Roma" />
           </Form.Item>
-          <Form.Item name={path("supplyStreetNumber")} label="No." className="col-span-2">
+          <Form.Item name={path("supplyStreetNumber")} label={i18n.t("ocr.number")} className="col-span-2">
             <Input maxLength={20} placeholder="42" />
           </Form.Item>
-          <Form.Item name={path("supplyCity")} label="City" className="col-span-2">
+          <Form.Item name={path("supplyCity")} label={i18n.t("ocr.city")} className="col-span-2">
             <Input maxLength={100} placeholder="Milano" />
           </Form.Item>
           <Form.Item
             name={path("supplyPostalCode")}
-            label="Postal Code (CAP)"
+            label={i18n.t("audit.postal_code_cap")}
             className="col-span-2"
-            rules={[{ pattern: CAP_PATTERN, message: "CAP must be 5 digits" }]}
+            rules={[{ pattern: CAP_PATTERN, message: i18n.t("audit.cap_must_be_5_digits") }]}
           >
             <Input maxLength={5} placeholder="20121" />
           </Form.Item>
-          <Form.Item name={path("supplyProvince")} label="Province" className="col-span-2">
+          <Form.Item name={path("supplyProvince")} label={i18n.t("ocr.province")} className="col-span-2">
             <Input maxLength={100} placeholder="MI" />
           </Form.Item>
         </div>

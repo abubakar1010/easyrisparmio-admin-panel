@@ -1,3 +1,5 @@
+import i18n from "../../i18n";
+import { getLocale } from "../../utils/format";
 import { Button, Modal, Pagination, Select, Spin, Tag, message } from "antd";
 import { FiCheck, FiCheckCircle, FiBell, FiSend, FiInbox, FiEye, FiExternalLink } from "react-icons/fi";
 import {
@@ -94,7 +96,7 @@ const Notification = () => {
     try {
       await markAsRead(id).unwrap();
     } catch {
-      message.error("Failed to mark as read");
+      message.error(i18n.t("audit.failed_to_mark_as_read"));
     }
   };
 
@@ -103,7 +105,7 @@ const Notification = () => {
       await markAllAsRead().unwrap();
       message.success(t("notifications.mark_all_read"));
     } catch {
-      message.error("Failed to mark all as read");
+      message.error(i18n.t("audit.failed_to_mark_all_as_read"));
     }
   };
 
@@ -274,7 +276,7 @@ const Notification = () => {
                       <p className="mt-1 line-clamp-2 text-sm text-slate-500">{item.body}</p>
 
                       <div className="mt-1.5 flex flex-wrap items-center gap-x-2 text-xs text-slate-400">
-                        <span>{new Date(item.createdAt).toLocaleString("it-IT")}</span>
+                        <span>{new Date(item.createdAt).toLocaleString(getLocale())}</span>
                         {isSent && item.user && (
                           <>
                             <span aria-hidden>·</span>
@@ -410,7 +412,7 @@ function NotificationDetailModal({
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">{t("notifications.date")}</p>
-              <p className="text-slate-700 mt-0.5">{new Date(notification.createdAt).toLocaleString("it-IT")}</p>
+              <p className="text-slate-700 mt-0.5">{new Date(notification.createdAt).toLocaleString(getLocale())}</p>
             </div>
             {notification.user && (
               <div>
@@ -421,7 +423,7 @@ function NotificationDetailModal({
             {notification.readAt && (
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">{t("notifications.read_at")}</p>
-                <p className="text-slate-700 mt-0.5">{new Date(notification.readAt).toLocaleString("it-IT")}</p>
+                <p className="text-slate-700 mt-0.5">{new Date(notification.readAt).toLocaleString(getLocale())}</p>
               </div>
             )}
           </div>

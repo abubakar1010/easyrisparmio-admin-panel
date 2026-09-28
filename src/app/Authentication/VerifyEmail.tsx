@@ -7,7 +7,7 @@ import {
   useVerifyOtpMutation,
   useResendOtpMutation,
 } from "../../redux/features/Auth/authApi";
-import { successAlert, errorAlert } from "../../lib/helpers/alert";
+import { successAlert, errorAlert, errorMessageAlert } from "../../lib/helpers/alert";
 
 type LocationState = {
   email?: string;
@@ -45,7 +45,7 @@ const VerifyEmail = () => {
       } else if (state.email) {
         payload.email = state.email;
       }
-      const result = await resendOtp(payload).unwrap();
+      await resendOtp(payload).unwrap();
       // Wipe the previously typed code so the boxes start empty again
       form.resetFields(["otp"]);
       // The server's own wording, which is deliberately conditional: an unknown
@@ -53,10 +53,10 @@ const VerifyEmail = () => {
       // get the same reply, and none of them sent anything. Asserting "OTP has
       // been resent successfully" over the top of that is a claim this screen
       // has no way to stand behind.
-      successAlert({ message: result.message || t("auth.otp_resent") });
+      successAlert({ message: t("auth.otp_resent") });
       setCooldown(60);
     } catch (err) {
-      errorAlert({ error: err as { data?: { message?: string | string[] } } });
+      errorAlert({ error: err });
     }
   }, [cooldown, state, resendOtp, form, t]);
 
@@ -90,9 +90,7 @@ const VerifyEmail = () => {
         // bounced straight back to forgot-password with no explanation.
         if (!result.resetToken) {
           form.resetFields(["otp"]);
-          errorAlert({
-            error: { data: { message: t("auth.otp_verification_failed") } },
-          });
+          errorMessageAlert(t("auth.otp_verification_failed"));
           return;
         }
         navigate("/auth/reset-password", {
@@ -105,7 +103,7 @@ const VerifyEmail = () => {
     } catch (err) {
       // Wrong code — clear the boxes so the user can retype straight away
       form.resetFields(["otp"]);
-      errorAlert({ error: err as { data?: { message?: string | string[] } } });
+      errorAlert({ error: err });
     }
   };
 

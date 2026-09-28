@@ -1,7 +1,10 @@
+import { getApiErrorMessage } from "../../utils/apiError";
+import { getLocale } from "../../utils/format";
 import { Button, Empty, Input, Modal, Select, Spin, Switch, Table, Tag, Tooltip, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { FiEdit3, FiPlus, FiSearch, FiTrash2, FiUsers } from "react-icons/fi";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import AddEditStaticPageModal from "./components/AddEditStaticPageModal";
 import LegalAcceptancesDrawer from "./components/LegalAcceptancesDrawer";
 import {
@@ -13,9 +16,10 @@ import {
   type IStaticPagePayload,
 } from "../../redux/features/StaticPages/staticPagesApi";
 import { debounce } from "../../utils/debounce";
-import { audienceLabel, slugColor, slugLabel, slugOptions } from "./constants";
+import { slugColor, slugLabel, slugOptions } from "./constants";
 
 const StaticPages = () => {
+  const { t } = useTranslation();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [slugFilter, setSlugFilter] = useState<string | undefined>();
@@ -64,41 +68,41 @@ const StaticPages = () => {
         await updatePage({ id: selectedPage.id, data: values }).unwrap();
         message.success(
           bumped
-            ? `Published v${values.version} — users will be asked to accept again`
-            : "Page updated successfully",
+            ? t("static_pages.published_again", { version: values.version })
+            : t("static_pages.updated"),
         );
       } else {
         await createPage(values).unwrap();
-        message.success("Page created successfully");
+        message.success(t("static_pages.created"));
       }
       setModalVisible(false);
     } catch (err: any) {
-      message.error(err?.data?.message?.[0] || "Failed to save page");
+      message.error(getApiErrorMessage(err, t("static_pages.save_failed")));
     }
   };
 
   const handleToggleActive = async (record: IStaticPage) => {
     try {
       await updatePage({ id: record.id, data: { isActive: !record.isActive } }).unwrap();
-      message.success(`Page ${record.isActive ? "deactivated" : "activated"}`);
+      message.success(t("static_pages.status_updated", { status: t(record.isActive ? "common.inactive" : "common.active") }));
     } catch {
-      message.error("Failed to update page status");
+      message.error(t("static_pages.status_update_failed"));
     }
   };
 
   const handleDeletePage = (pageId: string) => {
     Modal.confirm({
-      title: "Delete this page?",
-      content: "This action cannot be undone.",
-      okText: "Delete",
+      title: t("static_pages.confirm_delete"),
+      content: t("static_pages.delete_warning"),
+      okText: t("common.delete"),
       okButtonProps: { danger: true },
       centered: true,
       onOk: async () => {
         try {
           await deletePage(pageId).unwrap();
-          message.success("Page deleted");
+          message.success(t("static_pages.deleted"));
         } catch {
-          message.error("Failed to delete page");
+          message.error(t("static_pages.delete_failed"));
         }
       },
     });
@@ -114,7 +118,7 @@ const StaticPages = () => {
       ),
     },
     {
-      title: "TITLE",
+      title: t("notification_templates.template_title").toUpperCase(),
       dataIndex: "title",
       key: "title",
       width: 230,
@@ -123,18 +127,18 @@ const StaticPages = () => {
       ),
     },
     {
-      title: "PAGE TYPE",
+      title: t("static_pages.page_type").toUpperCase(),
       dataIndex: "slug",
       key: "slug",
       width: 200,
       render: (value: string) => (
         <Tag color={slugColor[value] || "default"} className="rounded-full border-0 px-3 py-0.5 text-xs font-semibold">
-          {slugLabel[value] || value}
+          {slugLabel(value)}
         </Tag>
       ),
     },
     {
-      title: "LANGUAGE",
+      title: t("static_pages.language").toUpperCase(),
       dataIndex: "locale",
       key: "locale",
       width: 100,
@@ -146,7 +150,7 @@ const StaticPages = () => {
       align: "center",
     },
     {
-      title: "VERSION",
+      title: t("static_pages.version").toUpperCase(),
       key: "version",
       width: 150,
       render: (_: any, record: IStaticPage) =>
@@ -157,8 +161,8 @@ const StaticPages = () => {
             </Tag>
             <span className="text-[11px] text-slate-400">
               {record.publishedAt
-                ? `published ${new Date(record.publishedAt).toLocaleDateString("it-IT")}`
-                : "not published"}
+                ? `${t("static_pages.published")} ${new Date(record.publishedAt).toLocaleDateString(getLocale())}`
+                : t("static_pages.not_published")}
             </span>
           </div>
         ) : (
@@ -166,27 +170,27 @@ const StaticPages = () => {
         ),
     },
     {
-      title: "APPLIES TO",
+      title: t("static_pages.applies_to").toUpperCase(),
       dataIndex: "audience",
       key: "audience",
       width: 130,
       render: (value: string, record: IStaticPage) =>
         record.requiresAcceptance ? (
           <span className="text-xs font-semibold text-slate-500">
-            {audienceLabel[value] || value}
+            {value === "all" ? t("static_pages.all_accounts") : value === "personal" ? t("static_pages.personal_only") : value === "business" ? t("static_pages.business_only") : value}
           </span>
         ) : (
-          <span className="text-xs text-slate-300">Informational</span>
+          <span className="text-xs text-slate-300">{t("static_pages.informational")}</span>
         ),
     },
     {
-      title: "ACCEPTED",
+      title: t("static_pages.accepted").toUpperCase(),
       key: "acceptedCount",
       width: 120,
       align: "center",
       render: (_: any, record: IStaticPage) =>
         record.requiresAcceptance ? (
-          <Tooltip title={`Users who accepted v${record.version} — click to view the log`}>
+          <Tooltip title={t("static_pages.accepted")}>
             <Button
               type="text"
               size="small"
@@ -202,7 +206,7 @@ const StaticPages = () => {
         ),
     },
     {
-      title: "STATUS",
+      title: t("common.status").toUpperCase(),
       dataIndex: "isActive",
       key: "isActive",
       width: 100,
@@ -217,18 +221,18 @@ const StaticPages = () => {
       align: "center",
     },
     {
-      title: "UPDATED",
+      title: t("notification_templates.updated_at").toUpperCase(),
       dataIndex: "updatedAt",
       key: "updatedAt",
       width: 120,
       render: (value: string) => (
         <span className="text-xs text-slate-400">
-          {value ? new Date(value).toLocaleDateString("it-IT") : "—"}
+          {value ? new Date(value).toLocaleDateString(getLocale()) : "—"}
         </span>
       ),
     },
     {
-      title: "ACTIONS",
+      title: t("common.actions").toUpperCase(),
       key: "actions",
       width: 100,
       render: (_: any, record: IStaticPage) => (
@@ -256,10 +260,8 @@ const StaticPages = () => {
       {/* Header */}
       <div className="mb-4 flex flex-col gap-3 border-b border-cborder/45 pb-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Static Pages</h2>
-          <p className="text-sm text-slate-400 font-medium">
-            Manage Privacy Policy, Terms &amp; Conditions and About Us content
-          </p>
+          <h2 className="text-2xl font-bold text-slate-800 tracking-tight">{t("static_pages.title")}</h2>
+          <p className="text-sm text-slate-400 font-medium">{t("static_pages.subtitle")}</p>
         </div>
         <Button
           type="primary"
@@ -267,7 +269,7 @@ const StaticPages = () => {
           className="h-10 rounded-lg border-0 bg-[#8b85f6] px-5 font-semibold hover:bg-[#7a74e5]"
           onClick={handleAddPage}
         >
-          Add Page
+          {t("static_pages.add")}
         </Button>
       </div>
 
@@ -278,34 +280,34 @@ const StaticPages = () => {
             <Input
               className="h-11 rounded-xl border-slate-100 bg-slate-50/30 text-[15px]"
               prefix={<FiSearch className="mr-2 text-slate-300 h-5 w-5" />}
-              placeholder="Search pages by title..."
+              placeholder={t("static_pages.search")}
               onChange={(e) => handleSearch(e.target.value)}
             />
           </div>
           <Select
             allowClear
-            placeholder="Page Type"
+            placeholder={t("static_pages.page_type")}
             onChange={(v) => { setSlugFilter(v); setPage(1); }}
-            options={slugOptions}
+            options={slugOptions()}
             className="w-60 [&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-xl"
           />
           <Select
             allowClear
-            placeholder="Language"
+            placeholder={t("static_pages.language")}
             onChange={(v) => { setLocaleFilter(v); setPage(1); }}
             className="w-36 [&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-xl"
           >
-            <Select.Option value="it">Italian</Select.Option>
-            <Select.Option value="en">English</Select.Option>
+            <Select.Option value="it">{t("faq_management.italian")}</Select.Option>
+            <Select.Option value="en">{t("faq_management.english")}</Select.Option>
           </Select>
           <Select
             allowClear
-            placeholder="Status"
+            placeholder={t("common.status")}
             onChange={(v) => { setStatusFilter(v === "active" ? true : v === "inactive" ? false : undefined); setPage(1); }}
             className="w-36 [&_.ant-select-selector]:h-11 [&_.ant-select-selector]:rounded-xl"
           >
-            <Select.Option value="active">Active</Select.Option>
-            <Select.Option value="inactive">Inactive</Select.Option>
+            <Select.Option value="active">{t("common.active")}</Select.Option>
+            <Select.Option value="inactive">{t("common.inactive")}</Select.Option>
           </Select>
         </div>
       </div>
@@ -318,7 +320,7 @@ const StaticPages = () => {
           </div>
         ) : pages.length === 0 ? (
           <div className="py-24">
-            <Empty description="No static pages found" />
+            <Empty description={t("static_pages.no_pages")} />
           </div>
         ) : (
           <Table<IStaticPage>

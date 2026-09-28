@@ -1,3 +1,4 @@
+import { getLocale } from "../../../utils/format";
 import { useEffect, useMemo, useState } from "react";
 import type { JSX } from "react";
 import { Avatar, Button, Divider, Form, Input, Modal, Spin, Tabs, Tag } from "antd";
@@ -158,7 +159,7 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
       setResetModalOpen(false);
       resetForm.resetFields();
     } catch (err) {
-      errorAlert({ error: err as { data?: { message?: string } } });
+      errorAlert({ error: err });
     }
   };
 
@@ -179,7 +180,7 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
               : t("client_management.user_unblocked_successfully"),
           });
         } catch (err) {
-          errorAlert({ error: err as { data?: { message?: string } } });
+          errorAlert({ error: err });
         }
       },
     });
@@ -191,7 +192,9 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
 
   const formatDate = (dateStr: string | null | undefined) => {
     if (!dateStr) return "—";
-    return new Date(dateStr).toLocaleDateString();
+    return new Date(dateStr).toLocaleDateString(
+      getLocale(),
+    );
   };
 
   // The company a business client acts for. Registration captures it and the
@@ -373,7 +376,11 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
                 <span className="text-sm font-semibold text-brand">{formatMoney(bill.totalAmount)}</span>
               )}
               <Tag color={billStatusColors[bill.status] || "default"} className="rounded-full text-xs">
-                {bill.status.replace(/_/g, " ")}
+                {t(`case_management.status.${bill.status}`, {
+                  defaultValue: t(`client_management.status_${bill.status}`, {
+                    defaultValue: bill.status.replace(/_/g, " "),
+                  }),
+                })}
               </Tag>
             </div>
           </div>
@@ -400,7 +407,11 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
                 {c.caseNumber || c.id.slice(0, 8)}
               </span>
               <Tag color={caseStatusColors[c.status] || "default"} className="rounded-full text-xs">
-                {c.status.replace(/_/g, " ")}
+                {t(`case_management.status.${c.status}`, {
+                  defaultValue: t(`client_management.status_${c.status}`, {
+                    defaultValue: c.status.replace(/_/g, " "),
+                  }),
+                })}
               </Tag>
             </div>
             <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-owngray">
@@ -408,7 +419,7 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
               {c.toSupplier && (
                 <span>{t("client_management.case_supplier")}: <span className="text-brand">{c.toSupplier.name}</span></span>
               )}
-              <span>{t("client_management.case_priority")}: <span className="text-brand">{c.priority}</span></span>
+              <span>{t("client_management.case_priority")}: <span className="text-brand">{t(`client_management.priority_${c.priority}`, { defaultValue: c.priority })}</span></span>
               <span>{t("client_management.case_created")}: <span className="text-brand">{formatDate(c.createdAt)}</span></span>
             </div>
           </div>
@@ -445,7 +456,7 @@ export function ClientDetailsModal({ open, onClose, client }: ClientDetailsModal
             </div>
             <p className="whitespace-pre-wrap text-xs text-owngray">{n.body}</p>
             <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-0.5 text-xs text-owngray">
-              <span>{new Date(n.createdAt).toLocaleString("it-IT")}</span>
+              <span>{new Date(n.createdAt).toLocaleString(getLocale())}</span>
               <span>
                 {t("client_management.sent_by")}:{" "}
                 <span className="text-brand">

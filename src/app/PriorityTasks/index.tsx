@@ -1,3 +1,4 @@
+import { getLocale } from "../../utils/format";
 import { useCallback, useMemo, useState } from "react";
 import { Avatar, Empty, Input, Spin, Table, Tag, Tooltip } from "antd";
 import type { ColumnsType } from "antd/es/table";
@@ -277,7 +278,7 @@ const PriorityTasks = () => {
         }
         return (
           <Tooltip
-            title={new Date(record.waitingSince).toLocaleString("it-IT")}
+            title={new Date(record.waitingSince).toLocaleString(getLocale())}
           >
             <span
               className={`text-xs font-semibold ${waitingTone(record.daysWaiting)}`}

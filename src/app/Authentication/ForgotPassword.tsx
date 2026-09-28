@@ -12,13 +12,13 @@ const ForgotPassword = () => {
 
   const onFinish = async (values: { email: string }) => {
     try {
-      const result = await forgotPassword({ email: values.email }).unwrap();
-      successAlert({ message: result.message });
+      await forgotPassword({ email: values.email }).unwrap();
+      successAlert({ message: t("auth.reset_code_sent") });
       navigate("/auth/verify-email", {
         state: { email: values.email, type: "password_reset" },
       });
     } catch (err) {
-      errorAlert({ error: err as { data?: { message?: string | string[] } } });
+      errorAlert({ error: err });
     }
   };
 

@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Outlet, useLocation } from "react-router";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
 
 const Main = () => {
+  const { t } = useTranslation();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const location = useLocation();
 
@@ -23,7 +25,7 @@ const Main = () => {
       {mobileNavOpen ? (
         <button
           type="button"
-          aria-label="Close navigation menu"
+          aria-label={t("sidebar.close_navigation")}
           className="fixed inset-0 z-[14] bg-black/45 backdrop-blur-[2px] md:hidden"
           onClick={() => setMobileNavOpen(false)}
         />

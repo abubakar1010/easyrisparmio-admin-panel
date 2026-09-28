@@ -1,3 +1,4 @@
+import { getLocale } from "../../utils/format";
 import { useEffect, useRef, useState } from "react";
 import { Avatar, Badge, Button } from "antd";
 import { useLocation, useNavigate } from "react-router";
@@ -11,6 +12,7 @@ import {
   useMarkAsReadMutation,
 } from "../../redux/features/Notifications/notificationApi";
 import { useTranslation } from "react-i18next";
+import { currentLanguage } from "../../i18n";
 import { getNotificationRoute } from "../../lib/helpers/notificationRoute";
 import { useWebPush } from "../../lib/webPush";
 
@@ -49,9 +51,7 @@ const Header = ({ onMobileMenuClick }: HeaderProps) => {
   const { t, i18n } = useTranslation();
 
   const toggleLanguage = () => {
-    const newLang = i18n.language === "en" ? "it" : "en";
-    i18n.changeLanguage(newLang);
-    localStorage.setItem("dashboard_language", newLang);
+    i18n.changeLanguage(currentLanguage() === "it" ? "en" : "it");
   };
 
   const fullName = user?.firstName
@@ -87,7 +87,7 @@ const Header = ({ onMobileMenuClick }: HeaderProps) => {
           {onMobileMenuClick ? (
             <button
               type="button"
-              aria-label="Open navigation menu"
+              aria-label={t("audit.open_navigation_menu")}
               className="md:hidden shrink-0 mt-0.5 rounded-xl p-2 text-brand hover:bg-playground/80 border border-cborder/40 transition-colors"
               onClick={onMobileMenuClick}
             >
@@ -108,7 +108,7 @@ const Header = ({ onMobileMenuClick }: HeaderProps) => {
             type="button"
             title={t("settings.language")}
           >
-            {i18n.language === "en" ? "IT" : "EN"}
+            {currentLanguage() === "it" ? "EN" : "IT"}
           </button>
           <button
             onClick={() => setNotificationPopup(true)}
@@ -187,7 +187,7 @@ const Header = ({ onMobileMenuClick }: HeaderProps) => {
                         {item.body.length > 60 ? `${item.body.slice(0, 60)}...` : item.body}
                       </p>
                       <p className="text-[10px] text-slate-300 mt-1">
-                        {new Date(item.createdAt).toLocaleString("it-IT")}
+                        {new Date(item.createdAt).toLocaleString(getLocale())}
                       </p>
                     </div>
                   ))}

@@ -1,9 +1,11 @@
+import { getApiErrorMessage } from "../../utils/apiError";
 import { useEffect, useMemo } from "react";
 import { App, Modal, Form } from "antd";
 import type { IBill } from "../../redux/features/Bills/billApi";
 import { useUpdateBillAdminMutation } from "../../redux/features/Bills/billApi";
 import BillFields from "./BillFields";
 import { billInitialValues, diffBillValues } from "./billFieldValues";
+import { useTranslation } from "react-i18next";
 
 interface EditBillModalProps {
   bill: IBill | null;
@@ -20,6 +22,7 @@ interface EditBillModalProps {
  * tab owns it. One definition, so the two can never mean different things.
  */
 export default function EditBillModal({ bill, open, onClose }: EditBillModalProps) {
+  const { t } = useTranslation();
   const { message } = App.useApp();
   const [form] = Form.useForm();
   const [updateBill, { isLoading }] = useUpdateBillAdminMutation();
@@ -41,29 +44,25 @@ export default function EditBillModal({ bill, open, onClose }: EditBillModalProp
       const changed = diffBillValues(values, initialValues);
 
       if (Object.keys(changed).length === 0) {
-        message.info("No changes detected");
+        message.info(t("case_management.no_changes"));
         return;
       }
 
       await updateBill({ billId: bill.id, data: changed }).unwrap();
-      message.success("Bill data updated successfully");
+      message.success(t("case_management.bill_updated"));
       onClose();
     } catch (err: unknown) {
-      const e = err as { data?: { message?: string | string[] } };
-      if (e?.data) {
-        const msg = e.data.message;
-        message.error((Array.isArray(msg) ? msg[0] : msg) || "Failed to update bill");
-      }
+      message.error(getApiErrorMessage(err, t("case_management.bill_update_failed")));
     }
   };
 
   return (
     <Modal
-      title="Edit Bill Data"
+      title={t("case_management.edit_bill")}
       open={open}
       onCancel={onClose}
       onOk={handleSubmit}
-      okText="Save Changes"
+      okText={t("common.save_changes")}
       confirmLoading={isLoading}
       width={720}
       destroyOnClose

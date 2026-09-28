@@ -1,3 +1,4 @@
+import i18n from "../../i18n";
 import { useCallback, useState } from "react";
 import { App, Button, Modal } from "antd";
 import { FiDownload, FiEye, FiFileText } from "react-icons/fi";
@@ -5,6 +6,7 @@ import { LuDownload, LuScanLine } from "react-icons/lu";
 import { useAppSelector } from "../../redux/hooks";
 import { server_url } from "../../config";
 import type { IBillFile } from "../../redux/features/Bills/billApi";
+import { useTranslation } from "react-i18next";
 
 interface VerificationFileListProps {
   billId: string;
@@ -20,7 +22,7 @@ const formatSize = (bytes: number | null): string | null => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 
-const fileLabel = (f: IBillFile) => f.originalName || f.fileUrl.split("/").pop() || "Document";
+const fileLabel = (f: IBillFile) => f.originalName || f.fileUrl.split("/").pop() || i18n.t("audit.document");
 
 /**
  * Documents the customer uploaded in response to a verification request.
@@ -30,6 +32,7 @@ const fileLabel = (f: IBillFile) => f.originalName || f.fileUrl.split("/").pop()
  * open reliably and are not exposed without a token.
  */
 export default function VerificationFileList({ billId, files }: VerificationFileListProps) {
+  const { t } = useTranslation();
   const { message } = App.useApp();
   const token = useAppSelector((state) => state.auth.token);
 
@@ -45,7 +48,7 @@ export default function VerificationFileList({ billId, files }: VerificationFile
       const res = await fetch(`${server_url}bills/${billId}/files/${file.id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error("Failed to fetch file");
+      if (!res.ok) throw new Error(String(res.status));
       return res.blob();
     },
     [billId, token],
@@ -70,7 +73,7 @@ export default function VerificationFileList({ billId, files }: VerificationFile
       setPreviewFile(file);
       setPreviewOpen(true);
     } catch {
-      message.error("Failed to load document");
+      message.error(t("case_management.load_document_failed"));
     } finally {
       setLoadingId(null);
     }
@@ -88,7 +91,7 @@ export default function VerificationFileList({ billId, files }: VerificationFile
       document.body.removeChild(a);
       URL.revokeObjectURL(objUrl);
     } catch {
-      message.error("Failed to download document");
+      message.error(t("case_management.download_document_failed"));
     }
   };
 
@@ -131,7 +134,7 @@ export default function VerificationFileList({ billId, files }: VerificationFile
                   className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors disabled:opacity-50"
                 >
                   <FiEye className="h-3 w-3" />
-                  {loadingId === f.id ? "..." : "View"}
+                  {loadingId === f.id ? "..." : t("case_management.view")}
                 </button>
                 <button
                   type="button"
@@ -139,7 +142,7 @@ export default function VerificationFileList({ billId, files }: VerificationFile
                   className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-800 transition-colors"
                 >
                   <LuDownload className="h-3 w-3" />
-                  Download
+                  {t("case_management.download")}
                 </button>
               </div>
             </div>
@@ -152,7 +155,7 @@ export default function VerificationFileList({ billId, files }: VerificationFile
         onCancel={handleClosePreview}
         footer={
           <div className="flex justify-end gap-2">
-            <Button onClick={handleClosePreview}>Close</Button>
+            <Button onClick={handleClosePreview}>{t("case_management.close")}</Button>
             {previewFile && (
               <Button
                 type="primary"
@@ -160,7 +163,7 @@ export default function VerificationFileList({ billId, files }: VerificationFile
                 onClick={() => handleDownload(previewFile)}
                 className="bg-emerald-500! hover:bg-emerald-600! border-0!"
               >
-                Download
+                {t("case_management.download")}
               </Button>
             )}
           </div>
@@ -183,7 +186,7 @@ export default function VerificationFileList({ billId, files }: VerificationFile
             {previewType === "pdf" ? (
               <iframe
                 src={previewUrl}
-                title="Document Preview"
+                title={t("case_management.document_preview")}
                 className="w-full border-0 rounded-lg"
                 style={{ height: 600 }}
               />
@@ -193,7 +196,7 @@ export default function VerificationFileList({ billId, files }: VerificationFile
               <div className="flex flex-col items-center gap-3 py-12">
                 <FiFileText className="h-12 w-12 text-slate-300" />
                 <p className="text-sm text-slate-500">
-                  Preview not available for this file type. Please download the file to view it.
+                  {t("case_management.preview_unavailable")}
                 </p>
               </div>
             )}

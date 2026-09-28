@@ -1,8 +1,10 @@
+import { getLocale } from '../../utils/format';
 import { useState } from "react";
 import { Button, Spin, Empty, Tag, Modal, Switch, message } from "antd";
 import { FiArrowLeft, FiEdit2, FiExternalLink, FiMapPin, FiTag, FiTrash2 } from "react-icons/fi";
 import { LuCalendarDays, LuUsers, LuArrowUpDown } from "react-icons/lu";
 import { useNavigate, useParams } from "react-router";
+import { useTranslation } from "react-i18next";
 import dayjs from "dayjs";
 import {
   useGetAgreementByIdQuery,
@@ -14,6 +16,7 @@ import AgreementFormModal from "./AgreementFormModal";
 const AgreementDetailsView = () => {
   const navigate = useNavigate();
   const { agreementId } = useParams();
+  const { t } = useTranslation();
   const { data: agreement, isLoading } = useGetAgreementByIdQuery(agreementId!, { skip: !agreementId });
   const [toggleStatus] = useToggleAgreementStatusMutation();
   const [deleteAgreement] = useDeleteAgreementMutation();
@@ -31,8 +34,8 @@ const AgreementDetailsView = () => {
   if (!agreement) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-24">
-        <Empty description="Agreement not found" />
-        <Button onClick={() => navigate("/agreements")} icon={<FiArrowLeft />}>Back to Agreements</Button>
+        <Empty description={t("agreements.not_found")} />
+        <Button onClick={() => navigate("/agreements")} icon={<FiArrowLeft />}>{t("agreements.back_to_agreements")}</Button>
       </div>
     );
   }
@@ -40,26 +43,26 @@ const AgreementDetailsView = () => {
   const handleToggleStatus = async () => {
     try {
       await toggleStatus({ id: agreement.id, isActive: !agreement.isActive }).unwrap();
-      message.success("Status updated");
+      message.success(t("agreements.status_updated"));
     } catch {
-      message.error("Failed to update status");
+      message.error(t("agreements.update_failed"));
     }
   };
 
   const handleDelete = () => {
     Modal.confirm({
-      title: "Delete agreement?",
-      content: `"${agreement.partnerName}" will be permanently removed.`,
-      okText: "Delete",
+      title: t("agreements.delete_agreement"),
+      content: `"${agreement.partnerName}" ${t("agreements.will_be_removed")}`,
+      okText: t("common.delete"),
       okButtonProps: { danger: true },
       centered: true,
       onOk: async () => {
         try {
           await deleteAgreement(agreement.id).unwrap();
-          message.success("Agreement deleted");
+          message.success(t("agreements.agreement_deleted"));
           navigate("/agreements");
         } catch {
-          message.error("Failed to delete");
+          message.error(t("agreements.delete_failed"));
         }
       },
     });
@@ -94,24 +97,24 @@ const AgreementDetailsView = () => {
             icon={<FiArrowLeft />}
             onClick={() => navigate("/agreements")}
           >
-            Back to Agreements
+            {t("agreements.back_to_agreements")}
           </Button>
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-2xl font-bold text-slate-800">{agreement.title}</h1>
             <Tag className={`m-0 rounded-md border-0 px-2.5 py-0.5 text-xs font-semibold ${agreement.isActive ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-500"}`}>
-              {agreement.isActive ? "Active" : "Inactive"}
+            {agreement.isActive ? t("common.active") : t("common.inactive")}
             </Tag>
           </div>
           <p className="mt-1 text-sm text-slate-500">
-            Created: {new Date(agreement.createdAt).toLocaleDateString("it-IT")} &bull; Updated: {new Date(agreement.updatedAt).toLocaleDateString("it-IT")}
+            {t("agreements.created")}: {new Date(agreement.createdAt).toLocaleDateString(getLocale())} &bull; {t("agreements.updated")}: {new Date(agreement.updatedAt).toLocaleDateString(getLocale())}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Button className="h-10 rounded-lg font-medium" icon={<FiEdit2 />} onClick={() => setEditOpen(true)}>
-            Edit
+            {t("common.edit")}
           </Button>
           <Button danger className="h-10 rounded-lg font-medium" icon={<FiTrash2 />} onClick={handleDelete}>
-            Delete
+            {t("common.delete")}
           </Button>
         </div>
       </div>
@@ -122,7 +125,7 @@ const AgreementDetailsView = () => {
         <div className="flex flex-col gap-6 lg:col-span-2">
           {/* Partner Info Card */}
           <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
-            <h3 className="mb-4 text-base font-semibold text-slate-800">Partner Information</h3>
+            <h3 className="mb-4 text-base font-semibold text-slate-800">{t("agreements.partner_information")}</h3>
             <div className="flex items-start gap-4">
               {agreement.partnerLogoUrl ? (
                 <img src={agreement.partnerLogoUrl} alt="" className="h-16 w-16 rounded-xl object-cover" />
@@ -142,7 +145,7 @@ const AgreementDetailsView = () => {
 
           {/* Discount Card */}
           <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
-            <h3 className="mb-4 text-base font-semibold text-slate-800">Discount Details</h3>
+            <h3 className="mb-4 text-base font-semibold text-slate-800">{t("agreements.discount_details")}</h3>
             {(agreement.discountHeadline || agreement.discountCode) && (
               <div className="mb-4 flex flex-wrap items-center gap-3">
                 {agreement.discountHeadline && (
@@ -164,7 +167,7 @@ const AgreementDetailsView = () => {
                 <p className="text-sm font-medium text-emerald-800">{agreement.discountDescription}</p>
               </div>
             ) : (
-              <p className="text-sm text-slate-400">No discount description provided.</p>
+              <p className="text-sm text-slate-400">{t("agreements.no_discount_description")}</p>
             )}
 
             {agreement.termsUrl && (
@@ -176,7 +179,7 @@ const AgreementDetailsView = () => {
                   className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700"
                 >
                   <FiExternalLink className="h-4 w-4" />
-                  View Terms & Conditions
+                  {t("agreements.view_terms")}
                 </a>
               </div>
             )}
@@ -184,7 +187,7 @@ const AgreementDetailsView = () => {
 
           {/* Location Card */}
           <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
-            <h3 className="mb-4 text-base font-semibold text-slate-800">Location</h3>
+            <h3 className="mb-4 text-base font-semibold text-slate-800">{t("agreements.location")}</h3>
             {agreement.address ? (
               <div className="flex items-start gap-3">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-50">
@@ -199,20 +202,20 @@ const AgreementDetailsView = () => {
                     className="mt-1 inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700"
                   >
                     <FiExternalLink className="h-4 w-4" />
-                    Open in Google Maps
+                    {t("agreements.open_maps")}
                   </a>
                 </div>
               </div>
             ) : (
               <p className="text-sm text-slate-400">
-                No address provided — the location card is hidden in the app.
+                {t("agreements.no_address")}
               </p>
             )}
           </div>
 
           {/* How to Use Card */}
           <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
-            <h3 className="mb-4 text-base font-semibold text-slate-800">How to Use</h3>
+            <h3 className="mb-4 text-base font-semibold text-slate-800">{t("agreements.how_to_use")}</h3>
             {agreement.howToUse && agreement.howToUse.length > 0 ? (
               <ol className="space-y-3">
                 {agreement.howToUse.map((step, index) => (
@@ -226,32 +229,32 @@ const AgreementDetailsView = () => {
               </ol>
             ) : (
               <p className="text-sm text-slate-400">
-                No steps set — the app falls back to its generic instructions.
+                {t("agreements.no_steps")}
               </p>
             )}
           </div>
 
           {/* Validity Card */}
           <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
-            <h3 className="mb-4 text-base font-semibold text-slate-800">Validity Period</h3>
+            <h3 className="mb-4 text-base font-semibold text-slate-800">{t("agreements.validity_period")}</h3>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="flex items-center gap-3 rounded-xl bg-slate-50 p-4">
                 <LuCalendarDays className="h-5 w-5 text-slate-400" />
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Valid From</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">{t("agreements.valid_from")}</p>
                   <p className="mt-0.5 text-sm font-semibold text-slate-700">
-                    {new Date(agreement.validFrom).toLocaleDateString("it-IT", { day: "2-digit", month: "long", year: "numeric" })}
+                  {new Date(agreement.validFrom).toLocaleDateString(getLocale(), { day: "2-digit", month: "long", year: "numeric" })}
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-3 rounded-xl bg-slate-50 p-4">
                 <LuCalendarDays className="h-5 w-5 text-slate-400" />
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Valid Until</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">{t("agreements.valid_until")}</p>
                   <p className="mt-0.5 text-sm font-semibold text-slate-700">
                     {agreement.validUntil
-                      ? new Date(agreement.validUntil).toLocaleDateString("it-IT", { day: "2-digit", month: "long", year: "numeric" })
-                      : "No end date"}
+                      ? new Date(agreement.validUntil).toLocaleDateString(getLocale(), { day: "2-digit", month: "long", year: "numeric" })
+                      : t("agreements.no_end_date")}
                   </p>
                 </div>
               </div>
@@ -263,12 +266,12 @@ const AgreementDetailsView = () => {
         <div className="flex flex-col gap-6">
           {/* Status Card */}
           <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
-            <h3 className="mb-4 text-base font-semibold text-slate-800">Status</h3>
+            <h3 className="mb-4 text-base font-semibold text-slate-800">{t("common.status")}</h3>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className={`h-3 w-3 rounded-full ${agreement.isActive ? "bg-emerald-500" : "bg-slate-300"}`} />
                 <span className={`text-sm font-semibold ${agreement.isActive ? "text-emerald-600" : "text-slate-500"}`}>
-                  {agreement.isActive ? "Active" : "Inactive"}
+                  {agreement.isActive ? t("common.active") : t("common.inactive")}
                 </span>
               </div>
               <Switch size="small" checked={agreement.isActive} onChange={handleToggleStatus} />
@@ -277,15 +280,15 @@ const AgreementDetailsView = () => {
 
           {/* Details Card */}
           <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
-            <h3 className="mb-4 text-base font-semibold text-slate-800">Details</h3>
+            <h3 className="mb-4 text-base font-semibold text-slate-800">{t("common.details")}</h3>
             <div className="space-y-4">
               <div className="flex items-center gap-3">
                 <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-50">
                   <LuUsers className="h-4 w-4 text-indigo-500" />
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Target Audience</p>
-                  <p className="text-sm font-semibold capitalize text-slate-700">{agreement.targetAudience}</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">{t("agreements.audience")}</p>
+                  <p className="text-sm font-semibold text-slate-700">{agreement.targetAudience === "personal" ? t("client_management.private") : agreement.targetAudience === "business" ? t("client_management.business") : t("agreements.both")}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -293,7 +296,7 @@ const AgreementDetailsView = () => {
                   <LuArrowUpDown className="h-4 w-4 text-amber-500" />
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Sort Order</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">{t("agreements.sort_order")}</p>
                   <p className="text-sm font-semibold text-slate-700">{agreement.sortOrder}</p>
                 </div>
               </div>

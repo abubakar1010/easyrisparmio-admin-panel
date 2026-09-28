@@ -1,6 +1,8 @@
+import { getLocale } from "../../../utils/format";
 import { Drawer, Empty, Input, Segmented, Spin, Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { FiSearch } from "react-icons/fi";
 import {
   useGetLegalAcceptancesQuery,
@@ -8,7 +10,7 @@ import {
   type IStaticPage,
 } from "../../../redux/features/StaticPages/staticPagesApi";
 import { debounce } from "../../../utils/debounce";
-import { acceptanceSourceLabel, slugLabel } from "../constants";
+import { slugLabel } from "../constants";
 
 interface LegalAcceptancesDrawerProps {
   page: IStaticPage | null;
@@ -21,6 +23,7 @@ interface LegalAcceptancesDrawerProps {
  * accepted the new terms", not "who ever accepted anything".
  */
 const LegalAcceptancesDrawer = ({ page, onClose }: LegalAcceptancesDrawerProps) => {
+  const { t } = useTranslation();
   const [scope, setScope] = useState<"current" | "all">("current");
   const [search, setSearch] = useState("");
   const [pageNumber, setPageNumber] = useState(1);
@@ -56,7 +59,7 @@ const LegalAcceptancesDrawer = ({ page, onClose }: LegalAcceptancesDrawerProps) 
 
   const columns: ColumnsType<ILegalAcceptance> = [
     {
-      title: "USER",
+      title: t("static_pages.user"),
       key: "user",
       render: (_: unknown, record: ILegalAcceptance) => (
         <div className="flex flex-col">
@@ -69,7 +72,7 @@ const LegalAcceptancesDrawer = ({ page, onClose }: LegalAcceptancesDrawerProps) 
       ),
     },
     {
-      title: "ROLE",
+      title: t("static_pages.role"),
       key: "role",
       width: 110,
       render: (_: unknown, record: ILegalAcceptance) => (
@@ -82,7 +85,7 @@ const LegalAcceptancesDrawer = ({ page, onClose }: LegalAcceptancesDrawerProps) 
       ),
     },
     {
-      title: "VERSION",
+      title: t("static_pages.version_column"),
       dataIndex: "version",
       key: "version",
       width: 100,
@@ -94,24 +97,24 @@ const LegalAcceptancesDrawer = ({ page, onClose }: LegalAcceptancesDrawerProps) 
       ),
     },
     {
-      title: "HOW",
+      title: t("static_pages.how"),
       dataIndex: "source",
       key: "source",
       width: 160,
       render: (value: string) => (
         <span className="text-xs font-medium text-slate-500">
-          {acceptanceSourceLabel[value] || value}
+          {value === "registration" ? t("static_pages.sign_up") : value === "social_login" ? t("static_pages.social_login") : value === "business_upgrade" ? t("static_pages.business_upgrade") : value === "reacceptance" ? t("static_pages.reaccepted") : value}
         </span>
       ),
     },
     {
-      title: "ACCEPTED",
+      title: t("static_pages.accepted"),
       dataIndex: "acceptedAt",
       key: "acceptedAt",
       width: 170,
       render: (value: string) => (
         <span className="text-xs text-slate-400">
-          {value ? new Date(value).toLocaleString("it-IT") : "—"}
+          {value ? new Date(value).toLocaleString(getLocale()) : "—"}
         </span>
       ),
     },
@@ -125,10 +128,10 @@ const LegalAcceptancesDrawer = ({ page, onClose }: LegalAcceptancesDrawerProps) 
       destroyOnClose
       title={
         <div>
-          <h3 className="text-lg font-bold text-slate-800 m-0">Consent log</h3>
+          <h3 className="text-lg font-bold text-slate-800 m-0">{t("static_pages.consent_log")}</h3>
           <p className="text-xs text-slate-400 font-medium m-0 mt-0.5">
-            {page ? slugLabel[page.slug] || page.slug : ""}
-            {page ? ` · currently published v${page.version}` : ""}
+            {page ? slugLabel(page.slug) : ""}
+            {page ? ` · ${t("static_pages.currently_published_version", { version: page.version })}` : ""}
           </p>
         </div>
       }
@@ -141,15 +144,15 @@ const LegalAcceptancesDrawer = ({ page, onClose }: LegalAcceptancesDrawerProps) 
             setPageNumber(1);
           }}
           options={[
-            { label: page ? `v${page.version} only` : "Current", value: "current" },
-            { label: "All versions", value: "all" },
+            { label: page ? t("static_pages.current_only", { version: page.version }) : t("static_pages.current"), value: "current" },
+            { label: t("static_pages.all_versions"), value: "all" },
           ]}
         />
         <Input
           allowClear
           className="h-10 flex-1 min-w-[220px] rounded-xl border-slate-100 bg-slate-50/30"
           prefix={<FiSearch className="mr-2 text-slate-300 h-4 w-4" />}
-          placeholder="Search by name or email..."
+          placeholder={t("static_pages.search_acceptances")}
           onChange={(e) => handleSearch(e.target.value)}
         />
       </div>
@@ -163,8 +166,8 @@ const LegalAcceptancesDrawer = ({ page, onClose }: LegalAcceptancesDrawerProps) 
           <Empty
             description={
               scope === "current"
-                ? "Nobody has accepted this version yet"
-                : "No acceptances recorded for this document"
+                ? t("static_pages.nobody_accepted")
+                : t("static_pages.no_acceptances")
             }
           />
         </div>
@@ -181,7 +184,7 @@ const LegalAcceptancesDrawer = ({ page, onClose }: LegalAcceptancesDrawerProps) 
             total: meta?.total || 0,
             onChange: setPageNumber,
             showSizeChanger: false,
-            showTotal: (total) => `${total} acceptance${total === 1 ? "" : "s"}`,
+            showTotal: (total) => t(total === 1 ? "static_pages.acceptance_one" : "static_pages.acceptance_other", { count: total }),
           }}
           className="[&_.ant-table-thead_th]:bg-slate-50/50 [&_.ant-table-thead_th]:text-[11px] [&_.ant-table-thead_th]:font-bold [&_.ant-table-thead_th]:text-slate-400 [&_.ant-table-thead_th]:tracking-widest"
         />

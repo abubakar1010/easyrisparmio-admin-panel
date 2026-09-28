@@ -86,7 +86,7 @@ export function ActiveAlertsCard({ data }: Props) {
                 <div>
                   <p className="font-semibold text-brand">{a.title}</p>
                   <p className="mt-1 text-sm leading-relaxed text-gray-600">
-                    {a.description ?? "No description"}
+                    {a.description ?? t("audit.no_description")}
                   </p>
                 </div>
               </div>

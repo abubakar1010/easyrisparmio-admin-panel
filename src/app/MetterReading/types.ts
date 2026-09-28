@@ -1,3 +1,5 @@
+import i18n from "../../i18n";
+
 export type UtilityType = "electricity" | "gas" | "water" | "internet";
 
 export interface IMeter {
@@ -39,9 +41,10 @@ export interface IPaginatedResponse<T> {
   };
 }
 
+/** Evaluated on read so the labels follow the current language. */
 export const utilityTypeLabels: Record<UtilityType, string> = {
-  electricity: "Electricity",
-  gas: "Gas",
-  water: "Water",
-  internet: "Internet",
+  get electricity() { return i18n.t("service_types.electricity"); },
+  get gas() { return i18n.t("service_types.gas"); },
+  get water() { return i18n.t("service_types.water"); },
+  get internet() { return i18n.t("service_types.internet"); },
 };

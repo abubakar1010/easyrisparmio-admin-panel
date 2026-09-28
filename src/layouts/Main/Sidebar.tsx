@@ -33,6 +33,9 @@ const sidebarI18nKeys: Record<string, string> = {
   "Referrals": "sidebar.referrals",
   "Support": "sidebar.support",
   "Notification Templates": "sidebar.notification_templates",
+  "Support Topics": "sidebar.support_topics",
+  "FAQ Management": "sidebar.faq_management",
+  "Static Pages": "sidebar.static_pages",
   "Settings": "sidebar.settings",
 };
 
@@ -54,10 +57,10 @@ const Sidebar = ({ mobileOpen = false, onMobileClose }: SidebarProps) => {
   };
   const handleLogOut = () => {
     Swal.fire({
-      text: "Are you sure you want to logout?",
+      text: t("sidebar.logout_confirmation"),
       showCancelButton: true,
-      confirmButtonText: "     Logout     ",
-      cancelButtonText: "Cancel",
+      confirmButtonText: t("common.logout"),
+      cancelButtonText: t("common.cancel"),
       showConfirmButton: true,
       confirmButtonColor: "#DC2626",
       reverseButtons: true,
@@ -100,7 +103,7 @@ const Sidebar = ({ mobileOpen = false, onMobileClose }: SidebarProps) => {
         <div className="flex md:hidden shrink-0 items-center justify-end px-3 pt-3 pb-1">
           <button
             type="button"
-            aria-label="Close navigation menu"
+            aria-label={t("sidebar.close_navigation")}
             onClick={() => onMobileClose?.()}
             className="rounded-xl p-2 text-brand hover:bg-primary/10 transition-colors"
           >

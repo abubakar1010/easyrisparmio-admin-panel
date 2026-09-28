@@ -1,5 +1,7 @@
+import i18n from "../../../i18n";
 import { Modal, Button, Form, Input, InputNumber, Switch } from "antd";
 import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import type { ISupportTopic } from "../../../redux/features/Support/supportApi";
 
 interface AddEditTopicModalProps {
@@ -23,6 +25,7 @@ const AddEditTopicModal = ({
   initialValues,
   isLoading,
 }: AddEditTopicModalProps) => {
+  const { t } = useTranslation();
   const [form] = Form.useForm();
 
   useEffect(() => {
@@ -60,7 +63,7 @@ const AddEditTopicModal = ({
       title={
         <div className="text-center mb-6">
           <h3 className="text-[24px] font-bold text-slate-800">
-            {initialValues ? "Edit Topic" : "Add Topic"}
+            {initialValues ? t("support_topics.edit") : t("support_topics.add")}
           </h3>
         </div>
       }
@@ -68,15 +71,15 @@ const AddEditTopicModal = ({
       <Form form={form} layout="vertical" className="space-y-4">
         <Form.Item
           name="name"
-          label={<span className="text-sm font-medium text-slate-500">Name <span className="text-red-500">*</span></span>}
+          label={<span className="text-sm font-medium text-slate-500">{t("support_topics.name")} <span className="text-red-500">*</span></span>}
           rules={[
-            { required: true, message: "Please enter a topic name" },
-            { max: 100, message: "Maximum 100 characters" },
+            { required: true, message: t("support_topics.topic_name_required") },
+            { max: 100, message: t("support_topics.maximum_100") },
           ]}
           className="mb-0"
         >
           <Input
-            placeholder="e.g. Billing & Payments"
+            placeholder={t("support_topics.name_example")}
             className="h-11 rounded-xl border-slate-200"
             maxLength={100}
           />
@@ -84,12 +87,12 @@ const AddEditTopicModal = ({
 
         <Form.Item
           name="description"
-          label={<span className="text-sm font-medium text-slate-500">Description</span>}
+          label={<span className="text-sm font-medium text-slate-500">{t("support_topics.description")}</span>}
           className="mb-0"
         >
           <Input.TextArea
             rows={3}
-            placeholder="Brief description of this topic..."
+            placeholder={t("support_topics.description_hint")}
             className="rounded-xl border-slate-200"
             maxLength={500}
           />
@@ -98,7 +101,7 @@ const AddEditTopicModal = ({
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Form.Item
             name="sortOrder"
-            label={<span className="text-sm font-medium text-slate-500">Sort Order</span>}
+            label={<span className="text-sm font-medium text-slate-500">{t("support_topics.sort_order")}</span>}
             className="mb-0"
           >
             <InputNumber
@@ -110,11 +113,11 @@ const AddEditTopicModal = ({
 
           <Form.Item
             name="icon"
-            label={<span className="text-sm font-medium text-slate-500">Icon</span>}
+            label={<span className="text-sm font-medium text-slate-500">{t("support_topics.icon")}</span>}
             className="mb-0"
           >
             <Input
-              placeholder="e.g. receipt"
+              placeholder={i18n.t("audit.e_g_receipt")}
               className="h-11 rounded-xl border-slate-200"
               maxLength={50}
             />
@@ -122,7 +125,7 @@ const AddEditTopicModal = ({
 
           <Form.Item
             name="isActive"
-            label={<span className="text-sm font-medium text-slate-500">Active</span>}
+            label={<span className="text-sm font-medium text-slate-500">{t("common.active")}</span>}
             valuePropName="checked"
             className="mb-0"
           >
@@ -135,7 +138,7 @@ const AddEditTopicModal = ({
             onClick={onCancel}
             className="flex-1 h-14 rounded-2xl bg-[#FFF1F1] border-none text-[#FF4D4F] font-bold text-lg hover:bg-[#FFE4E4]! order-2 sm:order-1"
           >
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button
             type="primary"
@@ -143,7 +146,7 @@ const AddEditTopicModal = ({
             loading={isLoading}
             className="flex-1 h-14 rounded-2xl bg-[#8b85f6] border-none text-white font-bold text-lg hover:bg-[#7a74e5]! order-1 sm:order-2"
           >
-            Save
+            {t("common.save")}
           </Button>
         </div>
       </Form>
