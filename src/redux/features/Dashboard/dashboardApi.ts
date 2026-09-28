@@ -94,12 +94,14 @@ export interface AdminDashboardData {
     followUpRequired: number;
   };
   conversionFunnel: {
+    /** Every bill that came in; each later stage counts the bills that reached it. */
     requestReceived: number;
-    documentation: number;
-    validation: number;
+    /** Optional until the bill-based funnel is deployed on the backend. */
+    verified?: number;
+    offerSent?: number;
+    offerAccepted?: number;
     activation: number;
     rejected: number;
-    /** Optional until the backend that reports it is deployed. */
     cancelled?: number;
     conversionRate: number;
   };

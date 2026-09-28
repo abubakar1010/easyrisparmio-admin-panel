@@ -14,14 +14,15 @@ export function ConversionFunnelCard({ data }: Props) {
 
   const funnelStages = [
     { label: t("dashboard.request_received"), value: requestReceived, barClass: "bg-[#3B82F6]" },
-    { label: t("dashboard.documentation"), value: d?.documentation ?? 0, barClass: "bg-[#3B82F6]" },
-    { label: t("dashboard.validation"), value: d?.validation ?? 0, barClass: "bg-[#60A5FA]" },
+    { label: t("case_management.status.verified"), value: d?.verified ?? 0, barClass: "bg-[#3B82F6]" },
+    { label: t("case_management.status.offer_sent"), value: d?.offerSent ?? 0, barClass: "bg-[#60A5FA]" },
+    { label: t("case_management.status.offer_accepted"), value: d?.offerAccepted ?? 0, barClass: "bg-[#60A5FA]" },
     { label: t("dashboard.activation"), value: d?.activation ?? 0, barClass: "bg-[#22C55E]" },
   ];
 
   const dropOffs = [
     { label: t("dashboard.rejected_ko"), value: d?.rejected ?? 0, textClass: "text-red-600", barClass: "bg-red-500" },
-    { label: t("case_management.cancelled"), value: d?.cancelled ?? 0, textClass: "text-gray-600", barClass: "bg-gray-400" },
+    { label: t("case_management.status.cancelled"), value: d?.cancelled ?? 0, textClass: "text-gray-600", barClass: "bg-gray-400" },
   ];
 
   return (
