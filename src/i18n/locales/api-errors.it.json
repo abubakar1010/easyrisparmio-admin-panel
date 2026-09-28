@@ -70,6 +70,10 @@
   "invalid_file_type": "Tipo di file non valido ({{type}}). Formati consentiti: {{allowed}}",
   "invalid_file_reference": "Riferimento al file mancante o non valido. Carica di nuovo il file.",
   "no_document_attached": "Non è ancora stato allegato alcun documento a questa bolletta",
+  "file_too_large": "Il file è troppo grande. La dimensione massima è 10 MB.",
+  "too_many_files": "Hai selezionato troppi file. Rimuovine qualcuno e riprova.",
+  "upload_unexpected_field": "Il caricamento non è andato a buon fine. Seleziona di nuovo il file e riprova.",
+  "invalid_identifier": "Il riferimento richiesto non è valido. Ricarica la pagina e riprova.",
 
   "user_id_required": "Seleziona un utente",
   "extracted_data_invalid": "I dati estratti non sono in un formato valido",

@@ -70,6 +70,10 @@
   "invalid_file_type": "Invalid file type ({{type}}). Allowed formats: {{allowed}}",
   "invalid_file_reference": "Invalid or missing file reference. Please re-upload the file.",
   "no_document_attached": "No document is attached to this bill yet",
+  "file_too_large": "The file is too large. The maximum size is 10 MB.",
+  "too_many_files": "Too many files were selected. Remove some and try again.",
+  "upload_unexpected_field": "The upload did not go through. Select the file again and try again.",
+  "invalid_identifier": "The requested reference is not valid. Reload the page and try again.",
 
   "user_id_required": "Select a user",
   "extracted_data_invalid": "The extracted data is not in a valid format",

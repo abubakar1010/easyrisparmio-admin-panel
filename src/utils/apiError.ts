@@ -95,6 +95,11 @@ const rules: Rule[] = [
   { match: /^Invalid file type "(?<type>[^"]*)"\. Allowed types: (?<allowed>.+)$/, key: "invalid_file_type" },
   { match: "Invalid or missing file reference. Please re-upload the file.", key: "invalid_file_reference" },
   { match: "No document attached to this bill yet", key: "no_document_attached" },
+  // Written by multer and Nest's parse pipes rather than by this codebase.
+  { match: /^(?:File too large|Payload Too Large|request entity too large)$/i, key: "file_too_large" },
+  { match: "Too many files", key: "too_many_files" },
+  { match: "Unexpected field", key: "upload_unexpected_field" },
+  { match: /^Validation failed \((?:uuid|numeric string) is expected\)$/, key: "invalid_identifier" },
 
   // Bills, cases & offers sent to customers
   { match: "userId is required", key: "user_id_required" },
@@ -365,6 +370,7 @@ const statusFallback = (status: number | string | undefined): string => {
   if (status === 403) return i18n.t("api_errors.forbidden");
   if (status === 404) return i18n.t("api_errors.not_found");
   if (status === 429) return i18n.t("api_errors.too_many_requests");
+  if (status === 413) return i18n.t("api_errors.file_too_large");
   if (typeof status === "number" && status >= 500) return i18n.t("api_errors.server");
   if (status === "PARSING_ERROR") return i18n.t("api_errors.server");
   return i18n.t("api_errors.generic");
