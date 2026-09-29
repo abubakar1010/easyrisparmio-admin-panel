@@ -230,13 +230,14 @@ export default function EditCaseModal({
   const [ibanSame, setIbanSame] = useState<boolean | null>(null);
 
   // Only fetched while the modal is open — both lists are long and nobody
-  // reading the case needs them.
+  // reading the case needs them. 100 is the server's page-size cap
+  // (PaginationDto @Max(100)); anything larger is rejected with a 400.
   const { data: offerPage, isFetching: offersLoading } = useGetOffersAdminQuery(
-    { limit: 200, isActive: true },
+    { limit: 100, isActive: true },
     { skip: !open },
   );
   const { data: supplierPage, isFetching: suppliersLoading } = useGetSuppliersQuery(
-    { limit: 200 },
+    { limit: 100 },
     { skip: !open },
   );
   const { data: agents, isFetching: agentsLoading } = useGetAgentsQuery(undefined, {
