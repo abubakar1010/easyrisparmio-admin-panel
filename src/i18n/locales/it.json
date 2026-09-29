@@ -220,7 +220,13 @@
     "documentation": "Documentazione",
     "validation": "Validazione",
     "activation": "Attivazione",
-    "rejected_ko": "Rifiutato (KO)"
+    "rejected_ko": "Rifiutato (KO)",
+    "overview_title": "Panoramica",
+    "updated_at": "Aggiornato alle {{time}}",
+    "refresh": "Aggiorna",
+    "load_error": "Impossibile caricare i dati della dashboard.",
+    "retry": "Riprova",
+    "no_active_alerts_desc": "Qui compariranno POD duplicati, contratti in scadenza e altri segnali da controllare."
   },
   "priority_tasks": {
     "subtitle": "Tutto ciò che aspetta te o un cliente, in ordine di urgenza",

@@ -220,7 +220,13 @@
     "documentation": "Documentation",
     "validation": "Validation",
     "activation": "Activation",
-    "rejected_ko": "Rejected (KO)"
+    "rejected_ko": "Rejected (KO)",
+    "overview_title": "Overview",
+    "updated_at": "Updated at {{time}}",
+    "refresh": "Refresh",
+    "load_error": "Could not load the dashboard data.",
+    "retry": "Try again",
+    "no_active_alerts_desc": "Duplicate PODs, expiring contracts and other signals to check will show up here."
   },
   "priority_tasks": {
     "subtitle": "Everything still waiting on you or on a customer, newest problem last",

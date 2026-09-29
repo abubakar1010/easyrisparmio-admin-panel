@@ -1,12 +1,14 @@
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 import { FiChevronRight } from "react-icons/fi";
-import { LuCircleCheckBig } from "react-icons/lu";
-import { DashboardCard } from "./DashboardCard";
+import { LuCircleCheckBig, LuListTodo } from "react-icons/lu";
+import { CardEmptyState, CardFooterLink, DashboardCard } from "./DashboardCard";
 import { getPriorityTaskUi } from "../../constants/priorityTasks";
 import type { AdminDashboardData } from "../../redux/features/Dashboard/dashboardApi";
+import { formatCount } from "../../utils/format";
+import { cn } from "../../utils/cn";
 
-type Props = { data?: AdminDashboardData["priorityTasks"] };
+type Props = { data?: AdminDashboardData["priorityTasks"]; className?: string };
 
 /**
  * The buckets of outstanding work, straight from the server.
@@ -19,7 +21,7 @@ type Props = { data?: AdminDashboardData["priorityTasks"] };
  * Every row opens the customers and cases it counts, so a number on this card
  * is always something the admin can act on.
  */
-export function PriorityTasksCard({ data }: Props) {
+export function PriorityTasksCard({ data, className }: Props) {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
@@ -30,25 +32,31 @@ export function PriorityTasksCard({ data }: Props) {
 
   return (
     <DashboardCard
+      className={className}
       title={t("dashboard.priority_tasks")}
+      subtitle={t("priority_tasks.subtitle")}
+      icon={<LuListTodo className="h-[18px] w-[18px]" />}
       headerExtra={
         total > 0 ? (
-          <span className="rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-bold text-red-600">
+          <span className="rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-600">
             {t("priority_tasks.open_count", { count: total })}
           </span>
         ) : undefined
       }
+      footer={
+        <CardFooterLink onClick={() => navigate("/priority-tasks")}>
+          {t("priority_tasks.view_all")}
+          {total > 0 ? ` (${formatCount(total)})` : ""}
+          <FiChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+        </CardFooterLink>
+      }
     >
       {categories.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 py-10 text-center">
-          <LuCircleCheckBig className="h-8 w-8 text-emerald-500" />
-          <p className="text-sm font-semibold text-brand">
-            {t("priority_tasks.all_clear")}
-          </p>
-          <p className="text-xs text-gray-500">
-            {t("priority_tasks.all_clear_desc")}
-          </p>
-        </div>
+        <CardEmptyState
+          icon={<LuCircleCheckBig className="h-6 w-6" />}
+          title={t("priority_tasks.all_clear")}
+          description={t("priority_tasks.all_clear_desc")}
+        />
       ) : (
         <ul className="space-y-2">
           {categories.map((category) => {
@@ -65,39 +73,29 @@ export function PriorityTasksCard({ data }: Props) {
                     category: t(ui.labelKey),
                     count: category.count,
                   })}
-                  className={`flex w-full cursor-pointer items-center gap-3 rounded-lg border px-3 py-3 text-left transition hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#3B82F6] ${ui.bg} ${ui.border}`}
+                  className="group flex w-full cursor-pointer items-center gap-3 rounded-xl border border-slate-200/70 px-3 py-3 text-left transition hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/35"
                 >
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/80">
-                    <Icon className={`h-5 w-5 ${ui.iconColor}`} />
+                  <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", ui.bg)}>
+                    <Icon className={cn("h-5 w-5", ui.iconColor)} />
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-brand">
                       {t(ui.labelKey)}
                     </p>
-                    <p className="truncate text-xs text-gray-600">
+                    <p className="truncate text-xs text-slate-500">
                       {t(ui.descKey)}
                     </p>
                   </div>
-                  <span className="text-lg font-bold text-brand">
-                    {category.count}
+                  <span className="text-lg font-semibold text-brand tabular-nums">
+                    {formatCount(category.count)}
                   </span>
-                  <FiChevronRight className="h-4 w-4 shrink-0 text-gray-400" />
+                  <FiChevronRight className="h-4 w-4 shrink-0 text-slate-400 transition-transform group-hover:translate-x-0.5" />
                 </button>
               </li>
             );
           })}
         </ul>
       )}
-
-      <button
-        type="button"
-        onClick={() => navigate("/priority-tasks")}
-        className="mt-4 flex w-full cursor-pointer items-center justify-start gap-1 text-sm font-semibold text-[#3B82F6] hover:text-[#2563EB]"
-      >
-        {t("priority_tasks.view_all")}
-        {total > 0 ? ` (${total})` : ""}
-        <FiChevronRight className="h-4 w-4" />
-      </button>
     </DashboardCard>
   );
 }

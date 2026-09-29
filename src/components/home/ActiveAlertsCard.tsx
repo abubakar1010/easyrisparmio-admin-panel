@@ -1,102 +1,115 @@
 import { useTranslation } from "react-i18next";
-import { DashboardCard } from "./DashboardCard";
-import { LuCopy, LuCalendar, LuShieldCheck, LuSparkles, LuTriangleAlert, LuFileWarning } from "react-icons/lu";
+import { useNavigate } from "react-router";
+import { CardEmptyState, DashboardCard } from "./DashboardCard";
+import { LuBellRing, LuCopy, LuCalendar, LuShieldCheck, LuSparkles, LuTriangleAlert, LuFileWarning } from "react-icons/lu";
 import type { AdminDashboardData } from "../../redux/features/Dashboard/dashboardApi";
+import { getEntityRoute } from "../../lib/helpers/entityRoute";
+import { cn } from "../../utils/cn";
 
 type Alert = AdminDashboardData["activeAlerts"][number];
-type Props = { data?: AdminDashboardData["activeAlerts"] };
+type Props = { data?: AdminDashboardData["activeAlerts"]; className?: string };
 
 const alertConfig: Record<string, {
   icon: React.ReactNode;
   actionKey: string;
-  actionClass: string;
-  wrap: string;
+  /** Icon tile colours. */
+  tone: string;
 }> = {
   duplicate_pod: {
-    icon: <LuCopy className="h-5 w-5 text-red-600" />,
+    icon: <LuCopy className="h-5 w-5" />,
     actionKey: "dashboard.review",
-    actionClass: "text-red-600 hover:text-red-700",
-    wrap: "border-red-100 bg-red-50",
+    tone: "bg-red-50 text-red-600",
   },
   contract_expiring: {
-    icon: <LuCalendar className="h-5 w-5 text-orange-600" />,
+    icon: <LuCalendar className="h-5 w-5" />,
     actionKey: "dashboard.view_list",
-    actionClass: "text-orange-600 hover:text-orange-700",
-    wrap: "border-orange-100 bg-orange-50",
+    tone: "bg-orange-50 text-orange-600",
   },
   ocr_verification: {
-    icon: <LuShieldCheck className="h-5 w-5 text-amber-700" />,
+    icon: <LuShieldCheck className="h-5 w-5" />,
     actionKey: "dashboard.verify",
-    actionClass: "text-amber-700 hover:text-amber-800",
-    wrap: "border-amber-100 bg-amber-50",
+    tone: "bg-amber-50 text-amber-700",
   },
   high_value_lead: {
-    icon: <LuSparkles className="h-5 w-5 text-[#3B82F6]" />,
+    icon: <LuSparkles className="h-5 w-5" />,
     actionKey: "dashboard.contact",
-    actionClass: "text-[#3B82F6] hover:text-[#2563EB]",
-    wrap: "border-sky-100 bg-sky-50",
+    tone: "bg-sky-50 text-sky-600",
   },
   sla_breach: {
-    icon: <LuTriangleAlert className="h-5 w-5 text-red-600" />,
+    icon: <LuTriangleAlert className="h-5 w-5" />,
     actionKey: "dashboard.review",
-    actionClass: "text-red-600 hover:text-red-700",
-    wrap: "border-red-100 bg-red-50",
+    tone: "bg-red-50 text-red-600",
   },
   missing_documents: {
-    icon: <LuFileWarning className="h-5 w-5 text-orange-600" />,
+    icon: <LuFileWarning className="h-5 w-5" />,
     actionKey: "dashboard.review",
-    actionClass: "text-orange-600 hover:text-orange-700",
-    wrap: "border-orange-100 bg-orange-50",
+    tone: "bg-orange-50 text-orange-600",
   },
 };
 
 const defaultConfig = {
-  icon: <LuTriangleAlert className="h-5 w-5 text-gray-600" />,
+  icon: <LuTriangleAlert className="h-5 w-5" />,
   actionKey: "common.view",
-  actionClass: "text-gray-600 hover:text-gray-700",
-  wrap: "border-gray-100 bg-gray-50",
+  tone: "bg-slate-100 text-slate-600",
 };
 
-export function ActiveAlertsCard({ data }: Props) {
+export function ActiveAlertsCard({ data, className }: Props) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const alerts = data ?? [];
 
-  if (alerts.length === 0) {
-    return (
-      <DashboardCard title={t("dashboard.active_alerts")}>
-        <p className="py-8 text-center text-sm text-gray-400">{t("dashboard.no_active_alerts")}</p>
-      </DashboardCard>
-    );
-  }
-
   return (
-    <DashboardCard title={t("dashboard.active_alerts")}>
-      <div className="space-y-3">
-        {alerts.map((a: Alert) => {
-          const cfg = alertConfig[a.alertType] ?? defaultConfig;
-          return (
-            <div
-              key={a.id}
-              className={`flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-start sm:justify-between ${cfg.wrap}`}
-            >
-              <div className="flex gap-3">
-                <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/70">
+    <DashboardCard
+      className={className}
+      title={t("dashboard.active_alerts")}
+      icon={<LuBellRing className="h-[18px] w-[18px]" />}
+      headerExtra={
+        alerts.length > 0 ? (
+          <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700 tabular-nums">
+            {alerts.length}
+          </span>
+        ) : undefined
+      }
+    >
+      {alerts.length === 0 ? (
+        <CardEmptyState
+          icon={<LuShieldCheck className="h-6 w-6" />}
+          title={t("dashboard.no_active_alerts")}
+          description={t("dashboard.no_active_alerts_desc")}
+        />
+      ) : (
+        <ul className="space-y-2">
+          {alerts.map((a: Alert) => {
+            const cfg = alertConfig[a.alertType] ?? defaultConfig;
+            const route = getEntityRoute(a.entityType, a.entityId);
+            return (
+              <li
+                key={a.id}
+                className="flex items-start gap-3 rounded-xl border border-slate-200/70 p-3"
+              >
+                <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", cfg.tone)}>
                   {cfg.icon}
                 </span>
-                <div>
-                  <p className="font-semibold text-brand">{a.title}</p>
-                  <p className="mt-1 text-sm leading-relaxed text-gray-600">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-brand">{a.title}</p>
+                  <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-slate-500">
                     {a.description ?? t("audit.no_description")}
                   </p>
                 </div>
-              </div>
-              <button type="button" className={`shrink-0 text-sm font-semibold sm:pt-1 ${cfg.actionClass}`}>
-                {t(cfg.actionKey)}
-              </button>
-            </div>
-          );
-        })}
-      </div>
+                {route ? (
+                  <button
+                    type="button"
+                    onClick={() => navigate(route)}
+                    className="shrink-0 cursor-pointer rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-brand transition-colors hover:border-primary/40 hover:text-primary"
+                  >
+                    {t(cfg.actionKey)}
+                  </button>
+                ) : null}
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </DashboardCard>
   );
 }
