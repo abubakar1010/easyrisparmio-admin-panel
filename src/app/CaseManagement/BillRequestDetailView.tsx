@@ -13,6 +13,7 @@ import {
   FiEye,
   FiFileText,
   FiSend,
+  FiX,
 } from "react-icons/fi";
 import {
   LuZap,
@@ -55,7 +56,9 @@ import {
   useGetCaseByIdQuery,
   useUpdateCaseMutation,
   useVerifyDocumentMutation,
+  useRejectDocumentMutation,
   useUploadCaseDocumentMutation,
+  type DocumentRejectionReason,
   type ICase,
   type ICaseEvent,
   type ICaseDocument,
@@ -2166,6 +2169,7 @@ const eventIconMap: Record<string, { icon: React.ReactNode; color: string }> = {
   STATUS_CHANGE: { icon: <FiCheckCircle className="h-5 w-5 text-white" />, color: "bg-orange-500" },
   DOCUMENT_UPLOADED: { icon: <LuUpload className="h-5 w-5 text-white" />, color: "bg-blue-500" },
   DOCUMENT_VERIFIED: { icon: <LuFileCheck2 className="h-5 w-5 text-white" />, color: "bg-emerald-500" },
+  DOCUMENT_REJECTED: { icon: <FiX className="h-5 w-5 text-white" />, color: "bg-red-500" },
   OCR_COMPLETED: { icon: <LuScanLine className="h-5 w-5 text-white" />, color: "bg-teal-500" },
   CONTRACT_GENERATED: { icon: <LuFileCheck2 className="h-5 w-5 text-white" />, color: "bg-amber-500" },
   CONTRACT_SIGNED: { icon: <LuFileCheck2 className="h-5 w-5 text-white" />, color: "bg-green-500" },
@@ -3383,10 +3387,25 @@ function CaseDataSection({
   );
 }
 
+/** The reasons an admin can give for turning a document down, in the order offered. */
+const REJECTION_REASONS: DocumentRejectionReason[] = [
+  "expired",
+  "unreadable",
+  "incomplete",
+  "wrong_document",
+  "other",
+];
+
 function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[]; caseId: string }) {
   useTranslation();
   const token = useAppSelector((state) => state.auth.token);
-  const [verifyDocument, { isLoading: isVerifying }] = useVerifyDocumentMutation();
+  const [verifyDocument] = useVerifyDocumentMutation();
+  const [rejectDocument, { isLoading: isRejecting }] = useRejectDocumentMutation();
+  // Per document, so ruling on one does not spin every button in the list.
+  const [actingId, setActingId] = useState<string | null>(null);
+  const [rejecting, setRejecting] = useState<ICaseDocument | null>(null);
+  const [rejectReason, setRejectReason] = useState<DocumentRejectionReason | null>(null);
+  const [rejectNote, setRejectNote] = useState("");
   const [uploadCaseDocument] = useUploadCaseDocumentMutation();
   const [uploading, setUploading] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -3440,11 +3459,43 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
   };
 
   const handleVerify = async (docId: string) => {
+    setActingId(docId);
     try {
       await verifyDocument({ caseId, docId }).unwrap();
       message.success(i18n.t("audit.document_verified"));
-    } catch {
-      message.error(i18n.t("audit.failed_to_verify_document"));
+    } catch (err) {
+      message.error(getApiErrorMessage(err, i18n.t("audit.failed_to_verify_document")));
+    } finally {
+      setActingId(null);
+    }
+  };
+
+  const openReject = (doc: ICaseDocument) => {
+    setRejecting(doc);
+    setRejectReason(null);
+    setRejectNote("");
+  };
+
+  const closeReject = () => setRejecting(null);
+
+  // "Other" says nothing on its own, so the customer is only told it with the
+  // admin's own words beside it — the server enforces the same.
+  const noteRequired = rejectReason === "other";
+  const canReject = !!rejectReason && (!noteRequired || rejectNote.trim().length > 0);
+
+  const handleReject = async () => {
+    if (!rejecting || !rejectReason || !canReject) return;
+    try {
+      await rejectDocument({
+        caseId,
+        docId: rejecting.id,
+        reason: rejectReason,
+        note: rejectNote.trim() || undefined,
+      }).unwrap();
+      message.success(i18n.t("audit.document_rejected"));
+      closeReject();
+    } catch (err) {
+      message.error(getApiErrorMessage(err, i18n.t("audit.failed_to_reject_document")));
     }
   };
 
@@ -3492,22 +3543,60 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
   const isPdf = (doc: ICaseDocument) => doc.mimeType === "application/pdf" || doc.fileName.endsWith(".pdf");
   const isImage = (doc: ICaseDocument) => doc.mimeType?.startsWith("image/") || /\.(jpg|jpeg|png)$/i.test(doc.fileName);
 
-  const allVerified = documents.length > 0 && documents.every((d) => d.verified);
+  // A rejected document the customer has since replaced is history: the
+  // replacement is what is under review now, so the old one counts for nothing.
+  const replacedIds = new Set(
+    documents.map((d) => d.replacesDocumentId).filter((id): id is string => !!id),
+  );
+  const byId = new Map(documents.map((d) => [d.id, d]));
+  const activeDocs = documents.filter((d) => !replacedIds.has(d.id));
+  const awaitingReplacement = activeDocs.some((d) => !!d.rejectedAt);
+  const allVerified = activeDocs.length > 0 && activeDocs.every((d) => d.verified);
+  const fmtDay = (iso: string) =>
+    new Date(iso).toLocaleDateString(getLocale(), { month: "2-digit", day: "2-digit", year: "numeric" });
 
-  const renderDocRow = (doc: ICaseDocument) => (
+  const renderDocRow = (doc: ICaseDocument) => {
+    const replaced = replacedIds.has(doc.id);
+    const rejected = !!doc.rejectedAt && !replaced;
+    const original = doc.replacesDocumentId ? byId.get(doc.replacesDocumentId) : undefined;
+    const tone = replaced
+      ? "bg-slate-100 text-slate-400"
+      : rejected
+        ? "bg-red-50 text-red-500"
+        : doc.verified
+          ? "bg-emerald-50 text-emerald-500"
+          : "bg-amber-50 text-amber-500";
+
+    return (
     <div
       key={doc.id}
-      className="flex items-center justify-between rounded-xl border border-slate-100 p-4 transition-colors hover:bg-slate-50/50"
+      className={`flex items-center justify-between gap-3 rounded-xl border p-4 transition-colors hover:bg-slate-50/50 ${rejected ? "border-red-100" : "border-slate-100"} ${replaced ? "opacity-60" : ""}`}
     >
       <div className="flex items-center gap-3 min-w-0">
-        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${doc.verified ? "bg-emerald-50 text-emerald-500" : "bg-amber-50 text-amber-500"}`}>
+        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${tone}`}>
           <FiFileText className="h-5 w-5" />
         </div>
         <div className="min-w-0">
           <p className="text-sm font-semibold text-slate-700 truncate">{doc.fileName}</p>
           {doc.verified && doc.verifiedAt && (
             <p className="text-[10px] text-emerald-500 mt-0.5">
-              {i18n.t("audit.verified_on")} {new Date(doc.verifiedAt).toLocaleDateString(getLocale(), { month: "2-digit", day: "2-digit", year: "numeric" })}
+              {i18n.t("audit.verified_on")} {fmtDay(doc.verifiedAt)}
+            </p>
+          )}
+          {doc.rejectedAt && doc.rejectionReason && (
+            <p className={`text-xs mt-0.5 ${replaced ? "text-slate-400" : "text-red-500"}`}>
+              {i18n.t("audit.rejected_on", { date: fmtDay(doc.rejectedAt) })}
+              {" · "}
+              {i18n.t(`audit.rejection_reason_${doc.rejectionReason}`)}
+              {doc.rejectionNote ? ` — ${doc.rejectionNote}` : ""}
+            </p>
+          )}
+          {rejected && (
+            <p className="text-[10px] text-slate-400 mt-0.5">{i18n.t("audit.waiting_for_replacement")}</p>
+          )}
+          {doc.replacesDocumentId && (
+            <p className="text-[10px] text-indigo-500 mt-0.5">
+              {i18n.t("audit.replaces_document", { name: original?.fileName ?? "—" })}
             </p>
           )}
         </div>
@@ -3530,28 +3619,51 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
           <FiDownload className="h-3.5 w-3.5" />
           {i18n.t("case_management.download")}
         </button>
-        {!doc.verified ? (
-          <Button
-            size="small"
-            type="primary"
-            loading={isVerifying}
-            onClick={() => handleVerify(doc.id)}
-            className="h-7 rounded-lg bg-emerald-500! hover:bg-emerald-600! border-0! text-xs! font-semibold!"
-            icon={<FiCheck className="h-3 w-3" />}
-          >
-            {i18n.t("dashboard.verify")}
-          </Button>
+        {replaced ? (
+          <Tag className="m-0! rounded-full! border-0! text-xs!">{i18n.t("audit.document_replaced")}</Tag>
         ) : (
-          <Tag
-            color="green"
-            className="m-0! rounded-full! border-0! text-xs!"
-          >
-            {i18n.t("case_management.status.verified")}
-          </Tag>
+          <>
+            {doc.verified ? (
+              <Tag color="green" className="m-0! rounded-full! border-0! text-xs!">
+                {i18n.t("case_management.status.verified")}
+              </Tag>
+            ) : (
+              <>
+                {rejected && (
+                  <Tag color="red" className="m-0! rounded-full! border-0! text-xs!">
+                    {i18n.t("audit.document_rejected_tag")}
+                  </Tag>
+                )}
+                <Button
+                  size="small"
+                  type="primary"
+                  loading={actingId === doc.id}
+                  onClick={() => handleVerify(doc.id)}
+                  className="h-7 rounded-lg bg-emerald-500! hover:bg-emerald-600! border-0! text-xs! font-semibold!"
+                  icon={<FiCheck className="h-3 w-3" />}
+                >
+                  {i18n.t("dashboard.verify")}
+                </Button>
+              </>
+            )}
+            {!rejected && (
+              <Button
+                size="small"
+                danger
+                disabled={actingId === doc.id}
+                onClick={() => openReject(doc)}
+                className="h-7 rounded-lg text-xs! font-semibold!"
+                icon={<FiX className="h-3 w-3" />}
+              >
+                {i18n.t("audit.reject_request_new")}
+              </Button>
+            )}
+          </>
         )}
       </div>
     </div>
-  );
+    );
+  };
 
   return (
     <>
@@ -3562,15 +3674,24 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
             <div className="flex items-center gap-2">
               <h4 className="text-sm font-semibold text-slate-800">{i18n.t("audit.identity_verification")}</h4>
               <Tag
-                color={documents.length === 0 ? "red" : allVerified ? "green" : "orange"}
+                color={activeDocs.length === 0 || awaitingReplacement ? "red" : allVerified ? "green" : "orange"}
                 className="m-0! rounded-full! border-0! text-xs! font-semibold!"
               >
-                {documents.length === 0 ? i18n.t("audit.identity_not_uploaded") : allVerified ? i18n.t("audit.identity_verified") : i18n.t("audit.identity_pending_review")}
+                {activeDocs.length === 0
+                  ? i18n.t("audit.identity_not_uploaded")
+                  : awaitingReplacement
+                    ? i18n.t("audit.identity_replacement_requested")
+                    : allVerified
+                      ? i18n.t("audit.identity_verified")
+                      : i18n.t("audit.identity_pending_review")}
               </Tag>
             </div>
-            {documents.length > 0 && (
+            {activeDocs.length > 0 && (
               <span className="text-xs text-slate-400">
-                {documents.filter((d) => d.verified).length}/{documents.length} verified
+                {i18n.t("audit.verified_count", {
+                  verified: activeDocs.filter((d) => d.verified).length,
+                  total: activeDocs.length,
+                })}
               </span>
             )}
           </div>
@@ -3606,6 +3727,47 @@ function CaseDocumentsSection({ documents, caseId }: { documents: ICaseDocument[
           </div>
         </div>
       </div>
+
+      {/* Reject / request a new document */}
+      <Modal
+        open={!!rejecting}
+        onCancel={closeReject}
+        onOk={handleReject}
+        okText={i18n.t("audit.reject_and_notify")}
+        okButtonProps={{ danger: true, disabled: !canReject }}
+        confirmLoading={isRejecting}
+        title={i18n.t("audit.reject_document_title")}
+        destroyOnClose
+      >
+        <p className="text-sm text-slate-500 mb-4">
+          {i18n.t("audit.reject_document_help", { name: rejecting?.fileName ?? "" })}
+        </p>
+        <label className="block text-sm font-medium text-slate-700 mb-1">
+          {i18n.t("audit.rejection_reason")}
+        </label>
+        <Select
+          className="w-full mb-4"
+          value={rejectReason ?? undefined}
+          onChange={(v: DocumentRejectionReason) => setRejectReason(v)}
+          placeholder={i18n.t("audit.select_rejection_reason")}
+          options={REJECTION_REASONS.map((r) => ({
+            value: r,
+            label: i18n.t(`audit.rejection_reason_${r}`),
+          }))}
+        />
+        <label className="block text-sm font-medium text-slate-700 mb-1">
+          {noteRequired ? i18n.t("audit.rejection_note_required") : i18n.t("audit.rejection_note_optional")}
+        </label>
+        <Input.TextArea
+          rows={3}
+          maxLength={1000}
+          value={rejectNote}
+          onChange={(e) => setRejectNote(e.target.value)}
+          placeholder={i18n.t("audit.rejection_note_placeholder")}
+          status={noteRequired && rejectNote.trim().length === 0 ? "warning" : undefined}
+        />
+        <p className="text-xs text-slate-400 mt-2">{i18n.t("audit.rejection_customer_notified")}</p>
+      </Modal>
 
       {/* Document Preview Modal */}
       <Modal

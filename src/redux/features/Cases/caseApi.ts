@@ -73,9 +73,24 @@ export interface ICaseDocument {
   verifiedAt: string | null;
   fileSizeBytes: number | null;
   mimeType: string | null;
+  /** Set when an admin turned the document down and asked for a new one. */
+  rejectedAt: string | null;
+  rejectedById: string | null;
+  rejectionReason: DocumentRejectionReason | null;
+  rejectionNote: string | null;
+  /** The rejected document this one was uploaded to replace. */
+  replacesDocumentId: string | null;
   createdAt: string;
   uploadedBy?: ICaseUser;
+  rejectedBy?: ICaseUser;
 }
+
+export type DocumentRejectionReason =
+  | "expired"
+  | "unreadable"
+  | "incomplete"
+  | "wrong_document"
+  | "other";
 
 export interface ICaseEvent {
   id: string;
@@ -332,6 +347,22 @@ const caseApi = baseApi.injectEndpoints({
       ],
     }),
 
+    rejectDocument: builder.mutation<
+      ICaseDocument,
+      { caseId: string; docId: string; reason: DocumentRejectionReason; note?: string }
+    >({
+      query: ({ caseId, docId, ...body }) => ({
+        url: `cases/${caseId}/documents/${docId}/reject`,
+        method: "PATCH",
+        body,
+      }),
+      invalidatesTags: (_r, _e, { caseId }) => [
+        { type: "case", id: caseId },
+        { type: "dashboard", id: "ADMIN" },
+        { type: "activityLog", id: "LIST" },
+      ],
+    }),
+
   }),
 });
 
@@ -342,4 +373,5 @@ export const {
   useGetCaseDocumentsQuery,
   useUploadCaseDocumentMutation,
   useVerifyDocumentMutation,
+  useRejectDocumentMutation,
 } = caseApi;

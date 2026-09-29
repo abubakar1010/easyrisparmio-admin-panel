@@ -958,6 +958,7 @@
       "case_updated": "Case Updated",
       "contract_activated": "Contract Activated",
       "document_verified": "Document Verified",
+      "document_rejected": "Document Rejected",
       "email_bill_uploaded": "Email Bill Uploaded",
       "offer_created": "Offer Created",
       "offer_deleted": "Offer Deleted",
