@@ -226,7 +226,10 @@
     "refresh": "Aggiorna",
     "load_error": "Impossibile caricare i dati della dashboard.",
     "retry": "Riprova",
-    "no_active_alerts_desc": "Qui compariranno POD duplicati, contratti in scadenza e altri segnali da controllare."
+    "no_active_alerts_desc": "Qui compariranno POD duplicati, contratti in scadenza e altri segnali da controllare.",
+    "stable": "stabile",
+    "slower": "più lento",
+    "faster": "più veloce"
   },
   "priority_tasks": {
     "subtitle": "Tutto ciò che aspetta te o un cliente, in ordine di urgenza",

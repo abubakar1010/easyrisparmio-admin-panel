@@ -226,7 +226,10 @@
     "refresh": "Refresh",
     "load_error": "Could not load the dashboard data.",
     "retry": "Try again",
-    "no_active_alerts_desc": "Duplicate PODs, expiring contracts and other signals to check will show up here."
+    "no_active_alerts_desc": "Duplicate PODs, expiring contracts and other signals to check will show up here.",
+    "stable": "stable",
+    "slower": "slower",
+    "faster": "faster"
   },
   "priority_tasks": {
     "subtitle": "Everything still waiting on you or on a customer, newest problem last",
