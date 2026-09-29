@@ -3,7 +3,7 @@ import { createElement, useState } from "react";
 import Swal from "sweetalert2";
 import { FiLogOut, FiX } from "react-icons/fi";
 import { MdOutlineArrowRight } from "react-icons/md";
-import { LuLayoutDashboard } from "react-icons/lu";
+import { BrandLightningMark } from "../../components/ui/BrandLightningMark";
 import { routeLinkGenerators } from "../../lib/helpers/generateLink";
 import { useAppSelector, useAppDispatch } from "../../redux/hooks";
 import { logout } from "../../redux/features/Auth/authSlice";
@@ -99,7 +99,7 @@ const Sidebar = ({ mobileOpen = false, onMobileClose }: SidebarProps) => {
         mobileOpen && "max-md:translate-x-0"
       )}
     >
-      <div className="flex h-full min-h-0 w-full flex-col bg-gradient-to-b from-white via-[oklch(0.97_0_0)] to-playground border-r border-cborder/55 shadow-[6px_0_40px_-20px_rgba(15,23,42,0.12)]">
+      <div className="flex h-full min-h-0 w-full flex-col bg-white border-r border-slate-200/70">
         <div className="flex md:hidden shrink-0 items-center justify-end px-3 pt-3 pb-1">
           <button
             type="button"
@@ -110,15 +110,14 @@ const Sidebar = ({ mobileOpen = false, onMobileClose }: SidebarProps) => {
             <FiX className="h-5 w-5" strokeWidth={2} />
           </button>
         </div>
-        <div className="shrink-0 flex items-center gap-2.5 px-5 pt-4 pb-5 md:pt-5 md:pb-6 border-b border-cborder/40">
-          <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[#eef0ff] text-[#6366f1]">
-            <LuLayoutDashboard size={18} />
-          </span>
-          <span className="text-lg font-bold text-[#6366f1] tracking-tight">
-            {t("sidebar.admin_portal")}
-          </span>
+        <div className="shrink-0 flex h-16 items-center gap-3 px-5 border-b border-slate-200/70 max-md:h-auto max-md:pb-4">
+          <BrandLightningMark size="sm" decorative />
+          <div className="min-w-0 leading-tight">
+            <p className="truncate text-[15px] font-bold tracking-tight text-brand">EasyRisparmio</p>
+            <p className="truncate text-xs font-medium text-slate-500">{t("sidebar.admin_portal")}</p>
+          </div>
         </div>
-        <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain space-y-1 px-2.5 py-1 scroll-py-2 [scrollbar-width:thin] [scrollbar-color:oklch(0.68_0_0)_transparent]">
+        <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain space-y-0.5 px-3 py-4 scroll-py-2 [scrollbar-width:thin] [scrollbar-color:oklch(0.68_0_0)_transparent]">
             {routeLinkGenerators(dashboardItems, user?.role as TUserRole).map(
               ({ name, icon, path, children, rootPath }, indx) =>
                 children?.length ? (
@@ -130,7 +129,7 @@ const Sidebar = ({ mobileOpen = false, onMobileClose }: SidebarProps) => {
                         }));
                       }}
                       className={cn(
-                        "hover:text-primary hover:bg-primary/5 outline-none text-[#373643] w-full pl-5 pr-4 py-3 flex items-center justify-between gap-3 2xl:text-lg rounded-xl group transition-colors duration-200 ease-[cubic-bezier(0.3,0,0,1)]",
+                        "hover:text-brand hover:bg-slate-100 outline-none text-slate-600 w-full px-3 py-2.5 flex items-center justify-between gap-3 text-sm font-medium rounded-xl group transition-colors duration-200 ease-[cubic-bezier(0.3,0,0,1)]",
                         {
                           "text-primary bg-primary/5":
                             name !== openNome?.name &&
@@ -175,7 +174,7 @@ const Sidebar = ({ mobileOpen = false, onMobileClose }: SidebarProps) => {
                           onClick={() => onMobileClose?.()}
                           className={({ isActive }) =>
                             cn(
-                              "hover:text-primary hover:bg-primary/5 text-brand w-full pl-8 pr-4 py-2.5 flex items-center justify-start gap-2.5 text-sm 2xl:text-base rounded-lg transition-colors duration-200 ease-[cubic-bezier(0.3,0,0,1)]",
+                              "hover:text-primary hover:bg-primary/5 text-slate-600 w-full pl-9 pr-3 py-2 flex items-center justify-start gap-2.5 text-sm rounded-lg transition-colors duration-200 ease-[cubic-bezier(0.3,0,0,1)]",
                               {
                                 "text-primary bg-primary/10 relative before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:rounded-full before:bg-primary":
                                   isActive,
@@ -203,9 +202,9 @@ const Sidebar = ({ mobileOpen = false, onMobileClose }: SidebarProps) => {
                       onClick={() => onMobileClose?.()}
                       className={({ isActive }) =>
                         cn(
-                          "w-full pl-4 pr-4 py-3 flex items-center justify-start gap-3 text-[15px] rounded-xl transition-colors duration-200 ease-[cubic-bezier(0.3,0,0,1)] text-[#373643] hover:bg-primary/5",
+                          "w-full px-3 py-2.5 flex items-center justify-start gap-3 text-sm font-medium rounded-xl transition-colors duration-200 ease-[cubic-bezier(0.3,0,0,1)] text-slate-600 hover:bg-slate-100 hover:text-brand",
                           {
-                            "!bg-[#6366f1] !text-white shadow-[0_8px_20px_-10px_rgba(99,102,241,0.6)]":
+                            "!bg-primary/10 !text-primary font-semibold relative before:absolute before:-left-3 before:top-2 before:bottom-2 before:w-[3px] before:rounded-r-full before:bg-primary":
                               isActive,
                           }
                         )
@@ -218,11 +217,11 @@ const Sidebar = ({ mobileOpen = false, onMobileClose }: SidebarProps) => {
                 )
             )}
         </ul>
-        <div className="shrink-0 px-2.5 pt-2 pb-4 border-t border-cborder/50 bg-gradient-to-t from-[oklch(0.96_0_0)] to-playground">
+        <div className="shrink-0 px-3 py-3 border-t border-slate-200/70">
           <button
             onClick={handleLogOut}
             type="button"
-            className="group w-full px-4 py-3 flex items-center justify-start gap-2.5 2xl:text-lg outline-none rounded-xl text-[#373643] cursor-pointer transition-colors duration-200 ease-[cubic-bezier(0.3,0,0,1)] hover:bg-red-50/90 active:bg-red-50"
+            className="group w-full px-3 py-2.5 flex items-center justify-start gap-3 text-sm outline-none rounded-xl cursor-pointer transition-colors duration-200 ease-[cubic-bezier(0.3,0,0,1)] hover:bg-red-50/90 active:bg-red-50"
           >
             <FiLogOut className="text-red-400 transition-transform duration-200 group-hover:-translate-x-0.5" size={18} />
             <span className="text-red-500 font-medium">{t("common.logout")}</span>

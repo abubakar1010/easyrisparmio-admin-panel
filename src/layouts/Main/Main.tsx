@@ -33,9 +33,9 @@ const Main = () => {
       <Sidebar mobileOpen={mobileNavOpen} onMobileClose={() => setMobileNavOpen(false)} />
       <div className="flex-1 min-h-screen pl-0 md:pl-[250px] 2xl:pl-[280px]">
         <Header onMobileMenuClick={() => setMobileNavOpen(true)} />
-        <div className="p-3 sm:p-4 md:p-6 max-w-[1920px] mx-auto">
+        <main className="px-4 py-5 sm:px-6 sm:py-6 xl:px-8 xl:py-8">
           <Outlet />
-        </div>
+        </main>
       </div>
     </div>
   );

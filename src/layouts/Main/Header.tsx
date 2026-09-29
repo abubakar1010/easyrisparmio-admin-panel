@@ -81,30 +81,31 @@ const Header = ({ onMobileMenuClick }: HeaderProps) => {
   }, [location.pathname]);
 
   return (
-    <header className="sticky top-0 z-[13] w-full border-b border-cborder/50 bg-white/75 backdrop-blur-xl backdrop-saturate-150 shadow-[0_4px_32px_-12px_rgba(15,23,42,0.08)] transition-[box-shadow,background-color] duration-300 ease-[cubic-bezier(0.3,0,0,1)]">
-      <div className="w-full flex justify-between items-center gap-2 sm:gap-4 px-3 sm:px-6 md:px-8 py-3 sm:py-3.5 relative max-w-[1920px] mx-auto">
-        <div className="min-w-0 flex items-start gap-2 sm:gap-3 flex-1">
+    <header className="sticky top-0 z-[13] w-full border-b border-slate-200/70 bg-white/80 backdrop-blur-xl backdrop-saturate-150">
+      <div className="relative flex h-16 w-full items-center justify-between gap-2 px-4 sm:gap-4 sm:px-6 xl:px-8">
+        <div className="min-w-0 flex items-center gap-2 sm:gap-3 flex-1">
           {onMobileMenuClick ? (
             <button
               type="button"
               aria-label={t("audit.open_navigation_menu")}
-              className="md:hidden shrink-0 mt-0.5 rounded-xl p-2 text-brand hover:bg-playground/80 border border-cborder/40 transition-colors"
+              className="md:hidden shrink-0 rounded-xl p-2 text-brand hover:bg-slate-100 border border-slate-200 transition-colors"
               onClick={onMobileMenuClick}
             >
               <FiMenu className="w-5 h-5" />
             </button>
           ) : null}
-          <BrandLightningMark size="sm" decorative className="mt-0.5 shrink-0 lg:hidden" />
+          <BrandLightningMark size="sm" decorative className="shrink-0 md:hidden" />
           <div className="min-w-0">
-            <p className="text-base sm:text-lg font-medium text-brand tracking-[-0.01em]">
-              {t("header.welcome")} {fullName}
+            <p className="truncate text-sm text-slate-500 sm:text-[15px]">
+              {t("header.welcome")}{" "}
+              <span className="font-semibold text-brand">{user?.firstName || fullName}</span>
             </p>
           </div>
         </div>
-        <div className="flex gap-2 sm:gap-3 md:gap-5 items-center shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <button
             onClick={toggleLanguage}
-            className="flex items-center justify-center rounded-lg px-2 py-1 text-xs font-semibold bg-playground/80 border border-cborder/40 text-brand hover:bg-playground transition-colors"
+            className="flex h-10 min-w-10 items-center justify-center rounded-xl px-2.5 text-xs font-bold tracking-wide text-slate-600 hover:bg-slate-100 hover:text-brand transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary/35"
             type="button"
             title={t("settings.language")}
           >
@@ -112,20 +113,21 @@ const Header = ({ onMobileMenuClick }: HeaderProps) => {
           </button>
           <button
             onClick={() => setNotificationPopup(true)}
-            className="relative flex items-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2"
+            className="relative flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 hover:bg-slate-100 hover:text-brand transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary/35"
+            aria-label={t("header.notifications")}
             type="button"
             aria-expanded={notificationPopup}
             aria-haspopup="true"
           >
-            <Badge count={unreadCount} size="small" offset={[-2, 4]}>
-              <IoNotificationsOutline className="cursor-pointer text-[#6366f1] w-7 h-7 sm:w-8 sm:h-8 transition-colors hover:text-[#4f46e5]" />
+            <Badge count={unreadCount} size="small" offset={[-1, 3]}>
+              <IoNotificationsOutline className="h-[22px] w-[22px] text-current" />
             </Badge>
           </button>
-          <div className="flex items-center gap-2 sm:gap-3 pl-3 sm:pl-4 border-l border-cborder/50">
+          <div className="ml-1 flex items-center gap-2.5 border-l border-slate-200 pl-3 sm:ml-2 sm:pl-4">
             <Avatar
-              size={40}
+              size={36}
               src={user?.avatar || undefined}
-              className="shrink-0 bg-[#e0eaff] text-[#3a4a7a] font-semibold"
+              className="shrink-0 bg-primary/10 text-primary font-semibold"
             >
               {initials}
             </Avatar>
@@ -133,7 +135,7 @@ const Header = ({ onMobileMenuClick }: HeaderProps) => {
               <h4 className="text-sm font-semibold text-brand truncate max-w-[120px] sm:max-w-[200px] leading-tight">
                 {fullName}
               </h4>
-              <span className="text-xs text-owngray">{t("header.admin")}</span>
+              <span className="text-xs text-slate-500">{t("header.admin")}</span>
             </div>
           </div>
         </div>
@@ -197,10 +199,9 @@ const Header = ({ onMobileMenuClick }: HeaderProps) => {
             <div className="w-fit mx-auto mt-2 pt-3">
               <Button
                 onClick={() => navigate("/notifications")}
-                style={{ background: "#34D399", color: "white" }}
                 size="middle"
                 type="primary"
-                className="w-40 rounded-xl border-0 shadow-sm hover:shadow-md transition-shadow duration-200"
+                className="w-40 rounded-xl shadow-sm"
               >
                 {t("header.see_more")}
               </Button>
