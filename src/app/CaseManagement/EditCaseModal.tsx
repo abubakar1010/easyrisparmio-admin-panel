@@ -610,8 +610,8 @@ export default function EditCaseModal({
       <Form form={form} layout="vertical" className="mt-4 max-h-[65vh] overflow-y-auto pr-2">
         {/* ── Classification & handling ── */}
         {section(
-          "Case",
-          "How the case is classified, queued and staffed. The pipeline status is changed from the case header.",
+          i18n.t("audit.edit_case_section_case"),
+          i18n.t("audit.edit_case_section_case_hint"),
           <>
             <div className="grid grid-cols-2 gap-x-4">
               <Form.Item name="caseType" label={i18n.t("audit.case_type")}>
@@ -628,7 +628,7 @@ export default function EditCaseModal({
                 optionFilterProp="label"
                 options={agentOptions}
                 loading={agentsLoading}
-                notFoundContent={agentsLoading ? <Spin size="small" /> : "No agents found"}
+                notFoundContent={agentsLoading ? <Spin size="small" /> : i18n.t("audit.no_agents_found")}
                 placeholder={i18n.t("support_ticket.unassigned")}
               />
             </Form.Item>
@@ -638,8 +638,8 @@ export default function EditCaseModal({
         {/* ── Customer ── */}
         {caseData?.user &&
           section(
-            "Customer",
-            "The account the switch is submitted under. These fields belong to the customer's record, so a correction here follows them onto every other case they have.",
+            i18n.t("audit.edit_case_section_customer"),
+            i18n.t("audit.edit_case_section_customer_hint"),
             <>
               <div className="grid grid-cols-2 gap-x-4">
                 <Form.Item
@@ -741,8 +741,8 @@ export default function EditCaseModal({
         {/* ── Supply point & bill ── */}
         {bill &&
           section(
-            "Supply Point & Bill Data",
-            "Read off the uploaded bill, and what the switch is filed against — the POD or PDR here is the number sent to the new supplier. Corrections made here are the same ones the Bill Data tab makes.",
+            i18n.t("audit.edit_case_section_supply_bill"),
+            i18n.t("audit.edit_case_section_supply_bill_hint"),
             <>
               <Form.Item
                 name="fromSupplierId"
@@ -755,7 +755,7 @@ export default function EditCaseModal({
                   optionFilterProp="label"
                   options={supplierOptions}
                   loading={suppliersLoading}
-                  notFoundContent={suppliersLoading ? <Spin size="small" /> : "No suppliers found"}
+                  notFoundContent={suppliersLoading ? <Spin size="small" /> : i18n.t("audit.no_suppliers_found")}
                   placeholder={i18n.t("audit.not_matched_to_a_supplier_record")}
                 />
               </Form.Item>
@@ -765,15 +765,15 @@ export default function EditCaseModal({
 
         {/* ── Offer ── */}
         {section(
-          "Offer",
-          "The offer the switch is filed against. Changing it moves the destination supplier with it.",
+          i18n.t("audit.edit_case_section_offer"),
+          i18n.t("audit.edit_case_section_offer_hint"),
           <Form.Item name="selectedOfferId" label={i18n.t("audit.selected_offer")}>
             <Select
               showSearch
               optionFilterProp="label"
               options={offerOptions}
               loading={offersLoading}
-              notFoundContent={offersLoading ? <Spin size="small" /> : "No offers found"}
+              notFoundContent={offersLoading ? <Spin size="small" /> : i18n.t("audit.no_offers_found")}
               placeholder={i18n.t("audit.select_an_offer")}
             />
           </Form.Item>,
@@ -781,8 +781,8 @@ export default function EditCaseModal({
 
         {/* ── Payment ── */}
         {section(
-          "Payment",
-          "How the customer pays the new supplier. The offer may only accept one method.",
+          i18n.t("audit.edit_case_section_payment"),
+          i18n.t("audit.edit_case_section_payment_hint"),
           <>
             <Form.Item name="paymentMethod" label={i18n.t("client_management.payment_method")}>
               <Select allowClear options={PAYMENT_METHOD_OPTIONS} placeholder={i18n.t("offers_market.select_payment_method")} />
@@ -842,8 +842,8 @@ export default function EditCaseModal({
 
         {/* ── Invoicing ── */}
         {section(
-          "Invoicing",
-          "Where the supplier sends the invoices.",
+          i18n.t("audit.edit_case_section_invoicing"),
+          i18n.t("audit.edit_case_section_invoicing_hint"),
           <>
             <Form.Item name="invoiceDelivery" label={i18n.t("audit.invoice_delivery")}>
               <Select
@@ -871,8 +871,8 @@ export default function EditCaseModal({
 
         {/* ── Supply address ── */}
         {section(
-          "Supply Address (on the case)",
-          "Where the energy is delivered, as the switch is filed. The address printed on the bill is edited above; this is the one the new supplier is given.",
+          i18n.t("audit.edit_case_section_supply_address"),
+          i18n.t("audit.edit_case_section_supply_address_hint"),
           addressBlock("supply"),
         )}
 
@@ -924,8 +924,8 @@ export default function EditCaseModal({
 
         {/* ── Contract dates ── */}
         {section(
-          "Contract Dates",
-          "Contract signing happens outside the app, so every date here is entered by hand. Both activation dates are required before a case can be put in activation, and the supply must expire after it goes live.",
+          i18n.t("audit.edit_case_section_contract_dates"),
+          i18n.t("audit.edit_case_section_contract_dates_hint"),
           <div className="grid grid-cols-3 gap-x-4">
             <Form.Item name="contractSentAt" label={i18n.t("audit.contract_sent_on")}>
               <DatePicker className="w-full!" format={DATE_FORMAT} allowClear />
@@ -957,8 +957,8 @@ export default function EditCaseModal({
 
         {/* ── Commercial & SLA ── */}
         {section(
-          "Commercial & SLA",
-          "What the switch is booked at and how long it is allowed to take. Nothing derives these — they are the figures the board and the commission reconciliation report against.",
+          i18n.t("audit.edit_case_section_commercial_sla"),
+          i18n.t("audit.edit_case_section_commercial_sla_hint"),
           <div className="grid grid-cols-3 gap-x-4">
             <Form.Item name="estimatedAnnualValue" label={i18n.t("audit.estimated_annual_value")}>
               <InputNumber className="w-full!" min={0} precision={2} placeholder="1140.00" />
@@ -974,8 +974,8 @@ export default function EditCaseModal({
 
         {/* ── Notes ── */}
         {section(
-          "Notes",
-          "The first is shown to the customer on their case; the second never leaves the CRM.",
+          i18n.t("audit.edit_case_section_notes"),
+          i18n.t("audit.edit_case_section_notes_hint"),
           <>
             <Form.Item name="notes" label={i18n.t("audit.customer_visible_notes")}>
               <Input.TextArea rows={3} placeholder={i18n.t("audit.your_documents_have_been_received_and_are_under_review")} />
