@@ -16,7 +16,7 @@ export const walk = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMa
 export const displayNames = new Set([
   'label', 'title', 'description', 'placeholder', 'message', 'okText', 'cancelText', 'confirmButtonText',
   'cancelButtonText', 'text', 'tooltip', 'emptyText', 'aria-label', 'alt', 'help', 'extra', 'content',
-  'note', 'hint', 'caption', 'heading', 'subtitle', 'subTitle', 'addonBefore', 'addonAfter', 'suffix', 'prefix', 'checkedChildren', 'unCheckedChildren',
+  'note', 'hint', 'caption', 'heading', 'subtitle', 'subTitle', 'addonBefore', 'addonAfter', 'suffix', 'prefix', 'checkedChildren', 'unCheckedChildren', 'notFoundContent',
 ]);
 
 const displayCall = /^(?:message|notification|toast|messageApi|notificationApi|modal|Modal)\.(?:success|error|warning|info|open|loading|confirm)$|^(?:Swal\.fire|alert|confirm|setError|setSubmitError|setFormError|errorMessageAlert)$/;
