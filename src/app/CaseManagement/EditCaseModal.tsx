@@ -188,8 +188,34 @@ const errorMessage = (err: unknown, fallback: string): string => getApiErrorMess
  * so those fields are shown filled from supply and locked rather than left
  * editable and silently overwritten on save.
  */
-export default function EditCaseModal({ caseData, bill, open, onClose }: EditCaseModalProps) {
+export default function EditCaseModal({
+  caseData: liveCase,
+  bill: liveBill,
+  open,
+  onClose,
+}: EditCaseModalProps) {
   useTranslation();
+
+  // The records as they stood when the modal opened. The case and bill queries
+  // refetch whenever the window regains focus, and a fresh copy used to reseed
+  // the form — wiping everything typed so far, so "Save changes" found nothing
+  // to save. Held still until the modal closes; the bill is taken as soon as it
+  // arrives, since it can load after the case.
+  const [snapshot, setSnapshot] = useState<{ caseData: ICase; bill: IBill | null } | null>(null);
+  useEffect(() => {
+    if (!open) {
+      setSnapshot(null);
+      return;
+    }
+    setSnapshot((prev) => {
+      if (!prev) return liveCase ? { caseData: liveCase, bill: liveBill } : null;
+      if (!prev.bill && liveBill) return { ...prev, bill: liveBill };
+      return prev;
+    });
+  }, [open, liveCase, liveBill]);
+  const caseData = snapshot?.caseData ?? liveCase;
+  const bill = snapshot?.bill ?? liveBill;
+
   const { message } = App.useApp();
   const dispatch = useAppDispatch();
   const [form] = Form.useForm();
@@ -422,8 +448,23 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
 
   const handleSubmit = async () => {
     if (!caseData) return;
-    const values = await form.validateFields().catch(() => null);
-    if (!values) return;
+    let values: Record<string, unknown>;
+    try {
+      values = await form.validateFields();
+    } catch (err) {
+      // The form scrolls, so the offending field is often well out of view —
+      // refusing without a word reads as a dead button. Bring it into view and
+      // say what is wrong with it.
+      const errorFields = (err as { errorFields?: { name: (string | number)[]; errors: string[] }[] })
+        ?.errorFields;
+      if (!errorFields?.length) {
+        message.error(i18n.t("audit.save_failed_unexpected"));
+        return;
+      }
+      form.scrollToField(errorFields[0].name, { behavior: "smooth", block: "center" });
+      message.error(i18n.t("audit.save_blocked", { error: errorFields[0].errors[0] }));
+      return;
+    }
 
     const caseChanges = diffCase(values);
     const billChanges = bill
@@ -463,7 +504,15 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
             id: caseData.user!.id,
             data: customerChanges as IUpdateClient,
           }).unwrap();
-          dispatch(baseApi.util.invalidateTags([{ type: "case", id: caseData.id }]));
+          // Every case of this customer embeds the same account, so all of
+          // them are refetched, not only the one open here — and the bill,
+          // which carries the account too.
+          dispatch(
+            baseApi.util.invalidateTags([
+              "case",
+              ...(bill ? [{ type: "bill" as const, id: bill.id }] : []),
+            ]),
+          );
         },
       });
     }
@@ -479,6 +528,8 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
         await save.run();
         done.push(save.label);
       } catch (err) {
+        // Anything that is not an API rejection (a thrown bug, a dropped
+        // connection) still gets named, never swallowed.
         const detail = errorMessage(err, i18n.t("audit.save_part_failed", { part: save.label }));
         message.error(
           done.length > 0 ? i18n.t("audit.save_partial", { detail, parts: done.join(", ") }) : detail,
@@ -499,8 +550,10 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
           name={`${block}${f.key}`}
           label={f.label}
           className={f.span}
+          // A locked block is a copy of the supply address, which is checked on
+          // its own — an error here would point at a field the admin cannot edit.
           rules={
-            f.key === "PostalCode"
+            f.key === "PostalCode" && !readOnly
               ? [{ pattern: CAP_PATTERN, message: i18n.t("audit.cap_must_be_5_digits") }]
               : undefined
           }
@@ -765,6 +818,9 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
                         // One that fails only on its check character is nearly
                         // right, so the message names that rather than
                         // "invalid" — retyping is not the fix.
+                        // Hidden unless the method is direct debit — a stale
+                        // code there must not block a save it plays no part in.
+                        if (!isDirectDebit) return Promise.resolve();
                         const problem = taxIdMessage(value);
                         return problem
                           ? Promise.reject(new Error(problem))
@@ -799,7 +855,12 @@ export default function EditCaseModal({ caseData, bill, open, onClose }: EditCas
               <Form.Item
                 name="invoiceEmail"
                 label={i18n.t("audit.invoice_email")}
-                rules={[{ type: "email", message: i18n.t("audit.enter_a_valid_email_address") }]}
+                // Hidden on paper delivery, so it is only checked while shown.
+                rules={
+                  isPaper
+                    ? undefined
+                    : [{ type: "email", message: i18n.t("audit.enter_a_valid_email_address") }]
+                }
               >
                 <Input maxLength={255} placeholder={i18n.t("audit.defaults_to_the_account_email")} />
               </Form.Item>

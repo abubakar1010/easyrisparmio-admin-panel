@@ -325,6 +325,8 @@
   "save_part_customer": "dati del cliente",
   "save_part_failed": "Impossibile aggiornare: {{part}}",
   "save_partial": "{{detail}} Già salvato: {{parts}}.",
+  "save_blocked": "Impossibile salvare: correggi il campo evidenziato ({{error}}).",
+  "save_failed_unexpected": "Salvataggio non riuscito per un errore imprevisto. Riprova.",
   "codice_fiscale_owner": "Codice fiscale (titolare)",
   "codice_fiscale_invalid": "Inserisci un Codice Fiscale valido",
   "partita_iva_invalid": "Inserisci una Partita IVA valida di 11 cifre",

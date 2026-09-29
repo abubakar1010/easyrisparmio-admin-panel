@@ -325,6 +325,8 @@
   "save_part_customer": "customer",
   "save_part_failed": "Failed to update {{part}}",
   "save_partial": "{{detail}} Already saved: {{parts}}.",
+  "save_blocked": "Can't save: fix the highlighted field ({{error}}).",
+  "save_failed_unexpected": "Saving failed because of an unexpected error. Please try again.",
   "codice_fiscale_owner": "Codice Fiscale (owner)",
   "codice_fiscale_invalid": "Enter a valid Codice Fiscale",
   "partita_iva_invalid": "Enter a valid 11-digit Partita IVA",
