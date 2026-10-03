@@ -91,6 +91,7 @@ const rules: Rule[] = [
   { match: "This sign-in could not be verified. Please try again.", key: "sign_in_unverified" },
   { match: "This sign-in is no longer valid. Please sign in again.", key: "sign_in_invalid" },
   { match: "Your sign-in session has expired. Please try again.", key: "sign_in_expired" },
+  { match: /^This sign-in method is not supported/, key: "sign_in_method_unsupported" },
   { match: /^Your social account email is not verified/, key: "social_email_unverified" },
 
   // Files

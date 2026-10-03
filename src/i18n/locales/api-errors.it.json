@@ -67,6 +67,7 @@
   "sign_in_unverified": "Non è stato possibile verificare l'accesso. Riprova.",
   "sign_in_invalid": "L'accesso non è più valido. Accedi di nuovo.",
   "sign_in_expired": "La sessione di accesso è scaduta. Riprova.",
+  "sign_in_method_unsupported": "Questo metodo di accesso non è supportato. Accedi con Google, Apple oppure con email e password.",
   "social_email_unverified": "L'email dell'account social non è verificata. Verificala presso il provider oppure accedi con email e password.",
 
   "file_required": "Nessun file caricato",

@@ -67,6 +67,7 @@
   "sign_in_unverified": "This sign-in could not be verified. Please try again.",
   "sign_in_invalid": "This sign-in is no longer valid. Please sign in again.",
   "sign_in_expired": "Your sign-in session has expired. Please try again.",
+  "sign_in_method_unsupported": "This sign-in method is not supported. Sign in with Google, Apple, or your email and password.",
   "social_email_unverified": "The social account email is not verified. Verify it with your provider, or sign in with your email and password.",
 
   "file_required": "No file was uploaded",
