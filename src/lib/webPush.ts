@@ -17,6 +17,19 @@ import { firebaseConfig, firebaseVapidKey, isWebPushConfigured } from "../config
 
 const TOKEN_STORAGE_KEY = "fcm_web_token";
 
+/** The same sound the mobile apps play, served from public/sounds. */
+const NOTIFICATION_SOUND_URL = "/sounds/notification.mp3";
+
+/**
+ * Plays the notification sound for a foreground message. Desktop
+ * notifications from the service worker keep the system sound, since browsers
+ * do not let a page choose it. Autoplay rules can block playback until the
+ * admin has interacted with the tab; the toast still shows, so that is ignored.
+ */
+function playNotificationSound(): void {
+  void new Audio(NOTIFICATION_SOUND_URL).play().catch(() => {});
+}
+
 /**
  * Why push is or is not running.
  *
@@ -132,6 +145,7 @@ export function useWebPush(): UseWebPush {
           description: payload.notification?.body ?? "",
           placement: "topRight",
         });
+        playNotificationSound();
         // Move the badge now rather than a round-trip later. The invalidation
         // behind it still runs, and only corrects a count another client
         // changed in the meantime.
