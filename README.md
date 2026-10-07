@@ -1,69 +1,46 @@
-# React + TypeScript + Vite
+# VYZI Dashboard
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Admin dashboard for **VYZI**, the Italian energy bill comparison and switching
+platform. Admins review uploaded bills, process switching cases, manage
+suppliers and offers, and handle support.
 
-Currently, two official plugins are available:
+Built with React 19, TypeScript, Vite 7, Ant Design 5, Tailwind CSS 4 and
+Redux Toolkit (RTK Query). It talks to the VYZI backend at `api/v1`.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Getting started
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm ci
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Configuration
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Set in `.env.development` / `.env.production` (read at build time):
 
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+| Variable | Purpose |
+|---|---|
+| `VITE_SERVER_URL` | Backend API base, ending in `/api/v1/` (e.g. `https://api.vyzi.app/api/v1/`) |
+| `VITE_FIREBASE_*` | Optional desktop push notifications; leave blank to rely on in-app polling |
+
+The backend must list the dashboard's origin in `CORS_ORIGINS`.
+
+## Scripts
+
+| Command | What it does |
+|---|---|
+| `npm run dev` | Vite dev server with HMR |
+| `npm run build` | Type-check, Italian/English text audit, production build into `dist/` |
+| `npm run i18n:check` | Text audit only: no hard-coded UI text, no missing translations |
+| `npm run lint` | ESLint |
+| `npm run preview` | Serve the production build locally |
+
+## Language
+
+Italian is the default and fallback; English is a translation. All UI text
+lives in the locale files under `src/i18n/locales/`.
+
+## Deployment
+
+The build output in `dist/` is static and is served by Nginx. See
+`deploy/nginx/vyzi.conf` in the backend repository.
