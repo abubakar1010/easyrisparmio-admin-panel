@@ -114,7 +114,7 @@ const PublicLayout = () => {
                 {i18n.t("audit.public_contact")}
               </h4>
               <ul className="space-y-2 text-sm text-gray-400">
-                <li>info@easyresparmio.it</li>
+                <li>info@vyzi.app</li>
               </ul>
             </div>
           </div>

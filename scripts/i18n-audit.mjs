@@ -23,7 +23,7 @@ const displayCall = /^(?:message|notification|toast|messageApi|notificationApi|m
 
 /** Text that is legitimately the same in every language. */
 const untranslatable = [
-  /^(?:ID|IBAN|PEC|POD|PDR|POD \/ PDR|CAP|SLA:?|OCR|PDF|CSV|FAQ|VAT|kWh|SMc|Smc|MI|v|IT|EN|\(EUR\)|Email|E-mail|Italiano|English|VYZI|VYZI S\.r\.l\.|EasyRisparmio)$/,
+  /^(?:ID|IBAN|PEC|POD|PDR|POD \/ PDR|CAP|SLA:?|OCR|PDF|CSV|FAQ|VAT|kWh|SMc|Smc|MI|v|IT|EN|\(EUR\)|Email|E-mail|Italiano|English|VYZI|VYZI S\.r\.l\.|VYZI)$/,
   /^https?:\/\//, /^[^\s@]+@[^\s@]+\.[^\s@]+$/, // URLs, emails
   /^(?:IT\d|RSSMRA|Mario|Rossi|Via Roma|Milano|Enel Energia|\d)/, // Italian sample values in placeholders
   /^&[a-z]+;$/, // HTML entities

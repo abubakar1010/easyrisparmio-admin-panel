@@ -2548,7 +2548,7 @@ type CardKey = (typeof DEFAULT_CARD_ORDER)[number];
  * case — two admins on the same case may each want their own — so it lives in
  * the browser and never reaches the server.
  */
-const CARD_ORDER_STORAGE_KEY = "easyrisparmio:case-overview-card-order";
+const CARD_ORDER_STORAGE_KEY = "vyzi:case-overview-card-order";
 
 /**
  * The saved arrangement, reconciled with the cards that exist today.

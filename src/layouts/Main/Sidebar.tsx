@@ -113,7 +113,7 @@ const Sidebar = ({ mobileOpen = false, onMobileClose }: SidebarProps) => {
         <div className="shrink-0 flex h-16 items-center gap-3 px-5 border-b border-slate-200/70 max-md:h-auto max-md:pb-4">
           <BrandLightningMark size="sm" decorative />
           <div className="min-w-0 leading-tight">
-            <p className="truncate text-[15px] font-bold tracking-tight text-brand">EasyRisparmio</p>
+            <p className="truncate text-[15px] font-bold tracking-tight text-brand">VYZI</p>
             <p className="truncate text-xs font-medium text-slate-500">{t("sidebar.admin_portal")}</p>
           </div>
         </div>

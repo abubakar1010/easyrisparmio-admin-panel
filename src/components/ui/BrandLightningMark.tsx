@@ -17,7 +17,7 @@ export function BrandLightningMark({
   className,
   size = "md",
   decorative = false,
-  "aria-label": ariaLabel = "EasyRisparmio",
+  "aria-label": ariaLabel = "VYZI",
 }: BrandLightningMarkProps) {
   return (
     <span
