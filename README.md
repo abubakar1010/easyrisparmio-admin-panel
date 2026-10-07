@@ -20,7 +20,7 @@ Set in `.env.development` / `.env.production` (read at build time):
 
 | Variable | Purpose |
 |---|---|
-| `VITE_SERVER_URL` | Backend API base, ending in `/api/v1/` (e.g. `https://api.vyzi.app/api/v1/`) |
+| `VITE_SERVER_URL` | Backend API base, ending in `/api/v1/` (e.g. `https://api.vyzi.it/api/v1/`) |
 | `VITE_FIREBASE_*` | Optional desktop push notifications; leave blank to rely on in-app polling |
 
 The backend must list the dashboard's origin in `CORS_ORIGINS`.
